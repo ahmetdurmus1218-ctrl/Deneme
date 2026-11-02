@@ -1,13 +1,31 @@
 name: release
 # Tag vX.Y.Z → jarvis.apk + jarvis-kapi.apk (same key) + Jarvis-Setup-X.Y.Z.msi + SHA256SUMS.txt
+# Also runs when .github/release-request (one line: the tag, e.g. v0.1.0) changes on a branch:
+# then the release and its tag are created on that commit.
 on:
   push:
     tags: ['v*']
+    branches: ['**']
+    paths: ['.github/release-request']
+  workflow_dispatch:
 permissions:
   contents: write
 
 jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.t.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: t
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then TAG="$GITHUB_REF_NAME"; else TAG="$(tr -d '[:space:]' < .github/release-request)"; fi
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "bad tag '$TAG'"; exit 1; }
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
   android:
+    needs: meta
     runs-on: ubuntu-latest
     timeout-minutes: 60
     outputs:
@@ -41,8 +59,10 @@ jobs:
             echo "signing=test" >> "$GITHUB_OUTPUT"
           fi
       - name: Test and build
+        env:
+          TAG: ${{ needs.meta.outputs.tag }}
         run: |
-          V="${GITHUB_REF_NAME#v}"
+          V="${TAG#v}"
           ./gradlew --no-daemon -Pjarvis.version="$V" :core:jvmTest :ui:jvmTest :androidApp:assembleRelease :gate:assembleRelease
       - name: Kale has no INTERNET permission
         run: bash tools/check-no-internet.sh androidApp/build/outputs/apk/release/androidApp-release.apk gate/build/outputs/apk/release/gate-release.apk
@@ -57,6 +77,7 @@ jobs:
           path: dist/
 
   windows:
+    needs: meta
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -68,8 +89,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Package MSI
         shell: bash
+        env:
+          TAG: ${{ needs.meta.outputs.tag }}
         run: |
-          V="${GITHUB_REF_NAME#v}"
+          V="${TAG#v}"
           ./gradlew --no-daemon -Pjarvis.version="$V" :desktopApp:jvmTest :desktopApp:packageMsi
           mkdir -p dist
           cp desktopApp/build/compose/binaries/main/msi/*.msi "dist/Jarvis-Setup-${V%%-*}.msi"
@@ -84,7 +107,7 @@ jobs:
           path: dist/
 
   publish:
-    needs: [android, windows]
+    needs: [meta, android, windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -95,13 +118,14 @@ jobs:
       - name: Checksums and release notes
         env:
           SIGNING: ${{ needs.android.outputs.signing }}
+          TAG: ${{ needs.meta.outputs.tag }}
         run: |
           cp models.lock.json dist/
           cd dist
           sha256sum * > SHA256SUMS.txt
           cat SHA256SUMS.txt
           cd ..
-          V="${GITHUB_REF_NAME#v}"
+          V="${TAG#v}"
           {
             if [ "$SIGNING" = "test" ]; then
               echo "> ⚠️ **Bu sürüm test anahtarıyla imzalı.** APK'lar depodaki herkese açık \`ci-test.keystore\` ile imzalandı. Kendi anahtarınızı eklemek için README'deki \"İmza anahtarı\" bölümüne bakın."
@@ -117,12 +141,13 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.meta.outputs.tag }}
         run: |
           # The release may already exist when it was created from the GitHub web page (which also
           # creates the tag and starts this workflow): then only attach the files and the notes.
-          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --clobber
-            gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "Jarvis ${GITHUB_REF_NAME}" --notes-file notes.md
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "Jarvis ${TAG}" --notes-file notes.md
           else
-            gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "Jarvis ${GITHUB_REF_NAME}" --notes-file notes.md
+            gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Jarvis ${TAG}" --notes-file notes.md
           fi
