@@ -52,6 +52,8 @@ GOOGLE_COORDS = [
     "androidx.core:core-ktx",
     "androidx.activity:activity-compose",
     "androidx.biometric:biometric",
+    "androidx.fragment:fragment-ktx",
+    "androidx.compose.ui:ui",
     "androidx.work:work-runtime-ktx",
     "androidx.room:room-runtime",
     "androidx.sqlite:sqlite-bundled",
