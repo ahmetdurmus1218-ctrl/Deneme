@@ -49,6 +49,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Sohbet ekranında tek dokunuşla "Jarvis'in ses tanımasını indir"; telefon Türkçe'yi desteklemiyorsa açıkça söylenir.
 - [x] İndirmeler sekme değişince iptal olmuyor (yükleyicinin kendi kapsamı); onay istemi ana iş parçacığında.
 - [x] Emülatör testi: mikrofon → teklif → 3 dosya tek onay → cihazda Türkçe kaydın Whisper ile çözülmesi → Whisper'lı mikrofon.
+- [x] `v0.2.2` yayımlandı; jarvis.apk 146 MB çıktığı için `v0.2.3`'te CPU türüne göre ayrı APK + sıkıştırılmış yerel kütüphaneler: 51 MB. https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v0.2.3
 - [ ] PC'de Whisper (sherpa-onnx JNI) — v0.4.
 - [ ] Piper (Türkçe ses): sherpa-onnx 2.0 espeak-ng'yi çıkardı; Türkçe fonem dönüştürücü gerekiyor (bkz. D22) — v0.4.
 
@@ -71,5 +72,8 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 ## Kaldığım yer
 Oturum 1 (2026-11-02): Bölüm 0 ve v0.1 yazıldı, CI yeşil, "max" incelemesi yapıldı, v0.1.0 ve gerçek
 telefondaki indirme hataları için v0.1.1 yayımlandı. v0.2 (gerçek LLM: Android LiteRT-LM + Gemma 4,
-PC llama-server + Qwen 3.5 9B) yazıldı ve v0.2.0 olarak yayımlandı. Sıradaki adım: v0.3 (offline
+PC llama-server + Qwen 3.5 9B) yazıldı ve v0.2.0 olarak yayımlandı. Gerçek telefonda mikrofon
+çalışmadığı için Whisper (sherpa-onnx) öne alındı, emülatörde uçtan uca doğrulandı: v0.2.2/v0.2.3.
+Kullanıcıdan beklenen karar: sıradaki aşama kamera (el/yüz takibi, okuma — gönderdiği halilozat/jarvis
+örneği gibi, ama internetsiz) mi, offline Wikipedia (v0.3) mı. Sıradaki adım: v0.3 (offline
 Wikipedia: java-libkiwix / kiwix-serve, belge araması, araç çağırma ve kaynak çipleri).
