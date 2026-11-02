@@ -125,3 +125,23 @@ bakılır (ayrı, kısa ömürlü bir tanıyıcıyla; yanıt gelmezse 2,5 sn son
 yoksa `triggerModelDownload` yalnızca onay ekranı + biyometrik/PIN onayından sonra çağrılır. İndirmeyi
 Android sistemi yapar, Kale'nin INTERNET izni yine yoktur; olay Ağ kayıt defterine "sistem indirir"
 olarak yazılır. Kalıcı çözüm v0.4'teki Whisper'dır (Jarvis'in kendi, kilitli ve hash'li modeli).
+
+## D22 — Whisper öne alındı; sherpa-onnx AAR'ı GitHub'dan, SHA-256 sabitli
+Gerçek telefonda ve emülatörde Android'in cihaz içi tanıyıcısı "kullanılabilir" görünüp Türkçe'yi
+desteklemediğini bildiriyor ve dinleme başlar başlamaz hata 11 (servis bağlantısı koptu) veriyor. Bu
+cihaz üreticisine bağlı bir sorun olduğu için v0.4'teki Whisper v0.2.2'ye alındı: ses kaydını Jarvis
+kendisi alır (AudioRecord, engellemesiz okuma), konuşmanın bittiğini çekirdekteki `SpeechEndpointer`
+anlar, Whisper small int8 (dil: tr) sherpa-onnx ile telefonda çözer. sherpa-onnx Android AAR'ı Maven'da
+yok; yalnızca GitHub sürüm dosyası olarak yayımlanıyor. Gradle görevi onu bir kez indirip sabit SHA-256
+ile karşılaştırır, uyuşmazsa derleme kırılır. Model dosyalarının Hugging Face kopyaları sherpa-onnx'in
+GitHub `asr-models` paketindekilerle bayt bayt aynı (üç SHA-256 da eşleşiyor); bu sayede çözümleme
+geliştirme ortamında da denendi ("Merhaba Cervis, bu gün hava nasıl?", 4,9 sn ses 2 sn'de). Whisper
+"Jarvis"i çoğu zaman "Cervis/Carvis" yazdığı için uyandırma sözcüğü bu yazımları da tanır.
+Not (v0.4 için): sherpa-onnx 2.0 espeak-ng'yi çıkardı; Piper sesleri artık fonemleri çağırandan
+bekliyor. Türkçe yazım büyük ölçüde sesçil olduğu için kurallı bir Türkçe→IPA dönüştürücü yazılacak;
+gerekirse espeak'li son sürüm (1.13.x) değerlendirilecek.
+
+## D23 — İndirmeler ekranın değil yükleyicinin kapsamında
+İndirmeler ekranın `rememberCoroutineScope`'unda başlatılıyordu; sekme değiştirince ya da sihirbaz
+kapanınca iptal ediliyordu (Kapı aktarımı da iptal). Artık `ModelInstaller` kendi kapsamında çalıştırır
+(`installInBackground`); biyometrik onay istemi kendisi ana iş parçacığına geçer.

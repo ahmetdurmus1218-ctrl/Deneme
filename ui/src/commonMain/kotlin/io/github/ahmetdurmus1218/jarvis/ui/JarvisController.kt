@@ -208,6 +208,11 @@ class JarvisController(
 
     fun speakTest(text: String) = say(text)
 
+    /** Replaces the caption above the input row (e.g. "Ses tanıma hazır" after Whisper is installed). */
+    fun showNotice(text: String) {
+        _partial.value = text
+    }
+
     fun clearConversation() {
         askJob?.cancel()
         stopSpeaking()

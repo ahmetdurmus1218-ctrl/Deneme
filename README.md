@@ -4,7 +4,7 @@ Jarvis telefonunuzda (Android) ve bilgisayarınızda (Windows) **tamamen interne
 bir yapay zekâ asistanıdır. Konuşmalarınız, hafızası ve belgeleriniz cihazınızdan çıkmaz. Abonelik, API
 anahtarı ya da reklam yoktur.
 
-> **Durum:** v0.2. Gerçek yapay zekâ modeli çalışıyor: telefonda Gemma 4 (LiteRT-LM), PC'de Qwen 3.5 9B
+> **Durum:** v0.2.2. Gerçek yapay zekâ modeli ve Jarvis'in kendi Türkçe ses tanıması (Whisper) çalışıyor: telefonda Gemma 4 (LiteRT-LM), PC'de Qwen 3.5 9B
 > (llama.cpp, Vulkan). Model indirilmeden önce Jarvis "sahte model" ile deneme modunda cevap verir.
 > Offline Wikipedia ve belge araması v0.3'te gelecek. Ayrıntılar: [`docs/PLAN.md`](docs/PLAN.md).
 
@@ -62,8 +62,10 @@ Jarvis'in dosyaları: `%LOCALAPPDATA%\Jarvis` (Gezgin'in adres çubuğuna yazıp
 
 ## 5. Sık sorunlar
 
-- **Mikrofon tuşu yok / "Türkçe cihaz içi ses tanıma paketi yok":** Telefon Ayarları → Sistem → Diller →
-  Ses tanıma (bazı telefonlarda "Google → Ses → Çevrimdışı konuşma tanıma") bölümünden Türkçe'yi indirin.
+- **Mikrofon çalışmıyor / "Türkçe'yi internetsiz desteklemiyor":** Birçok telefonun kendi ses tanıması Türkçe'yi
+  internetsiz yapamıyor. Sohbet ekranında çıkan **"Jarvis'in ses tanımasını indir (375 MB)"** düğmesine basın
+  (onay + parmak izi/PIN). Bundan sonra Jarvis kendi ses tanımasını (Whisper) kullanır: ses kaydı telefonda
+  çözülür, hiçbir yere gönderilmez. Mikrofona bir kez dokunun, konuşun; susunca kendisi durur.
 - **Jarvis yazıyor ama sesli okumuyor:** Ayarlar → Erişilebilirlik → Metin okuma'dan Türkçe sesi indirin.
   Jarvis internet gerektiren sesleri bilerek kullanmaz.
 - **"Kapı yüklü değil":** `jarvis-kapi.apk`'yı kurun ya da bölüm 4'teki yolu kullanın.

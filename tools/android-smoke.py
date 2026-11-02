@@ -305,6 +305,7 @@ def main():
             time.sleep(3)
         else:
             raise SystemExit("Whisper download did not finish: " + " | ".join(screen_texts()))
+        wait_for(text_has("Ses tanıma hazır"), "'ready' notice replaces the old error in the chat")
         shot("10-kale-whisper-indi")
         tap(wait_for(tab("Modeller"), "Models tab"))
         scroll_find(lambda n: label(n).startswith("Whisper small (tokens)"), "Whisper rows")

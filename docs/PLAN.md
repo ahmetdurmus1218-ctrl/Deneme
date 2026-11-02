@@ -43,6 +43,15 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Anlaşılır Türkçe hata mesajları; meşgul/kopan tanıyıcıda otomatik yeniden deneme.
 - [x] `v0.2.1` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v0.2.1
 
+## v0.2.2 — Mikrofon: Jarvis'in kendi ses tanıması (Whisper, v0.4'ten öne alındı)
+- [x] Emülatörde teşhis: telefonun servisi "var" diyor, Türkçe'yi desteklemiyor, dinleme 30 ms'de hata 11 ile kapanıyor.
+- [x] Android: Whisper small (sherpa-onnx 2.0.1, AAR GitHub'dan SHA-256 sabitli), AudioRecord, konuşma sonu algılama (çekirdekte, testli).
+- [x] Sohbet ekranında tek dokunuşla "Jarvis'in ses tanımasını indir"; telefon Türkçe'yi desteklemiyorsa açıkça söylenir.
+- [x] İndirmeler sekme değişince iptal olmuyor (yükleyicinin kendi kapsamı); onay istemi ana iş parçacığında.
+- [x] Emülatör testi: mikrofon → teklif → 3 dosya tek onay → cihazda Türkçe kaydın Whisper ile çözülmesi → Whisper'lı mikrofon.
+- [ ] PC'de Whisper (sherpa-onnx JNI) — v0.4.
+- [ ] Piper (Türkçe ses): sherpa-onnx 2.0 espeak-ng'yi çıkardı; Türkçe fonem dönüştürücü gerekiyor (bkz. D22) — v0.4.
+
 ## v0.3 — Bilgi
 - [ ] Android: java-libkiwix (`org.kiwix:libkiwix` 2.7.0 doğrulandı) ile Türkçe Wikipedia ZIM araması/okuma (`wiki_ara`, `wiki_oku`).
 - [ ] PC: `kiwix-serve` (3.8.1 kilitli) alt süreç + arama API'si.
@@ -50,7 +59,8 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [ ] Platform aksiyon araçlarının (alarm_kur, zamanlayici, uygulama_ac) LLM'e açılması; araç çıktısı bağlamdayken riskli aksiyon için onay.
 
 ## v0.4 — Ses ve hafıza
-- [ ] sherpa-onnx (Android AAR 2.0.1, Windows JNI 2.0.1) ile Whisper small (kilitli) + Piper tr_TR-dfki-medium (kilitli).
+- [~] sherpa-onnx ile Whisper small: Android'de v0.2.2'de bitti; PC'de (Windows JNI 2.0.1) kaldı.
+- [ ] Piper tr_TR-dfki-medium: sherpa-onnx 2.0'da metin→fonem için kendi Türkçe dönüştürücümüz gerekiyor (D22).
 - [ ] Şifreli hafıza: Android Room + SQLCipher (anahtar Keystore'da), PC SQLCipher JDBC; WorkManager ile arka planda bilgi çıkarımı (FactExtractor).
 
 ## v0.5 — Son rötuşlar

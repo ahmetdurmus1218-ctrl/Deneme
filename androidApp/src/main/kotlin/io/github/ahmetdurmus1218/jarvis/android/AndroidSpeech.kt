@@ -246,7 +246,7 @@ class AndroidSpeechInput(
         const val TURKISH_UNSUPPORTED = "Bu telefonun kendi ses tanıması Türkçe'yi internetsiz desteklemiyor. $WHISPER_HINT"
         const val NOT_STARTING = "Telefonun cihaz içi ses tanıma servisi cevap vermedi. $WHISPER_HINT"
         const val NOTHING_HEARD = "Bir şey duyamadım. Mikrofona dokunun ve konuşun; susunca kendisi durur."
-        const val PACK_MISSING = "Telefonda Türkçe cihaz içi ses paketi yüklü değil. Ayarlar'daki \"Türkçe ses paketini indir\" düğmesini kullanın ya da $WHISPER_HINT"
+        const val PACK_MISSING = "Telefonun kendi Türkçe ses paketi yüklü değil. $WHISPER_HINT"
     }
 }
 

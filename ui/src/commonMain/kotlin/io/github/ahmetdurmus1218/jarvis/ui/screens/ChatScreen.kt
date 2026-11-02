@@ -97,7 +97,11 @@ fun ChatScreen(controller: JarvisController, engineLabel: String, micAvailable: 
                 modifier = Modifier.fillMaxWidth().background(JarvisColors.Surface).padding(10.dp),
             )
         }
-        if (speechModel != null && partial.isNotBlank() && mode != CoreMode.LISTENING) SpeechModelBar(speechModel)
+        if (speechModel != null && partial.isNotBlank() && mode != CoreMode.LISTENING) {
+            SpeechModelBar(speechModel) { ok ->
+                if (ok) controller.showNotice("Ses tanıma hazır. Mikrofona dokunun ve konuşun; susunca Jarvis kendisi durur.")
+            }
+        }
         Row(
             Modifier.fillMaxWidth().background(JarvisColors.Surface).padding(10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -153,7 +157,7 @@ private fun MicButton(active: Boolean, onTap: () -> Unit, onHoldStart: () -> Uni
 }
 
 @Composable
-private fun SpeechModelBar(offer: SpeechModelOffer) {
+private fun SpeechModelBar(offer: SpeechModelOffer, onDone: (Boolean) -> Unit) {
     val status by offer.installer.status.collectAsState()
     val busy by offer.installer.busy.collectAsState()
     val states = offer.items.map { status[it.id] }
@@ -173,7 +177,11 @@ private fun SpeechModelBar(offer: SpeechModelOffer) {
             else -> {
                 failed?.let { Text(it.message, color = JarvisColors.Amber, fontSize = 12.sp) }
                 Button(onClick = {
-                    offer.installer.installInBackground(offer.items, "Mikrofon: Jarvis'in kendi Türkçe ses tanıması (Whisper small). Kurulduktan sonra ses tanıma tamamen internetsiz çalışır.")
+                    offer.installer.installInBackground(
+                        offer.items,
+                        "Mikrofon: Jarvis'in kendi Türkçe ses tanıması (Whisper small). Kurulduktan sonra ses tanıma tamamen internetsiz çalışır.",
+                        onDone,
+                    )
                 }) { Text("Jarvis'in ses tanımasını indir (${formatBytes(offer.items.sumOf { it.size })})") }
             }
         }
