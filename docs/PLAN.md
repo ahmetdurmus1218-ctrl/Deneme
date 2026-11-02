@@ -21,7 +21,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Sertleştirme turu (oturum 1, "max" inceleme): güvenilmeyen veriden sonra yan etkili araç engeli, araç hatalarına dayanıklılık, yazıyla sayılar ve nezaket sözcükleri, uygulama adı düzeltmesi (Spotify'ı), yarıda kesilen tur, JSON sohbet geçmişi, onay reddi sebebi, Kapı bağlantı zaman aşımı, iki ayrı URL ayrıştırıcısıyla host kontrolü, 206/416 işleme, kenardan kenara ekran/klavye boşlukları.
 - [x] Testler: çekirdek (60+), Kapı indirme mantığı ve sertifika pinleri (gerçek kök sertifikalarla), PC indiricisi (yerel HTTP sunucusuyla), arayüz denetleyicisi, PC arayüzü baştan sona (ekran görüntülü), Android emülatöründe uçtan uca gerçek indirme.
 - [x] CI tamamen yeşil: birim testleri, Android lint, APK'lar, "Kale'de İnternet yok" denetimi, PC arayüz gezintisi, Windows MSI ve Android emülatöründe uçtan uca test (Kapı üzerinden gerçek indirme + iki kez SHA-256).
-- [ ] `v0.1.0` Release: bu oturumdan etiket gönderimi engelli (yalnızca çalışma dalına push izni var). Release GitHub sayfasından oluşturulunca `release.yml` dosyaları otomatik ekler (README → "Sürümü yayımlamak").
+- [x] `v0.1.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v0.1.0 (jarvis.apk, jarvis-kapi.apk, Jarvis-Setup-0.1.0.msi, models.lock.json, SHA256SUMS.txt). Bu oturumdan etiket gönderimi engelli olduğu için sürüm `.github/release-request` dosyasıyla tetiklendi; sonraki sürümlerde bu dosyaya yeni etiketi yazmak yeterli.
 
 ## v0.2 — Gerçek LLM
 - [ ] Android: LiteRT-LM (`com.google.ai.edge.litertlm:litertlm-android`, 0.19.0 doğrulandı) + Gemma 4 E4B, RAM < 12 GB ya da yükleme hatasında E2B; GPU → CPU geri dönüşü; akışlı çıktı.
@@ -45,5 +45,4 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 
 ## Kaldığım yer
 Oturum 1 (2026-11-02): Bölüm 0 ve v0.1 kodu yazıldı, CI yeşile çekildi (Android + Windows MSI), ardından
-"max" seviyesinde inceleme ve sertleştirme yapıldı. Sıradaki adım: `v0.1.0` etiketi ve Release doğrulaması;
-ardından v0.2 (LiteRT-LM + Gemma 4 E4B/E2B, llama-server + Qwen 3.5 9B).
+"max" seviyesinde inceleme ve sertleştirme yapıldı. v0.1.0 yayımlandı. Sıradaki adım: v0.2 (LiteRT-LM + Gemma 4 E4B/E2B, llama-server + Qwen 3.5 9B).
