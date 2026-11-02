@@ -77,14 +77,29 @@ class ModelInstaller(
         }
     }
 
+    /** Why the last approval was not given (shown to the user). */
+    var lastRejection: String? = null
+        private set
+
     /** Shows the approval screen, then asks for strong authentication. Returns the method or null. */
     suspend fun requestApproval(req: ApprovalRequest): ApprovalMethod? {
-        if (!askOnScreen(req)) return null
+        if (!askOnScreen(req)) {
+            lastRejection = "Onay ekranında reddedildi"
+            return null
+        }
         return when (val r = bridge.approver.confirm(req.title, req.action)) {
-            is ApprovalResult.Approved -> r.method
-            is ApprovalResult.Rejected -> null
+            is ApprovalResult.Approved -> {
+                lastRejection = null
+                r.method
+            }
+            is ApprovalResult.Rejected -> {
+                lastRejection = r.reason
+                null
+            }
         }
     }
+
+    private fun rejectionText() = "Onay verilmedi" + (lastRejection?.let { ": $it" } ?: "")
 
     fun setStatus(id: String, s: ItemStatus) {
         _status.value = _status.value + (id to s)
@@ -121,7 +136,7 @@ class ModelInstaller(
         )
         val method = requestApproval(req)
         if (method == null) {
-            pending.forEach { setStatus(it.id, ItemStatus.Failed("Onay verilmedi")) }
+            pending.forEach { setStatus(it.id, ItemStatus.Failed(rejectionText())) }
             netLog.record(NetworkEvent(now.now().epochMillis, req.hosts.joinToString(), 0, req.action, "-", "reddedildi"))
             return false
         }
@@ -198,7 +213,7 @@ class ModelInstaller(
                         ImportResult.KeptUnverified(r.fileName)
                     } else {
                         bridge.models.deleteTemp(r.tempPath)
-                        ImportResult.Discarded("Onay verilmedi, dosya silindi")
+                        ImportResult.Discarded(rejectionText() + ". Dosya silindi.")
                     }
                 }
             }

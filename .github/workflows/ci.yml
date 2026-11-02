@@ -33,8 +33,25 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Unit tests
-        run: ./gradlew --no-daemon :core:jvmTest :ui:jvmTest :desktopApp:jvmTest
+      - name: Unit tests (core, ui, desktop incl. UI walkthrough, gate)
+        run: ./gradlew --no-daemon :core:jvmTest :ui:jvmTest :desktopApp:jvmTest :gate:testDebugUnitTest
+      - name: Desktop UI screenshots (printed so they can be reviewed from the log)
+        if: always()
+        run: |
+          for f in desktopApp/build/ui-screens/*.jpg; do
+            [ -f "$f" ] || continue
+            echo "=== SCREENSHOT $(basename "$f") $(stat -c %s "$f")"
+            base64 -w 2000 "$f"
+            echo "=== END"
+          done
+      - name: Upload desktop UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screens
+          path: desktopApp/build/ui-screens/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Android lint
         run: ./gradlew --no-daemon :androidApp:lintRelease :gate:lintRelease
       - name: Build APKs
@@ -57,6 +74,49 @@ jobs:
           path: |
             androidApp/build/outputs/apk/release/*.apk
             gate/build/outputs/apk/release/*.apk
+          retention-days: 7
+
+  android-smoke:
+    name: Android emulator end-to-end
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: apks
+          path: apks
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install, check permissions, run, download through Kapı
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: python3 tools/android-smoke.py apks --download
+      - name: Emulator screenshots (printed so they can be reviewed from the log)
+        if: always()
+        run: |
+          for f in smoke-shots/*.jpg; do
+            [ -f "$f" ] || continue
+            echo "=== SCREENSHOT $(basename "$f") $(stat -c %s "$f")"
+            base64 -w 2000 "$f"
+            echo "=== END"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-shots
+          path: smoke-shots/
+          if-no-files-found: ignore
           retention-days: 7
 
   windows:

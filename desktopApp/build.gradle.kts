@@ -21,6 +21,7 @@ kotlin {
         jvmTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
+            implementation(compose.desktop.uiTestJUnit4)
         }
     }
 }

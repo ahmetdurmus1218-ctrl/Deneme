@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import kotlin.coroutines.resume
 
@@ -32,6 +33,10 @@ import kotlin.coroutines.resume
  * After the gate reports success, Kale recomputes the SHA-256 on its own copy.
  */
 class GateClient(private val context: Context, private val storage: AndroidModelStorage) : Downloader {
+    private companion object {
+        const val BIND_TIMEOUT_MS = 15_000L
+    }
+
     private val _state = MutableStateFlow<DownloadState>(DownloadState.Unavailable)
     override val state: StateFlow<DownloadState> = _state
     @Volatile private var activeService: Messenger? = null
@@ -81,7 +86,9 @@ class GateClient(private val context: Context, private val storage: AndroidModel
         if (_state.value !is DownloadState.Ready) return DownloadOutcome.Failed("Kapı yüklü değil")
         val dest: File = storage.partialFile(item)
         dest.parentFile?.mkdirs()
-        val (service, conn) = bind() ?: return DownloadOutcome.Failed("Kapı servisine bağlanılamadı")
+        // A gate that is installed but never answers (crashed, disabled) must not hang the wizard.
+        val (service, conn) = withTimeoutOrNull(BIND_TIMEOUT_MS) { bind() }
+            ?: return DownloadOutcome.Failed("Kapı servisine bağlanılamadı")
         activeService = service
         activeItem = item.id
         val result = CompletableDeferred<DownloadOutcome>()

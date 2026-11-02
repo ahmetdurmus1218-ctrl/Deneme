@@ -147,6 +147,7 @@ private fun TurnView(turn: Turn) {
             Text(it.replace("**", ""), color = JarvisColors.TextDim, fontSize = 13.sp)
         }
         SourceChips(turn.kaynaklar)
+        if (turn.interrupted) Text("yarıda kesildi", color = JarvisColors.TextDim, fontSize = 11.sp)
         turn.error?.let { Text("Hata: $it", color = JarvisColors.Red, fontWeight = FontWeight.SemiBold) }
     }
 }

@@ -7,6 +7,8 @@ import io.github.ahmetdurmus1218.jarvis.core.llm.Role
 import io.github.ahmetdurmus1218.jarvis.core.memory.MemoryStore
 import io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand
 import io.github.ahmetdurmus1218.jarvis.core.scene.Kaynak
+import io.github.ahmetdurmus1218.jarvis.core.scene.Reply
+import io.github.ahmetdurmus1218.jarvis.core.scene.SceneJson
 import io.github.ahmetdurmus1218.jarvis.core.scene.Sahne
 import io.github.ahmetdurmus1218.jarvis.core.scene.VerifiedScene
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +28,10 @@ data class Turn(
     val tools: List<String> = emptyList(),
     val done: Boolean = false,
     val error: String? = null,
+    /** Raw model reply (scene JSON), fed back as conversation history. */
+    val assistantText: String? = null,
+    /** A newer question arrived before this one finished. */
+    val interrupted: Boolean = false,
 )
 
 enum class CoreMode { IDLE, LISTENING, THINKING, SPEAKING }
@@ -57,6 +63,7 @@ class JarvisController(
 
     private var nextId = 1L
     private var askJob: Job? = null
+    private var currentTurnId: Long? = null
     private val speechQueue = Channel<String>(Channel.UNLIMITED)
     private var queued = 0
 
@@ -97,10 +104,11 @@ class JarvisController(
         _turns.value = _turns.value.map { if (it.id == id) f(it) else it }
     }
 
-    private fun history(): List<ChatMessage> = _turns.value.filter { it.done && it.error == null }.takeLast(6).flatMap { t ->
+    /** Last turns as chat history; assistant turns are given back in the same JSON format the model must produce. */
+    private fun history(): List<ChatMessage> = _turns.value.filter { it.done && it.error == null && !it.interrupted }.takeLast(6).flatMap { t ->
         listOf(
             ChatMessage(Role.USER, t.user),
-            ChatMessage(Role.ASSISTANT, t.scenes.joinToString(" ") { it.sahne.ses }),
+            ChatMessage(Role.ASSISTANT, t.assistantText ?: SceneJson.encodeToString(Reply.serializer(), Reply(t.scenes.map { it.sahne }))),
         )
     }
 
@@ -109,7 +117,9 @@ class JarvisController(
         if (clean.isEmpty()) return
         stopSpeaking()
         askJob?.cancel()
+        currentTurnId?.let { prev -> updateTurn(prev) { if (it.done) it else it.copy(done = true, interrupted = true) } }
         val id = nextId++
+        currentTurnId = id
         val history = history()
         _turns.value = _turns.value + Turn(id, clean)
         _mode.value = CoreMode.THINKING
@@ -121,7 +131,8 @@ class JarvisController(
             } catch (e: Exception) {
                 updateTurn(id) { it.copy(done = true, error = e.message ?: "Beklenmeyen hata") }
             } finally {
-                if (_mode.value == CoreMode.THINKING) _mode.value = CoreMode.IDLE
+                // A cancelled older question must not reset the state of the newer one.
+                if (currentTurnId == id && _mode.value == CoreMode.THINKING) _mode.value = CoreMode.IDLE
             }
         }
     }
@@ -145,8 +156,8 @@ class JarvisController(
                 say(ev.scene.sahne.ses)
             }
             is AssistantEvent.Completed -> updateTurn(id) {
-                it.copy(scenes = ev.reply.scenes, detay = ev.reply.detay, kaynaklar = ev.reply.kaynaklar, done = true)
-            }.also { if (queued == 0 && _mode.value == CoreMode.THINKING) _mode.value = CoreMode.IDLE }
+                it.copy(scenes = ev.reply.scenes, detay = ev.reply.detay, kaynaklar = ev.reply.kaynaklar, done = true, assistantText = ev.assistantText)
+            }
             is AssistantEvent.Failed -> updateTurn(id) { it.copy(done = true, error = ev.message) }
         }
         if (ev is AssistantEvent.Completed || ev is AssistantEvent.Quick) {

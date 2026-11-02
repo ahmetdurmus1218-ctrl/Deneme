@@ -37,6 +37,9 @@ object Turkish {
                 'î' -> sb.append('i')
                 'û' -> sb.append('u')
                 '\'', '’', '‘', '`', '´' -> {}
+                '×', '·' -> sb.append('*')
+                '÷' -> sb.append('/')
+                '−', '–' -> sb.append('-')
                 else -> sb.append(if (c.isLetterOrDigit() || c == ':' || c == '.' || c == ',' || c == '+' || c == '-' || c == '*' || c == '/' || c == '%' || c == '^' || c == '(' || c == ')') c else ' ')
             }
         }

@@ -38,18 +38,15 @@ import java.net.Socket
  * v0.1 runs it in-process; v0.5 moves it into the separate `jarvis-kapi` launcher that is the only
  * executable allowed through the Windows firewall (see docs/DECISIONS.md).
  */
-class DesktopKapi(private val partialDir: File) : Downloader {
+class DesktopKapi(
+    private val partialDir: File,
+    private val client: HttpClient = defaultClient(),
+    /** Checked for the first URL and every redirect hop. Tests replace it to talk to a local server. */
+    private val urlCheck: (String) -> DownloadPolicy.Verdict = ::productionUrlCheck,
+) : Downloader {
     private val _state = MutableStateFlow<DownloadState>(DownloadState.Ready("jarvis-kapi (yerleşik)"))
     override val state: StateFlow<DownloadState> = _state
     private val cancelled = AtomicBoolean(false)
-
-    private val client: HttpClient by lazy {
-        HttpClient.newBuilder()
-            .followRedirects(HttpClient.Redirect.NEVER)
-            .connectTimeout(Duration.ofSeconds(30))
-            .sslContext(PinningTrust.sslContext())
-            .build()
-    }
 
     override fun refresh() {}
 
@@ -59,7 +56,7 @@ class DesktopKapi(private val partialDir: File) : Downloader {
 
     override suspend fun download(item: LockedItem, onProgress: (DownloadProgress) -> Unit): DownloadOutcome = withContext(Dispatchers.IO) {
         cancelled.set(false)
-        when (val v = DownloadPolicy.check(item, Platform.DESKTOP)) {
+        when (val v = DownloadPolicy.check(item, Platform.DESKTOP, urlCheck)) {
             is DownloadPolicy.Verdict.Denied -> return@withContext DownloadOutcome.Failed(v.reason)
             DownloadPolicy.Verdict.Allowed -> {}
         }
@@ -72,7 +69,7 @@ class DesktopKapi(private val partialDir: File) : Downloader {
                 var url = item.url
                 var response: HttpResponse<java.io.InputStream>? = null
                 for (hop in 0..DownloadPolicy.MAX_REDIRECTS) {
-                    when (val v = DownloadPolicy.checkUrl(url)) {
+                    when (val v = urlCheck(url)) {
                         is DownloadPolicy.Verdict.Denied -> return@withContext DownloadOutcome.Failed(v.reason, existing)
                         DownloadPolicy.Verdict.Allowed -> {}
                     }
@@ -92,8 +89,25 @@ class DesktopKapi(private val partialDir: File) : Downloader {
                 host = r.uri().host
                 when (r.statusCode()) {
                     200 -> if (existing > 0) { dest.delete(); existing = 0 }
-                    206 -> {}
+                    206 -> {
+                        val start = r.headers().firstValue("content-range").orElse("")
+                            .let { Regex("bytes (\\d+)-").find(it)?.groupValues?.get(1)?.toLongOrNull() }
+                        if (start != existing) {
+                            r.body().close()
+                            return@withContext DownloadOutcome.Failed("Sunucu devam ettirmeyi desteklemedi; tekrar deneyin", existing)
+                        }
+                    }
+                    416 -> {
+                        r.body().close()
+                        dest.delete()
+                        return@withContext DownloadOutcome.Failed("Kısmi dosya geçersizdi; tekrar deneyin", 0)
+                    }
                     else -> { r.body().close(); return@withContext DownloadOutcome.Failed("HTTP ${r.statusCode()}", existing) }
+                }
+                val announced = r.headers().firstValueAsLong("content-length").orElse(-1)
+                if (announced >= 0 && existing + announced > item.size) {
+                    r.body().close()
+                    return@withContext DownloadOutcome.Failed("Boyut sınırı aşıldı", existing)
                 }
                 RandomAccessFile(dest, "rw").use { raf ->
                     raf.seek(existing)
@@ -124,6 +138,24 @@ class DesktopKapi(private val partialDir: File) : Downloader {
     }
 
     companion object {
+        fun defaultClient(): HttpClient = HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.NEVER)
+            .connectTimeout(Duration.ofSeconds(30))
+            .sslContext(PinningTrust.sslContext())
+            .build()
+
+        /** Policy check plus a second check with java.net.URI, so two URL parsers can never disagree on the host. */
+        fun productionUrlCheck(url: String): DownloadPolicy.Verdict {
+            val v = DownloadPolicy.checkUrl(url)
+            if (v is DownloadPolicy.Verdict.Denied) return v
+            val uri = runCatching { URI(url) }.getOrNull() ?: return DownloadPolicy.Verdict.Denied("Geçersiz adres")
+            val host = uri.host
+            if (!"https".equals(uri.scheme, ignoreCase = true) || host == null || !DownloadPolicy.hostAllowed(host)) {
+                return DownloadPolicy.Verdict.Denied("İzin listesinde olmayan alan adı: $host")
+            }
+            return DownloadPolicy.Verdict.Allowed
+        }
+
         fun sha256(file: File): Pair<String, Long> = file.inputStream().use { input ->
             val md = MessageDigest.getInstance("SHA-256")
             val buf = ByteArray(1 shl 20)

@@ -1,6 +1,7 @@
 package io.github.ahmetdurmus1218.jarvis.core.tools
 
 import io.github.ahmetdurmus1218.jarvis.core.text.Turkish
+import io.github.ahmetdurmus1218.jarvis.core.text.TurkishNumbers
 
 /** The `birim_cevir` tool: length, mass, volume, area, speed, time, data and temperature. */
 object UnitConverter {
@@ -94,7 +95,7 @@ object UnitConverter {
 
     /** Parses phrases like "5 km kaç mil", "100 fahrenhayt kaç derece", "3,5 kg kaç pound". */
     fun parse(text: String): Triple<Double, String, String>? {
-        val n = Turkish.normalize(text)
+        val n = TurkishNumbers.wordsToDigits(Turkish.normalize(text))
         val m = Regex("^(-?[\\d.,]+)\\s*([a-z°/0-9 ]+?)\\s+(?:kac|ne kadar|kac tane)\\s+([a-z°/0-9 ]+?)(?:\\s+(?:eder|yapar|olur|dir|dir mi))?$")
             .find(n) ?: Regex("^(-?[\\d.,]+)\\s*([a-z°/0-9 ]+?)\\s+(?:to|->|=)\\s*([a-z°/0-9 ]+)$").find(n) ?: return null
         val value = Calculator.parseLocalizedNumber(m.groupValues[1].removePrefix("-"))?.let {

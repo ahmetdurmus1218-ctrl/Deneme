@@ -34,6 +34,7 @@ import io.github.ahmetdurmus1218.jarvis.core.memory.MemoryStore
 import io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry
 import io.github.ahmetdurmus1218.jarvis.core.models.formatBytes
 import io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent
+import io.github.ahmetdurmus1218.jarvis.ui.DownloadState
 import io.github.ahmetdurmus1218.jarvis.ui.ModelInstaller
 import io.github.ahmetdurmus1218.jarvis.ui.PlatformBridge
 import io.github.ahmetdurmus1218.jarvis.ui.SettingsStore
@@ -58,8 +59,13 @@ fun ModelsScreen(bridge: PlatformBridge, registry: ModelRegistry, installer: Mod
     val version by installer.installedVersion.collectAsState()
     var msg by remember { mutableStateOf<String?>(null) }
     val items = registry.forPlatform(bridge.platform)
+    val gate by bridge.downloader.state.collectAsState()
     ScreenColumn("Modeller") {
         Text("Her dosyanın SHA-256 özeti models.lock.json ile karşılaştırılır. Kilit: ${registry.lock.generatedAt ?: "boş"}", color = JarvisColors.TextDim, fontSize = 12.sp)
+        when (val g = gate) {
+            is DownloadState.Ready -> Text("İndirme yolu: ${g.label}", color = JarvisColors.Green, fontSize = 13.sp)
+            DownloadState.Unavailable -> Text(installer.gateMissingText(), color = JarvisColors.Amber, fontSize = 13.sp)
+        }
         OutlinedButton(onClick = {
             scope.launch {
                 msg = when (val r = installer.importFromFile()) {

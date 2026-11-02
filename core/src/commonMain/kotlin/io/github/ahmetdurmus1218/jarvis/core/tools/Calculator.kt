@@ -1,6 +1,7 @@
 package io.github.ahmetdurmus1218.jarvis.core.tools
 
 import io.github.ahmetdurmus1218.jarvis.core.text.Turkish
+import io.github.ahmetdurmus1218.jarvis.core.text.TurkishNumbers
 import kotlin.math.PI
 import kotlin.math.E
 import kotlin.math.abs
@@ -51,7 +52,7 @@ object Calculator {
 
     /** Rewrites Turkish spoken arithmetic into symbols. Returns null if text has no arithmetic shape. */
     fun fromSpeech(text: String): String {
-        var s = " " + Turkish.normalize(text) + " "
+        var s = " " + TurkishNumbers.wordsToDigits(Turkish.normalize(text)) + " "
         val words = listOf(
             " arti " to " + ", " eksi " to " - ", " carpi " to " * ", " kere " to " * ", " bolu " to " / ",
             " bolumu " to " / ", " ussu " to " ^ ", " uzeri " to " ^ ", " mod " to " % ",

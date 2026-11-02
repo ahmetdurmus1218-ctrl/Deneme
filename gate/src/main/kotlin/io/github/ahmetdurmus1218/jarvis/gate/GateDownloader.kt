@@ -4,6 +4,7 @@ import io.github.ahmetdurmus1218.jarvis.core.models.LockedItem
 import io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry
 import io.github.ahmetdurmus1218.jarvis.core.models.Platform
 import io.github.ahmetdurmus1218.jarvis.core.net.DownloadPolicy
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -34,16 +35,20 @@ data class GateResult(val bytes: Long, val host: String, val sha256: String)
  * redirect hop, certificate pinning, extension allowlist, exact size limit, resumable (Range),
  * SHA-256 verified at the end (Kale verifies again on its side).
  */
-class GateDownloader(private val registry: ModelRegistry = ModelRegistry.bundled) {
-
-    private val client: OkHttpClient = OkHttpClient.Builder()
-        .followRedirects(false)
-        .followSslRedirects(false)
-        .certificatePinner(Pins.pinner)
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(true)
-        .build()
+class GateDownloader(
+    private val registry: ModelRegistry = ModelRegistry.bundled,
+    private val client: OkHttpClient = defaultClient(),
+) {
+    companion object {
+        fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
+            .followRedirects(false)
+            .followSslRedirects(false)
+            .certificatePinner(Pins.pinner)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
 
     /** Returns the locked item the request refers to, or throws if anything does not match. */
     fun validate(req: GateRequest): LockedItem {
@@ -89,7 +94,13 @@ class GateDownloader(private val registry: ModelRegistry = ModelRegistry.bundled
                     is DownloadPolicy.Verdict.Denied -> throw GateException(v.reason, existing)
                     DownloadPolicy.Verdict.Allowed -> {}
                 }
-                val rb = Request.Builder().url(url).header("User-Agent", "JarvisKapi/1").header("Accept-Encoding", "identity")
+                // Check again with OkHttp's own parser, so a URL that two parsers read differently
+                // can never reach a host outside the allowlist.
+                val httpUrl = url.toHttpUrlOrNull() ?: throw GateException("Geçersiz adres", existing)
+                if (!httpUrl.isHttps || !DownloadPolicy.hostAllowed(httpUrl.host)) {
+                    throw GateException("İzin listesinde olmayan alan adı: ${httpUrl.host}", existing)
+                }
+                val rb = Request.Builder().url(httpUrl).header("User-Agent", "JarvisKapi/1").header("Accept-Encoding", "identity")
                 if (existing > 0) rb.header("Range", "bytes=$existing-")
                 val r = client.newCall(rb.build()).execute()
                 if (r.code in setOf(301, 302, 303, 307, 308)) {

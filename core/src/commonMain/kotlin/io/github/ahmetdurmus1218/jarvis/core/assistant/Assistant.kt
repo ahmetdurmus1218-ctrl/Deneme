@@ -21,6 +21,7 @@ import io.github.ahmetdurmus1218.jarvis.core.scene.SceneStreamParser
 import io.github.ahmetdurmus1218.jarvis.core.scene.VerifiedReply
 import io.github.ahmetdurmus1218.jarvis.core.scene.VerifiedScene
 import io.github.ahmetdurmus1218.jarvis.core.time.NowProvider
+import io.github.ahmetdurmus1218.jarvis.core.tools.ToolOutput
 import io.github.ahmetdurmus1218.jarvis.core.tools.ToolRegistry
 import io.github.ahmetdurmus1218.jarvis.core.tools.Trust
 import io.github.ahmetdurmus1218.jarvis.core.verify.Verifier
@@ -81,12 +82,13 @@ class Assistant(
         messages += history.filter { it.role != Role.SYSTEM }
         messages += ChatMessage(Role.USER, userText)
         val evidence = mutableListOf<String>()
+        val turn = TurnState(messages, evidence)
         val config = GenerationConfig(maxTokens = budget.maxTokens, thinking = budget.thinking)
 
         // Knowledge questions: search local sources first (section 5.1.3).
         if (knowledge) {
             val calls = listOf("wiki_ara", "belge_ara").mapNotNull { name -> tools[name]?.let { name to JsonObject(mapOf("sorgu" to kotlinx.serialization.json.JsonPrimitive(userText))) } }
-            runTools(calls, messages, evidence).forEach { emit(it) }
+            runTools(calls, turn).forEach { emit(it) }
         }
 
         var repaired = false
@@ -113,7 +115,7 @@ class Assistant(
                     emit(finish(listOf(Sahne("Araç sınırına ulaştım, bu soruyu şimdilik cevaplayamıyorum.")), null, emptyList(), evidence, knowledge, raw))
                     return@flow
                 }
-                runTools(toolCalls, messages, evidence).forEach { emit(it) }
+                runTools(toolCalls, turn).forEach { emit(it) }
                 continue
             }
             when (val outcome = parser.finish()) {
@@ -159,28 +161,47 @@ class Assistant(
         return AssistantEvent.Completed(VerifiedReply(verified, detay, kaynaklar), raw)
     }
 
-    /** Runs independent tool calls in parallel and appends their (wrapped) output to the conversation. */
-    private suspend fun runTools(
-        calls: List<Pair<String, JsonObject>>,
-        messages: MutableList<ChatMessage>,
-        evidence: MutableList<String>,
-    ): List<AssistantEvent> = coroutineScope {
+    /** Per-question state shared by the tool rounds. */
+    private class TurnState(val messages: MutableList<ChatMessage>, val evidence: MutableList<String>) {
+        /** Set once untrusted data (Wikipedia, documents, web) is in the conversation. */
+        var tainted = false
+    }
+
+    /**
+     * Runs independent tool calls in parallel and appends their (wrapped) output to the conversation.
+     * Tools with side effects are refused after untrusted data has been read in this question, so a
+     * prompt injected into an article can never change memory or trigger device actions.
+     */
+    private suspend fun runTools(calls: List<Pair<String, JsonObject>>, turn: TurnState): List<AssistantEvent> = coroutineScope {
+        val taintedBefore = turn.tainted
         calls.map { (name, input) ->
             async {
                 val tool = tools[name]
-                if (tool == null) {
-                    Triple(name, input, io.github.ahmetdurmus1218.jarvis.core.tools.ToolOutput("{\"hata\":\"bilinmeyen araç: $name\"}", ok = false))
-                } else {
-                    Triple(name, input, tool.run(input))
+                val out = when {
+                    tool == null -> errorOutput("bilinmeyen araç: $name")
+                    tool.sideEffects && taintedBefore ->
+                        errorOutput("güvenlik: güvenilmeyen içerik okunduktan sonra bu araç kullanılamaz")
+                    else -> try {
+                        tool.run(input)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        errorOutput("araç hatası: ${e.message ?: e::class.simpleName}")
+                    }
                 }
+                Triple(name, input, out)
             }
         }.awaitAll().map { (name, input, out) ->
             val untrusted = tools[name]?.trust != Trust.COMPUTED
-            messages += ChatMessage(Role.TOOL, InjectionScanner.wrap(name, out.text, untrusted), toolName = name)
-            if (out.ok) evidence += out.text
+            if (untrusted && out.ok) turn.tainted = true
+            turn.messages += ChatMessage(Role.TOOL, InjectionScanner.wrap(name, out.text, untrusted), toolName = name)
+            if (out.ok) turn.evidence += out.text
             AssistantEvent.ToolCall(name, input.toString(), out.text, out.ok)
         }
     }
+
+    private fun errorOutput(message: String) =
+        ToolOutput(kotlinx.serialization.json.buildJsonObject { put("hata", kotlinx.serialization.json.JsonPrimitive(message)) }.toString(), ok = false)
 
     /** Returns the tool calls if [raw] is a tool-call message, otherwise null. */
     internal fun parseToolCalls(raw: String): List<Pair<String, JsonObject>>? {

@@ -21,6 +21,11 @@ interface Tool {
     /** Short parameter description for the system prompt, e.g. `{"ifade": "metin"}`. */
     val parameters: String
     val trust: Trust
+    /**
+     * True for tools that change state (memory today; alarms/apps later). They are refused once
+     * untrusted data (Wikipedia, documents, web) has entered the conversation (section 5.6).
+     */
+    val sideEffects: Boolean get() = false
     suspend fun run(input: JsonObject): ToolOutput
 }
 
@@ -96,6 +101,7 @@ class TarihSaatTool(private val now: NowProvider) : Tool {
 }
 
 class HafizaEkleTool(private val store: MemoryStore) : Tool {
+    override val sideEffects = true
     override val name = "hafiza_ekle"
     override val description = "Kullanıcı hakkında kalıcı bir bilgiyi hafızaya ekler (yalnızca kullanıcı isterse)."
     override val parameters = "{\"bilgi\": \"metin\"}"
@@ -110,6 +116,7 @@ class HafizaEkleTool(private val store: MemoryStore) : Tool {
 }
 
 class HafizaSilTool(private val store: MemoryStore) : Tool {
+    override val sideEffects = true
     override val name = "hafiza_sil"
     override val description = "Hafızadan, verilen metni içeren kayıtları siler."
     override val parameters = "{\"bilgi\": \"metin\"}"

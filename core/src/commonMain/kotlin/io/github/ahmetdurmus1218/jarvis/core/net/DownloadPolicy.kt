@@ -87,9 +87,9 @@ object DownloadPolicy {
     }
 
     /** Full pre-flight check of a locked item before any network request. */
-    fun check(item: LockedItem, platform: Platform): Verdict {
+    fun check(item: LockedItem, platform: Platform, urlCheck: (String) -> Verdict = ::checkUrl): Verdict {
         if (platform.key !in item.platforms) return Verdict.Denied("Bu öğe bu platform için değil")
-        checkUrl(item.url).let { if (it is Verdict.Denied) return it }
+        urlCheck(item.url).let { if (it is Verdict.Denied) return it }
         checkFileName(item.fileName, platform, item.kind).let { if (it is Verdict.Denied) return it }
         if (item.size <= 0 || item.size > MAX_BYTES) return Verdict.Denied("Boyut sınırı aşıldı")
         if (!isSha256(item.sha256)) return Verdict.Denied("Geçersiz SHA-256")

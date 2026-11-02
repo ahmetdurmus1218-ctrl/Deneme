@@ -1,6 +1,10 @@
 package io.github.ahmetdurmus1218.jarvis.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -69,7 +73,8 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         LaunchedEffect(settings.memoryEnabled) { graph.memory.setEnabled(settings.memoryEnabled) }
         LaunchedEffect(Unit) { graph.bridge.downloader.refresh() }
 
-        Box(Modifier.fillMaxSize()) {
+        // Edge-to-edge on Android: keep everything clear of the status bar, navigation bar and keyboard.
+        Box(Modifier.fillMaxSize().background(JarvisColors.Background).windowInsetsPadding(WindowInsets.safeDrawing)) {
             if (wizard) {
                 WizardScreen(graph.bridge, graph.registry, graph.installer, controller) {
                     graph.settings.update { it.copy(wizardDone = true) }
