@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -96,6 +99,15 @@ class AppUiTest {
         val rgb = BufferedImage(img.width, img.height, BufferedImage.TYPE_INT_RGB)
         rgb.createGraphics().apply { drawImage(img, 0, 0, null); dispose() }
         ImageIO.write(rgb, "jpg", File(outDir, "$name.jpg"))
+        // Text version of the screen, readable straight from the CI log.
+        val texts = mutableListOf<String>()
+        fun collect(n: SemanticsNode) {
+            n.config.getOrNull(SemanticsProperties.Text)?.forEach { texts += it.text }
+            n.config.getOrNull(SemanticsProperties.EditableText)?.let { texts += "[${it.text}]" }
+            n.children.forEach(::collect)
+        }
+        collect(rule.onNodeWithTag("app").fetchSemanticsNode())
+        File(outDir, "$name.txt").writeText(texts.joinToString(" | "))
     }
 
     private fun waitForText(text: String, substring: Boolean = false, timeoutMs: Long = 10_000) {

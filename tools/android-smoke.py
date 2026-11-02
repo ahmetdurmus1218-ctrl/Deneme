@@ -109,7 +109,7 @@ def shot(name):
     with open(png, "wb") as f:
         f.write(subprocess.run(["adb", "exec-out", "screencap", "-p"], capture_output=True).stdout)
     subprocess.run(["convert", png, "-resize", "360x", "-quality", "70", png[:-4] + ".jpg"], check=False)
-    print(f"[shot] {name}", flush=True)
+    print(f"[shot] {name}: {' | '.join(screen_texts())}", flush=True)
 
 
 def check_no_crash():

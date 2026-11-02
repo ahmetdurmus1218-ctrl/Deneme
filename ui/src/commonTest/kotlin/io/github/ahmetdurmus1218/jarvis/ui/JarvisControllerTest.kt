@@ -13,11 +13,15 @@ import io.github.ahmetdurmus1218.jarvis.core.models.Platform
 import io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand
 import io.github.ahmetdurmus1218.jarvis.core.time.Now
 import io.github.ahmetdurmus1218.jarvis.core.time.NowProvider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -76,7 +80,13 @@ class JarvisControllerTest {
         }
     }
 
-    private fun setup(engine: LlmEngine = MockLlmEngine(tokenDelayMs = 0), scope: kotlinx.coroutines.CoroutineScope): Triple<JarvisController, Bridge, Tts> {
+    /**
+     * Foreground scope on the test scheduler (backgroundScope work is not run by advanceUntilIdle).
+     * It has its own Job so the endless speech-queue consumer does not keep runTest waiting.
+     */
+    private fun TestScope.controllerScope(): CoroutineScope = CoroutineScope(coroutineContext + Job())
+
+    private fun setup(engine: LlmEngine = MockLlmEngine(tokenDelayMs = 0), scope: CoroutineScope): Triple<JarvisController, Bridge, Tts> {
         val tts = Tts()
         val bridge = Bridge(tts)
         val memory = InMemoryMemoryStore()
@@ -86,7 +96,8 @@ class JarvisControllerTest {
 
     @Test
     fun quickCommandIsExecutedAndSpoken() = runTest {
-        val (c, bridge, tts) = setup(scope = backgroundScope)
+        val scope = controllerScope()
+        val (c, bridge, tts) = setup(scope = scope)
         c.send("Saat kaç?")
         advanceUntilIdle()
         val turn = c.turns.value.single()
@@ -95,20 +106,24 @@ class JarvisControllerTest {
         assertEquals(listOf<QuickCommand>(QuickCommand.TimeNow), bridge.executed)
         assertEquals(listOf("Saat 14:05."), tts.spoken)
         assertEquals(CoreMode.IDLE, c.mode.value)
+        scope.cancel()
     }
 
     @Test
     fun platformErrorReplacesTheCannedAnswer() = runTest {
-        val (c, _, tts) = setup(scope = backgroundScope)
+        val scope = controllerScope()
+        val (c, _, tts) = setup(scope = scope)
         c.send("Uçak modunu aç")
         advanceUntilIdle()
         val text = c.turns.value.single().scenes.single().sahne.ses
         assertTrue(text.contains("bulamadım"), text)
         assertEquals(listOf(text), tts.spoken)
+        scope.cancel()
     }
 
     @Test
     fun llmReplyIsStreamedSpokenAndKeptAsJsonHistory() = runTest {
+        val scope = controllerScope()
         var lastMessages: List<ChatMessage> = emptyList()
         val mock = MockLlmEngine(tokenDelayMs = 0)
         val spy = object : LlmEngine {
@@ -118,7 +133,7 @@ class JarvisControllerTest {
                 return mock.stream(messages, config)
             }
         }
-        val (c, _, tts) = setup(spy, backgroundScope)
+        val (c, _, tts) = setup(spy, scope)
         c.send("Merhaba Jarvis")
         advanceUntilIdle()
         assertEquals(listOf("Merhaba efendim, Jarvis hazır."), tts.spoken)
@@ -129,20 +144,24 @@ class JarvisControllerTest {
         val history = lastMessages.filter { it.role == Role.ASSISTANT }
         assertEquals(1, history.size)
         assertTrue(history.single().content.startsWith("{"), "history must use the JSON reply format")
+        scope.cancel()
     }
 
     @Test
     fun stopCommandSilencesSpeech() = runTest {
-        val (c, _, tts) = setup(scope = backgroundScope)
+        val scope = controllerScope()
+        val (c, _, tts) = setup(scope = scope)
         c.send("sus")
         advanceUntilIdle()
         assertEquals("Tamam, susuyorum.", c.turns.value.single().scenes.single().sahne.ses)
         assertTrue(tts.stops >= 1)
         assertTrue(tts.spoken.isEmpty())
+        scope.cancel()
     }
 
     @Test
     fun newQuestionMarksUnfinishedTurnAsInterrupted() = runTest {
+        val scope = controllerScope()
         val slow = object : LlmEngine {
             override val id = "slow"
             override fun stream(messages: List<ChatMessage>, config: GenerationConfig): Flow<String> = flow {
@@ -150,7 +169,7 @@ class JarvisControllerTest {
                 emit("{\"sahneler\":[{\"ses\":\"Geç cevap.\"}]}")
             }
         }
-        val (c, _, _) = setup(slow, backgroundScope)
+        val (c, _, _) = setup(slow, scope)
         c.send("Birinci soru")
         runCurrent()
         c.send("İkinci soru")
@@ -160,5 +179,6 @@ class JarvisControllerTest {
         assertTrue(!turns[1].done)
         advanceUntilIdle()
         assertTrue(c.turns.value[1].done)
+        scope.cancel()
     }
 }

@@ -35,14 +35,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Unit tests (core, ui, desktop incl. UI walkthrough, gate)
         run: ./gradlew --no-daemon :core:jvmTest :ui:jvmTest :desktopApp:jvmTest :gate:testDebugUnitTest
-      - name: Desktop UI screenshots (printed so they can be reviewed from the log)
+      - name: Desktop UI walkthrough (text of every screen)
         if: always()
         run: |
-          for f in desktopApp/build/ui-screens/*.jpg; do
+          for f in desktopApp/build/ui-screens/*.txt; do
             [ -f "$f" ] || continue
-            echo "=== SCREENSHOT $(basename "$f") $(stat -c %s "$f")"
-            base64 -w 2000 "$f"
-            echo "=== END"
+            echo "=== $(basename "$f" .txt): $(cat "$f")"
           done
       - name: Upload desktop UI screenshots
         if: always()
@@ -102,15 +100,6 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: python3 tools/android-smoke.py apks --download
-      - name: Emulator screenshots (printed so they can be reviewed from the log)
-        if: always()
-        run: |
-          for f in smoke-shots/*.jpg; do
-            [ -f "$f" ] || continue
-            echo "=== SCREENSHOT $(basename "$f") $(stat -c %s "$f")"
-            base64 -w 2000 "$f"
-            echo "=== END"
-          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
