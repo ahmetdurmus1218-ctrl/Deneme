@@ -1,0 +1,66 @@
+package io.github.ahmetdurmus1218.jarvis.android
+
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Bundle
+import android.view.WindowManager
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.lifecycleScope
+import io.github.ahmetdurmus1218.jarvis.ui.JarvisApp
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+/** FragmentActivity because BiometricPrompt needs one. */
+class MainActivity : FragmentActivity() {
+    private val permissionResult = PendingResult<Boolean>()
+    private val documentResult = PendingResult<Uri?>()
+
+    private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { permissionResult.complete(it) }
+    private val documentLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { documentResult.complete(it) }
+
+    private val bridge get() = (application as JarvisApplication).bridge
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+        bridge.activity = this
+        val graph = (application as JarvisApplication).graph
+        val fmt = SimpleDateFormat("d MMM yyyy HH:mm:ss", Locale.forLanguageTag("tr-TR"))
+        setContent { JarvisApp(graph) { fmt.format(Date(it)) } }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        bridge.activity = this
+        bridge.downloader.refresh()
+        // Large model downloads can take a while; keep the screen on while Jarvis is in front.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    override fun onPause() {
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        if (bridge.activity === this) bridge.activity = null
+        super.onDestroy()
+    }
+
+    suspend fun ensurePermission(permission: String): Boolean {
+        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) return true
+        return permissionResult.await { permissionLauncher.launch(permission) }
+    }
+
+    suspend fun pickDocument(): Uri? = documentResult.await { documentLauncher.launch(arrayOf("*/*")) }
+
+    fun launchOnUi(block: suspend () -> Unit) {
+        lifecycleScope.launch { block() }
+    }
+}

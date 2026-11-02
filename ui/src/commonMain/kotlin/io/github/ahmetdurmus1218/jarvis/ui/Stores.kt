@@ -1,0 +1,57 @@
+package io.github.ahmetdurmus1218.jarvis.ui
+
+import io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+@Serializable
+data class Settings(
+    /** Locked LLM item id chosen by the user; null = recommended. */
+    val llmId: String? = null,
+    val voiceEnabled: Boolean = true,
+    val speechRate: Float = 1.0f,
+    /** Web search is off by default; even when on, every query needs approval. */
+    val webSearch: Boolean = false,
+    /** Blocks every network path (gate/kapi), including model downloads. */
+    val fullOffline: Boolean = false,
+    val memoryEnabled: Boolean = true,
+    val wizardDone: Boolean = false,
+)
+
+private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+class SettingsStore(private val files: AppFiles) {
+    private val _state = MutableStateFlow(load())
+    val state: StateFlow<Settings> = _state.asStateFlow()
+
+    private fun load(): Settings = files.read(FILE)?.let { runCatching { json.decodeFromString(Settings.serializer(), it) }.getOrNull() } ?: Settings()
+
+    fun update(transform: (Settings) -> Settings) {
+        val next = transform(_state.value)
+        _state.value = next
+        files.write(FILE, json.encodeToString(Settings.serializer(), next))
+    }
+
+    private companion object { const val FILE = "settings.json" }
+}
+
+/** Append-only network log (JSON lines). Every network event is written here (section 3.3). */
+class NetworkLogStore(private val files: AppFiles) {
+    private val _events = MutableStateFlow(load())
+    val events: StateFlow<List<NetworkEvent>> = _events.asStateFlow()
+
+    private fun load(): List<NetworkEvent> = files.read(FILE).orEmpty().lineSequence()
+        .filter { it.isNotBlank() }
+        .mapNotNull { runCatching { json.decodeFromString(NetworkEvent.serializer(), it) }.getOrNull() }
+        .toList()
+
+    fun record(event: NetworkEvent) {
+        files.append(FILE, json.encodeToString(NetworkEvent.serializer(), event))
+        _events.value = _events.value + event
+    }
+
+    private companion object { const val FILE = "network-log.jsonl" }
+}

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Jarvis" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/jarvis_background</item>
+        <item name="android:statusBarColor">@color/jarvis_background</item>
+        <item name="android:navigationBarColor">@color/jarvis_background</item>
+    </style>
+    <color name="jarvis_background">#FF05080D</color>
+    <color name="jarvis_cyan">#FF38D6FF</color>
+</resources>
