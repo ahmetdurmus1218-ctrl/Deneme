@@ -46,13 +46,16 @@ class LiteRtLmEngine(
         engine?.let { return it }
         var last: Throwable? = null
         for (backend in listOf<Backend>(Backend.GPU(), Backend.CPU())) {
+            var e: Engine? = null
             try {
-                val e = Engine(EngineConfig(modelPath = modelPath, backend = backend, cacheDir = context.cacheDir.path))
+                e = Engine(EngineConfig(modelPath = modelPath, backend = backend, cacheDir = context.cacheDir.path))
                 e.initialize()
                 engine = e
                 backendName = backend.name
                 return e
             } catch (t: Throwable) {
+                // Free whatever a half-initialised GPU engine holds before trying the CPU.
+                runCatching { e?.close() }
                 last = t
             }
         }
