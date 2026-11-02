@@ -121,7 +121,17 @@ Release'deki APK'lar, sizin anahtarınız tanımlanmadıysa depodaki **herkese a
 4. Bundan sonraki sürümler sizin anahtarınızla imzalanır. `jarvis.jks` dosyasını ve şifreyi kaybetmeyin;
    kaybederseniz güncellemeler eski kurulumun üzerine kurulamaz.
 
-## 8. Lisanslar ve modeller
+## 8. Sürümü yayımlamak (tek seferlik tıklama)
+
+Kurulum dosyaları her yeni sürüm etiketinde otomatik üretilir. Yeni bir sürüm yayımlamak için:
+1. GitHub'da depo sayfası → sağdaki **Releases** → **Draft a new release** (ya da "Create a new release").
+2. **Choose a tag** kutusuna `v0.1.0` yazın → **Create new tag: v0.1.0 on publish**.
+3. **Target** olarak geliştirme dalını (`claude/new-session-2w03vz`) ya da birleştirildiyse `main`'i seçin.
+4. **Publish release**'e basın. Birkaç dakika içinde `jarvis.apk`, `jarvis-kapi.apk`, `Jarvis-Setup-0.1.0.msi`,
+   `models.lock.json` ve `SHA256SUMS.txt` bu sürüme kendiliğinden eklenir ve sürüm notu yazılır
+   (Actions sekmesinde "release" iş akışını izleyebilirsiniz).
+
+## 9. Lisanslar ve modeller
 
 | Bileşen | Kaynak | Lisans |
 |---|---|---|

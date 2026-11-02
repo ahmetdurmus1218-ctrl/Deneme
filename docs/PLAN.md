@@ -20,7 +20,8 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] CI: `ci.yml` (testler, lint, APK + MSI derleme, Kale izin denetimi, `:core` ağ API yasağı, kilit şema kontrolü), `release.yml` (`v*` etiketi → APK'lar + MSI + SHA256SUMS), `lock-models.yml`, `probe.yml`.
 - [x] Sertleştirme turu (oturum 1, "max" inceleme): güvenilmeyen veriden sonra yan etkili araç engeli, araç hatalarına dayanıklılık, yazıyla sayılar ve nezaket sözcükleri, uygulama adı düzeltmesi (Spotify'ı), yarıda kesilen tur, JSON sohbet geçmişi, onay reddi sebebi, Kapı bağlantı zaman aşımı, iki ayrı URL ayrıştırıcısıyla host kontrolü, 206/416 işleme, kenardan kenara ekran/klavye boşlukları.
 - [x] Testler: çekirdek (60+), Kapı indirme mantığı ve sertifika pinleri (gerçek kök sertifikalarla), PC indiricisi (yerel HTTP sunucusuyla), arayüz denetleyicisi, PC arayüzü baştan sona (ekran görüntülü), Android emülatöründe uçtan uca gerçek indirme.
-- [ ] `v0.1.0` etiketi ve Release (CI yeşil olunca).
+- [x] CI tamamen yeşil: birim testleri, Android lint, APK'lar, "Kale'de İnternet yok" denetimi, PC arayüz gezintisi, Windows MSI ve Android emülatöründe uçtan uca test (Kapı üzerinden gerçek indirme + iki kez SHA-256).
+- [ ] `v0.1.0` Release: bu oturumdan etiket gönderimi engelli (yalnızca çalışma dalına push izni var). Release GitHub sayfasından oluşturulunca `release.yml` dosyaları otomatik ekler (README → "Sürümü yayımlamak").
 
 ## v0.2 — Gerçek LLM
 - [ ] Android: LiteRT-LM (`com.google.ai.edge.litertlm:litertlm-android`, 0.19.0 doğrulandı) + Gemma 4 E4B, RAM < 12 GB ya da yükleme hatasında E2B; GPU → CPU geri dönüşü; akışlı çıktı.
