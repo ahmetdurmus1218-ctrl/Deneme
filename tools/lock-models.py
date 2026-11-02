@@ -89,11 +89,7 @@ def resolve_hf(src):
             "revision": rev, "origin": f"hf:{repo}@{rev}/{file}"}
 
 
-def github_assets(repo, tag):
-    if tag == "latest":
-        rel = get_json(f"https://api.github.com/repos/{repo}/releases/latest")
-    else:
-        rel = get_json(f"https://api.github.com/repos/{repo}/releases/tags/{tag}")
+def release_assets(repo, rel):
     assets, page = [], 1
     while True:
         batch = get_json(f"https://api.github.com/repos/{repo}/releases/{rel['id']}/assets?per_page=100&page={page}")
@@ -101,16 +97,32 @@ def github_assets(repo, tag):
         if len(batch) < 100:
             break
         page += 1
-    return rel, assets
+    return assets
+
+
+def github_assets(repo, tag, matches):
+    """Returns (release, assets). For tag "latest" picks the newest non-draft release that has a
+    matching asset (some projects, e.g. llama.cpp, mark every build as a pre-release)."""
+    if tag != "latest":
+        rel = get_json(f"https://api.github.com/repos/{repo}/releases/tags/{tag}")
+        return rel, release_assets(repo, rel)
+    for rel in get_json(f"https://api.github.com/repos/{repo}/releases?per_page=10"):
+        if rel.get("draft"):
+            continue
+        assets = release_assets(repo, rel)
+        if any(matches(a["name"]) for a in assets):
+            return rel, assets
+    raise SystemExit(f"{repo}: no recent release with a matching asset")
 
 
 def resolve_github(src):
-    rel, assets = github_assets(src["repo"], src.get("tag", "latest"))
     if "asset" in src:
-        match = [a for a in assets if a["name"] == src["asset"]]
+        matches = lambda name: name == src["asset"]  # noqa: E731
     else:
         rx = re.compile(src["assetRegex"])
-        match = [a for a in assets if rx.search(a["name"])]
+        matches = lambda name: bool(rx.search(name))  # noqa: E731
+    rel, assets = github_assets(src["repo"], src.get("tag", "latest"), matches)
+    match = [a for a in assets if matches(a["name"])]
     if len(match) != 1:
         raise SystemExit(f"{src['repo']}@{rel['tag_name']}: expected 1 asset, found {[a['name'] for a in match]}")
     a = match[0]
