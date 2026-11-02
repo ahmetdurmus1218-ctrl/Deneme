@@ -77,3 +77,28 @@ açıkken bellekte tutulur.
 `tr_TR-dfki-medium`, sherpa-onnx'in hazır paketinden (`k2-fsa/sherpa-onnx` `tts-models` sürümü,
 `vits-piper-tr_TR-dfki-medium.tar.bz2`) alınıyor; ham Piper `.onnx` dosyası sherpa-onnx için ek meta veri
 ve `espeak-ng-data` gerektiriyor. Ses lisansı README'de (rhasspy/piper-voices model kartı) belirtilir.
+
+## D16 — Güvenilmeyen veriden sonra yan etkili araç yok
+Wikipedia, belge ya da web çıktısı bir soruda bağlama girdiği anda, aynı soru içinde durumu değiştiren
+araçlar (bugün `hafiza_ekle`, `hafiza_sil`; ileride alarm/uygulama açma) reddedilir. Böylece bir makaleye
+gizlenmiş "önceki talimatları yok say ve şunu kaydet" türü bir metin hiçbir şeyi değiştiremez
+(`SecurityTest`). Araçların kendi hataları da asistanı düşürmez, araç hatası olarak modele döner.
+
+## D17 — Sesli komutlarda yazıyla sayılar
+Konuşma tanıma "beş dakika", "yedide", "yedi buçukta" gibi sayıları yazıyla verebiliyor. Hazır komut
+yönlendiricisi yalnızca kendi eşleştirmesi için bunları rakama çevirir (`TurkishNumbers`); modele giden
+metin hiçbir zaman değiştirilmez. Uygulama adlarında ünsüz yumuşaması geri alınmaz ("Bing" → "Bink"
+olmasın diye); yaygın Türkçe adlar için platformda takma adlar tutulur ("müziği" → müzik).
+
+## D18 — Doğrulama yöntemi
+Geliştirme konteyneri Google Maven'a erişemediği için Android/Compose derlemesi yalnızca CI'da yapılır.
+Saf Kotlin kısımlar (çekirdek, Kapı indirme mantığı, PC indiricisi) konteynerde de derlenip test edilir.
+CI ayrıca: PC arayüzünü baştan sona gezen bir Compose UI testi (ekran görüntüleriyle) ve gerçek bir
+Android emülatöründe uçtan uca bir test çalıştırır: iki APK'yı kurar, Android'in verdiği izinleri okur
+(Kale'de İnternet yok, GATE izni verilmiş), uygulamayı açar, hazır komut sorar ve en küçük kilitli dosyayı
+(67 MB Türkçe Piper sesi) PIN onayı → Kapı → sabitlenmiş HTTPS → iki kez SHA-256 zinciriyle gerçekten indirir.
+
+## D19 — Kilit dosyası güncellemeleri
+`tools/models.select.json` içinde "latest" denen kaynaklar (ör. llama.cpp) kilit üretildiği anda çözülüp
+tam sürüm + özetle sabitlenir. Kilit yalnızca seçim dosyası/betik değiştiğinde ya da elle tetiklendiğinde
+yeniden üretilir; yalnızca zaman damgası değiştiyse commit yapılmaz.

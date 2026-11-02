@@ -18,6 +18,8 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Kapı: imza seviyesinde `GATE` izniyle korunan Messenger servisi, yalnızca kilitli öğeler, HTTPS + alan adı izin listesi (her yönlendirmede), OkHttp sertifika sabitleme, uzantı listesi, kesin boyut sınırı, Range ile devam, SHA-256. Dosya Kale'nin `ParcelFileDescriptor`'ına yazılır; Kale özeti kendisi yeniden hesaplar.
 - [x] PC: Compose Desktop, gömülü JRE'li MSI (jpackage), `%LOCALAPPDATA%\Jarvis`, aynı politika ve sabitleme kurallarıyla yerleşik `jarvis-kapi` indiricisi, Windows SAPI (Türkçe ses kuruluysa).
 - [x] CI: `ci.yml` (testler, lint, APK + MSI derleme, Kale izin denetimi, `:core` ağ API yasağı, kilit şema kontrolü), `release.yml` (`v*` etiketi → APK'lar + MSI + SHA256SUMS), `lock-models.yml`, `probe.yml`.
+- [x] Sertleştirme turu (oturum 1, "max" inceleme): güvenilmeyen veriden sonra yan etkili araç engeli, araç hatalarına dayanıklılık, yazıyla sayılar ve nezaket sözcükleri, uygulama adı düzeltmesi (Spotify'ı), yarıda kesilen tur, JSON sohbet geçmişi, onay reddi sebebi, Kapı bağlantı zaman aşımı, iki ayrı URL ayrıştırıcısıyla host kontrolü, 206/416 işleme, kenardan kenara ekran/klavye boşlukları.
+- [x] Testler: çekirdek (60+), Kapı indirme mantığı ve sertifika pinleri (gerçek kök sertifikalarla), PC indiricisi (yerel HTTP sunucusuyla), arayüz denetleyicisi, PC arayüzü baştan sona (ekran görüntülü), Android emülatöründe uçtan uca gerçek indirme.
 - [ ] `v0.1.0` etiketi ve Release (CI yeşil olunca).
 
 ## v0.2 — Gerçek LLM
@@ -41,4 +43,6 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [ ] Belgelerin son hali.
 
 ## Kaldığım yer
-Oturum 1 (2026-11-02): Bölüm 0 ve v0.1 kodu yazıldı. Sıradaki adım: CI'ı yeşile çekmek, `v0.1.0` etiketini atmak ve Release'i doğrulamak; ardından v0.2 (LiteRT-LM + llama-server).
+Oturum 1 (2026-11-02): Bölüm 0 ve v0.1 kodu yazıldı, CI yeşile çekildi (Android + Windows MSI), ardından
+"max" seviyesinde inceleme ve sertleştirme yapıldı. Sıradaki adım: `v0.1.0` etiketi ve Release doğrulaması;
+ardından v0.2 (LiteRT-LM + Gemma 4 E4B/E2B, llama-server + Qwen 3.5 9B).
