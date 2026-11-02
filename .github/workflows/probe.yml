@@ -1,0 +1,17 @@
+name: probe
+# Resolves library versions and model file hashes from official sources (Google Maven,
+# Maven Central, Hugging Face, Kiwix, GitHub Releases). Read-only; output goes to the job log.
+on:
+  push:
+    paths: [tools/probe.py, .github/workflows/probe.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/probe.py all
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
