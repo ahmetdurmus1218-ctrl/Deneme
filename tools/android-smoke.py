@@ -79,11 +79,26 @@ def tap(n):
     adb("shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
 
 
+def dismiss_system_anr(root):
+    """A freshly booted emulator sometimes shows "<System app> isn't responding" (not our app)."""
+    texts = screen_texts(root)
+    if any(t.endswith("isn't responding") and not t.startswith("Jarvis") for t in texts):
+        wait = find(text_is("Wait"), root)
+        if wait is not None:
+            print("dismissing system ANR dialog:", [t for t in texts if "responding" in t])
+            tap(wait)
+            time.sleep(1)
+            return True
+    return False
+
+
 def wait_for(pred, what, timeout=40):
     end = time.time() + timeout
     root = None
     while time.time() < end:
         root = dump()
+        if dismiss_system_anr(root):
+            continue
         n = find(pred, root)
         if n is not None:
             return n
