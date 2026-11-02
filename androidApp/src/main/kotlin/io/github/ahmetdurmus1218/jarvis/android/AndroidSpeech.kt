@@ -3,15 +3,22 @@ package io.github.ahmetdurmus1218.jarvis.android
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Build
 import android.speech.RecognitionListener
+import android.speech.RecognitionSupport
+import android.speech.RecognitionSupportCallback
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
+import androidx.annotation.RequiresApi
 import io.github.ahmetdurmus1218.jarvis.ui.SpeechInput
 import io.github.ahmetdurmus1218.jarvis.ui.SpeechOutput
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
@@ -31,60 +38,161 @@ class AndroidSpeechInput(
 ) : SpeechInput {
     override val engineName = "Android cihaz içi tanıma (tr-TR)"
     private var recognizer: SpeechRecognizer? = null
+    /** Set while we cancel on purpose, so the resulting ERROR_CLIENT is not shown as a failure. */
+    @Volatile private var cancelling = false
 
     override fun isAvailable(): Boolean = SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
 
+    private fun recognizerIntent() = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
+        putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+    }
+
+    /** Must run on the main thread. */
+    private fun obtainRecognizer(): SpeechRecognizer =
+        recognizer ?: SpeechRecognizer.createOnDeviceSpeechRecognizer(context).also { recognizer = it }
+
+    private fun dropRecognizer() {
+        runCatching { recognizer?.destroy() }
+        recognizer = null
+    }
+
     override fun start(listener: SpeechInput.Listener) {
-        launch {
-            if (!ensureMicPermission()) {
-                listener.onError("Mikrofon izni gerekli")
-                return@launch
-            }
-            recognizer?.destroy()
-            val r = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
-            recognizer = r
-            r.setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {}
-                override fun onBeginningOfSpeech() {}
-                override fun onRmsChanged(rmsdB: Float) = listener.onLevel(((rmsdB + 2f) / 12f).coerceIn(0f, 1f))
-                override fun onBufferReceived(buffer: ByteArray?) {}
-                override fun onEndOfSpeech() {}
-                override fun onError(error: Int) = listener.onError(errorText(error))
-                override fun onResults(results: Bundle?) {
-                    val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
-                    if (text.isBlank()) listener.onError("Bir şey duyamadım") else listener.onFinal(text)
+        launch { startOnMain(listener, retryIfBusy = true) }
+    }
+
+    private suspend fun startOnMain(listener: SpeechInput.Listener, retryIfBusy: Boolean) {
+        if (!ensureMicPermission()) {
+            listener.onError("Mikrofon izni gerekli. Telefon Ayarları → Uygulamalar → Jarvis → İzinler → Mikrofon.")
+            return
+        }
+        if (languagePack() == SpeechInput.LanguagePack.DOWNLOADABLE) {
+            listener.onError(PACK_MISSING)
+            return
+        }
+        val r = obtainRecognizer()
+        cancelling = false
+        r.setRecognitionListener(object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) {}
+            override fun onBeginningOfSpeech() {}
+            override fun onRmsChanged(rmsdB: Float) = listener.onLevel(((rmsdB + 2f) / 12f).coerceIn(0f, 1f))
+            override fun onBufferReceived(buffer: ByteArray?) {}
+            override fun onEndOfSpeech() {}
+            override fun onError(error: Int) {
+                when {
+                    cancelling && error == SpeechRecognizer.ERROR_CLIENT -> listener.onError("")
+                    error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY && retryIfBusy -> {
+                        // A previous session was still closing: start over with a fresh recognizer once.
+                        dropRecognizer()
+                        launch {
+                            kotlinx.coroutines.delay(300)
+                            startOnMain(listener, retryIfBusy = false)
+                        }
+                    }
+                    else -> {
+                        if (error == SpeechRecognizer.ERROR_SERVER_DISCONNECTED || error == SpeechRecognizer.ERROR_CLIENT ||
+                            error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY
+                        ) dropRecognizer()
+                        listener.onError(errorText(error))
+                    }
                 }
-                override fun onPartialResults(partialResults: Bundle?) {
-                    partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.let(listener::onPartial)
-                }
-                override fun onEvent(eventType: Int, params: Bundle?) {}
-            })
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
-                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
             }
-            r.startListening(intent)
+            override fun onResults(results: Bundle?) {
+                val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
+                if (text.isBlank()) listener.onError(NOTHING_HEARD) else listener.onFinal(text)
+            }
+            override fun onPartialResults(partialResults: Bundle?) {
+                partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.let(listener::onPartial)
+            }
+            override fun onEvent(eventType: Int, params: Bundle?) {}
+        })
+        try {
+            r.startListening(recognizerIntent())
+        } catch (e: Exception) {
+            dropRecognizer()
+            listener.onError("Ses tanıma başlatılamadı: ${e.message ?: e.javaClass.simpleName}")
         }
     }
 
     override fun stop() {
-        recognizer?.stopListening()
+        launch { recognizer?.stopListening() }
     }
 
     override fun cancel() {
-        recognizer?.cancel()
+        launch {
+            cancelling = true
+            recognizer?.cancel()
+        }
+    }
+
+    override suspend fun languagePack(): SpeechInput.LanguagePack = withContext(Dispatchers.Main) {
+        if (Build.VERSION.SDK_INT < 33 || !isAvailable()) {
+            SpeechInput.LanguagePack.UNKNOWN
+        } else {
+            // Some vendors never answer the support query: do not let that block the mic.
+            withTimeoutOrNull(2_500) { checkSupport33() } ?: SpeechInput.LanguagePack.UNKNOWN
+        }
+    }
+
+    /** Uses its own short-lived recognizer so the listening one is never disturbed. */
+    @RequiresApi(33)
+    private suspend fun checkSupport33(): SpeechInput.LanguagePack {
+        val probe = runCatching { SpeechRecognizer.createOnDeviceSpeechRecognizer(context) }.getOrNull()
+            ?: return SpeechInput.LanguagePack.UNKNOWN
+        return try {
+            suspendCancellableCoroutine { cont ->
+                fun isTurkish(tag: String) = tag.lowercase(Locale.ROOT).let { it == "tr" || it.startsWith("tr-") || it.startsWith("tr_") }
+                try {
+                    probe.checkRecognitionSupport(recognizerIntent(), context.mainExecutor, object : RecognitionSupportCallback {
+                        override fun onSupportResult(support: RecognitionSupport) {
+                            val result = when {
+                                support.installedOnDeviceLanguages.any(::isTurkish) -> SpeechInput.LanguagePack.READY
+                                support.supportedOnDeviceLanguages.any(::isTurkish) -> SpeechInput.LanguagePack.DOWNLOADABLE
+                                else -> SpeechInput.LanguagePack.UNSUPPORTED
+                            }
+                            if (cont.isActive) cont.resume(result)
+                        }
+                        override fun onError(error: Int) {
+                            if (cont.isActive) cont.resume(SpeechInput.LanguagePack.UNKNOWN)
+                        }
+                    })
+                } catch (e: Exception) {
+                    if (cont.isActive) cont.resume(SpeechInput.LanguagePack.UNKNOWN)
+                }
+            }
+        } finally {
+            runCatching { probe.destroy() }
+        }
+    }
+
+    override suspend fun downloadLanguagePack(): Boolean = withContext(Dispatchers.Main) {
+        if (Build.VERSION.SDK_INT < 33) return@withContext false
+        val r = runCatching { SpeechRecognizer.createOnDeviceSpeechRecognizer(context) }.getOrNull() ?: return@withContext false
+        // The system service downloads its own language model; this app sends nothing.
+        runCatching { r.triggerModelDownload(recognizerIntent()) }.isSuccess.also {
+            kotlinx.coroutines.delay(1_000)
+            runCatching { r.destroy() }
+        }
     }
 
     private fun errorText(code: Int): String = when (code) {
-        SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Bir şey duyamadım"
-        SpeechRecognizer.ERROR_AUDIO -> "Mikrofon hatası"
-        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Mikrofon izni gerekli"
-        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Ses tanıma meşgul"
-        SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED, SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE ->
-            "Türkçe cihaz içi ses tanıma paketi yok. Telefon Ayarları → Sistem → Diller → Ses tanıma bölümünden Türkçe'yi indirin."
-        else -> "Ses tanıma hatası ($code)"
+        SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> NOTHING_HEARD
+        SpeechRecognizer.ERROR_AUDIO -> "Mikrofon açılamadı (başka bir uygulama kullanıyor olabilir)."
+        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Mikrofon izni gerekli. Telefon Ayarları → Uygulamalar → Jarvis → İzinler → Mikrofon."
+        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Ses tanıma meşgul, bir saniye sonra tekrar deneyin."
+        SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED -> "Telefonun cihaz içi ses tanıması Türkçe'yi desteklemiyor. Şimdilik yazarak kullanın; Jarvis'in kendi ses tanıması (Whisper) sonraki sürümde geliyor."
+        SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> PACK_MISSING
+        SpeechRecognizer.ERROR_SERVER_DISCONNECTED -> "Ses tanıma servisi kapandı, tekrar deneyin."
+        SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT, SpeechRecognizer.ERROR_SERVER ->
+            "Telefonun ses tanıması internet istedi; Jarvis yalnızca cihaz içi tanıma kullanır. Türkçe ses paketini indirin (Ayarlar)."
+        else -> "Ses tanıma hatası (kod $code). Şimdilik yazarak kullanabilirsiniz."
+    }
+
+    private companion object {
+        const val NOTHING_HEARD = "Bir şey duyamadım. Mikrofona dokunun ve konuşun; susunca kendisi durur."
+        const val PACK_MISSING = "Telefonda Türkçe cihaz içi ses paketi yüklü değil. Jarvis → Ayarlar → \"Türkçe ses paketini indir\" düğmesini kullanın."
     }
 }
 

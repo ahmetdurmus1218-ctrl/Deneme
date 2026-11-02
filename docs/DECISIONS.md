@@ -115,3 +115,13 @@ kapanınca ya da model değişince alt süreçleriyle birlikte kapatılır. Dü�
 şablonlarının `enable_thinking` anahtarıyla açılıp kapanır; düşünme metni (`reasoning_content`)
 kullanıcıya gösterilmez, yalnızca cevap metni akar. Bazı LiteRT-LM sürümleri biriken metni, bazıları
 yalnızca yeni parçayı döndürdüğü için `DeltaTracker` ikinci parçada biçimi anlayıp tekrar etmeyi önler.
+
+## D21 — Mikrofon: dokun-konuş ve sistemin Türkçe ses paketi
+Gerçek telefonda "bas-konuş" düğmesine kısa dokunmak dinlemeyi hemen kapatıyor ve her seferinde hata
+veriyordu. Düğme artık iki şekilde çalışır: kısa dokunuş dinlemeyi başlatır (tanıyıcı sessizlikte kendisi
+durur, ikinci dokunuş erken bitirir); 0,6 saniyeden uzun basılı tutmak klasik bas-konuş davranışıdır.
+Android 13+ cihazlarda `checkRecognitionSupport` ile Türkçe cihaz içi paketin yüklü olup olmadığı
+bakılır (ayrı, kısa ömürlü bir tanıyıcıyla; yanıt gelmezse 2,5 sn sonra beklemeden devam edilir). Paket
+yoksa `triggerModelDownload` yalnızca onay ekranı + biyometrik/PIN onayından sonra çağrılır. İndirmeyi
+Android sistemi yapar, Kale'nin INTERNET izni yine yoktur; olay Ağ kayıt defterine "sistem indirir"
+olarak yazılır. Kalıcı çözüm v0.4'teki Whisper'dır (Jarvis'in kendi, kilitli ve hash'li modeli).

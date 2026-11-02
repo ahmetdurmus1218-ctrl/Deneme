@@ -103,14 +103,19 @@ fun ChatScreen(controller: JarvisController, engineLabel: String, micAvailable: 
                 singleLine = true,
             )
             Button(onClick = { controller.send(input); input = "" }, enabled = input.isNotBlank()) { Text("Gönder") }
-            if (micAvailable) PushToTalk(mode == CoreMode.LISTENING, onPress = controller::startListening, onRelease = controller::stopListening)
+            if (micAvailable) MicButton(mode == CoreMode.LISTENING, onTap = controller::toggleListening, onHoldStart = controller::startListening, onHoldEnd = controller::stopListening)
             if (mode == CoreMode.SPEAKING) TextButton(onClick = controller::stopSpeaking) { Text("Sus") }
         }
     }
 }
 
+/**
+ * Tap: starts listening; the recognizer stops by itself when you stop talking (tap again to finish early).
+ * Hold: listens while held (push-to-talk) and finishes on release.
+ */
 @Composable
-private fun PushToTalk(active: Boolean, onPress: () -> Unit, onRelease: () -> Unit) {
+private fun MicButton(active: Boolean, onTap: () -> Unit, onHoldStart: () -> Unit, onHoldEnd: () -> Unit) {
+    val holdMs = 600L
     Box(
         Modifier
             .size(52.dp)
@@ -118,14 +123,24 @@ private fun PushToTalk(active: Boolean, onPress: () -> Unit, onRelease: () -> Un
             .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown()
-                    onPress()
-                    waitForUpOrCancellation()
-                    onRelease()
+                    var endedEarly = false
+                    var lifted = false
+                    withTimeoutOrNull(holdMs) {
+                        lifted = waitForUpOrCancellation() != null
+                        endedEarly = true
+                    }
+                    if (endedEarly) {
+                        if (lifted) onTap() // a finger that slid away is neither a tap nor a hold
+                    } else {
+                        onHoldStart()
+                        waitForUpOrCancellation()
+                        onHoldEnd()
+                    }
                 }
             },
         contentAlignment = Alignment.Center,
     ) {
-        Text("🎤", fontSize = 22.sp)
+        Text(if (active) "■" else "🎤", fontSize = 22.sp)
     }
 }
 

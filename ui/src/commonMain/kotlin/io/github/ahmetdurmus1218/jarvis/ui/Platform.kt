@@ -43,6 +43,17 @@ interface SpeechInput {
     fun stop()
     fun cancel()
 
+    /** Whether the recognizer's Turkish on-device language pack is installed. */
+    suspend fun languagePack(): LanguagePack = LanguagePack.UNKNOWN
+
+    /**
+     * Asks the operating system to download its own Turkish on-device language pack. Only called after
+     * the user's approval; the download is done by the system, never by this app.
+     */
+    suspend fun downloadLanguagePack(): Boolean = false
+
+    enum class LanguagePack { READY, DOWNLOADABLE, UNSUPPORTED, UNKNOWN }
+
     interface Listener {
         fun onPartial(text: String)
         fun onFinal(text: String)

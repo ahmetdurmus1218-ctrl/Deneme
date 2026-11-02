@@ -37,6 +37,11 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [ ] Gerçek cihazda Gemma 4 ve RX 6600'de Qwen ile performans ölçümü (kullanıcı geri bildirimiyle).
 - [x] `v0.2.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v0.2.0
 
+## v0.2.1 — Mikrofon düzeltmesi (gerçek telefondan geri bildirim)
+- [x] Mikrofon düğmesi: dokun-konuş (sessizlikte kendisi durur) + basılı tutarak konuşma.
+- [x] Android 13+: Türkçe cihaz içi ses paketi kontrolü, onaylı "Türkçe ses paketini indir" düğmesi (sistem indirir, ağ kaydına yazılır).
+- [x] Anlaşılır Türkçe hata mesajları; meşgul/kopan tanıyıcıda otomatik yeniden deneme.
+
 ## v0.3 — Bilgi
 - [ ] Android: java-libkiwix (`org.kiwix:libkiwix` 2.7.0 doğrulandı) ile Türkçe Wikipedia ZIM araması/okuma (`wiki_ara`, `wiki_oku`).
 - [ ] PC: `kiwix-serve` (3.8.1 kilitli) alt süreç + arama API'si.

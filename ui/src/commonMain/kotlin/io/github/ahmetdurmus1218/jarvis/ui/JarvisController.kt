@@ -194,6 +194,11 @@ class JarvisController(
         bridge.speechInput?.stop()
     }
 
+    /** Mic button tapped: start listening, or finish if already listening (the recognizer also stops by itself on silence). */
+    fun toggleListening() {
+        if (_mode.value == CoreMode.LISTENING) stopListening() else startListening()
+    }
+
     fun speakTest(text: String) = say(text)
 
     fun clearConversation() {

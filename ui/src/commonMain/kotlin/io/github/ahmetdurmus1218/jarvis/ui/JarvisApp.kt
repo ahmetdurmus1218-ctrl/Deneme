@@ -113,7 +113,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                             Tab.MODELS -> ModelsScreen(graph.bridge, graph.registry, graph.installer)
                             Tab.MEMORY -> MemoryScreen(graph.memory, graph.settings)
                             Tab.NETLOG -> NetworkLogScreen(netEvents, formatTime)
-                            Tab.SETTINGS -> SettingsScreen(graph.bridge, graph.settings, graph.registry) { wizard = true }
+                            Tab.SETTINGS -> SettingsScreen(graph.bridge, graph.settings, graph.registry, graph.installer) { wizard = true }
                         }
                     }
                 }

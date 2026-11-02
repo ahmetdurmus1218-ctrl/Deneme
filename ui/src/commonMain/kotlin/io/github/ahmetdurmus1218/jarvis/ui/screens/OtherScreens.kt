@@ -38,6 +38,7 @@ import io.github.ahmetdurmus1218.jarvis.ui.DownloadState
 import io.github.ahmetdurmus1218.jarvis.ui.ModelInstaller
 import io.github.ahmetdurmus1218.jarvis.ui.PlatformBridge
 import io.github.ahmetdurmus1218.jarvis.ui.SettingsStore
+import io.github.ahmetdurmus1218.jarvis.ui.SpeechInput
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisColors
 import kotlinx.coroutines.launch
 
@@ -154,8 +155,12 @@ fun NetworkLogScreen(events: List<NetworkEvent>, formatTime: (Long) -> String) {
 }
 
 @Composable
-fun SettingsScreen(bridge: PlatformBridge, settings: SettingsStore, registry: ModelRegistry, onRunWizard: () -> Unit) {
+fun SettingsScreen(bridge: PlatformBridge, settings: SettingsStore, registry: ModelRegistry, installer: ModelInstaller, onRunWizard: () -> Unit) {
     val s by settings.state.collectAsState()
+    val scope = rememberCoroutineScope()
+    var pack by remember { mutableStateOf<SpeechInput.LanguagePack?>(null) }
+    var packNote by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) { pack = bridge.speechInput?.languagePack() }
     ScreenColumn("Ayarlar") {
         Text("Model", fontWeight = FontWeight.SemiBold)
         val llms = registry.forPlatform(bridge.platform).filter { it.kind == "llm" }
@@ -172,6 +177,22 @@ fun SettingsScreen(bridge: PlatformBridge, settings: SettingsStore, registry: Mo
         Toggle("Web araması (her sorguda onay istenir)", s.webSearch) { v -> settings.update { it.copy(webSearch = v) } }
         Toggle("Tam offline mod (tüm indirmeler kapalı)", s.fullOffline) { v -> settings.update { it.copy(fullOffline = v) } }
         Text("Ses tanıma: ${bridge.speechInput?.engineName ?: "yok"}", color = JarvisColors.TextDim, fontSize = 12.sp)
+        when (pack) {
+            SpeechInput.LanguagePack.READY -> Text("✓ Türkçe ses paketi telefonda yüklü", color = JarvisColors.Green, fontSize = 12.sp)
+            SpeechInput.LanguagePack.DOWNLOADABLE -> {
+                Text("Türkçe ses paketi yüklü değil: mikrofon bu yüzden çalışmıyor.", color = JarvisColors.Amber, fontSize = 12.sp)
+                OutlinedButton(onClick = {
+                    scope.launch {
+                        packNote = installer.downloadSpeechPack()
+                        pack = bridge.speechInput?.languagePack()
+                    }
+                }) { Text("Türkçe ses paketini indir") }
+            }
+            SpeechInput.LanguagePack.UNSUPPORTED ->
+                Text("Telefonun cihaz içi ses tanıması Türkçe'yi desteklemiyor. Yazarak kullanın; Jarvis'in kendi ses tanıması (Whisper) sonraki sürümlerde geliyor.", color = JarvisColors.Amber, fontSize = 12.sp)
+            else -> {}
+        }
+        packNote?.let { Text(it, fontSize = 12.sp) }
         Text("Ses sentezi: ${bridge.speechOutput?.engineName ?: "yok"}", color = JarvisColors.TextDim, fontSize = 12.sp)
         Button(onClick = onRunWizard) { Text("Kurulum sihirbazını aç") }
         Text("Jarvis ${bridge.appVersion}", color = JarvisColors.TextDim, fontSize = 12.sp)

@@ -31,7 +31,22 @@ class ModelInstallerTest {
         override fun append(name: String, line: String) { m[name] = (m[name].orEmpty()) + line + "\n" }
     }
 
+    private class FakeStt : SpeechInput {
+        var packRequests = 0
+        override val engineName = "fake"
+        override fun isAvailable() = true
+        override fun start(listener: SpeechInput.Listener) {}
+        override fun stop() {}
+        override fun cancel() {}
+        override suspend fun languagePack() = SpeechInput.LanguagePack.DOWNLOADABLE
+        override suspend fun downloadLanguagePack(): Boolean {
+            packRequests++
+            return true
+        }
+    }
+
     private class FakeBridge(private val returnSha: String, private val approve: Boolean = true, private val failFirst: Int = 0) : PlatformBridge {
+        val stt = FakeStt()
         val committed = mutableListOf<String>()
         val deletedTemp = mutableListOf<String>()
         var downloads = 0
@@ -39,7 +54,7 @@ class ModelInstallerTest {
         override val appVersion = "test"
         override fun deviceInfo() = DeviceInfo("test", 12.0, 1L shl 40)
         override val files: AppFiles = MemFiles()
-        override val speechInput: SpeechInput? = null
+        override val speechInput: SpeechInput = stt
         override val speechOutput: SpeechOutput? = null
         override val approver = object : Approver {
             override suspend fun confirm(title: String, subtitle: String) =
@@ -100,6 +115,40 @@ class ModelInstallerTest {
         assertIs<ItemStatus.Failed>(st)
         assertTrue(st.hashMismatch)
         assertEquals("hash uyuşmadı", log.events.value.single().result)
+    }
+
+    @Test
+    fun speechPackIsRequestedOnlyAfterApproval() = runTest {
+        val bridge = FakeBridge(good)
+        val (inst, log) = installer(bridge)
+        val shown = mutableListOf<ApprovalRequest>()
+        val job = launch { shown += inst.approval.first { it != null }!!; inst.answerApproval(true) }
+        val text = inst.downloadSpeechPack()
+        job.join()
+        assertEquals(1, bridge.stt.packRequests)
+        assertTrue("Android" in shown.single().reason, "the approval says the system downloads it")
+        assertTrue("iletildi" in text)
+        assertEquals("istendi", log.events.value.single().result)
+    }
+
+    @Test
+    fun rejectedSpeechPackStaysOffline() = runTest {
+        val bridge = FakeBridge(good)
+        val (inst, log) = installer(bridge)
+        val job = launch { inst.approval.first { it != null }; inst.answerApproval(false) }
+        inst.downloadSpeechPack()
+        job.join()
+        assertEquals(0, bridge.stt.packRequests)
+        assertEquals("reddedildi", log.events.value.single().result)
+    }
+
+    @Test
+    fun speechPackRespectsFullOfflineMode() = runTest {
+        val bridge = FakeBridge(good)
+        val (inst, _, settings) = installer(bridge)
+        settings.update { it.copy(fullOffline = true) }
+        assertTrue("offline" in inst.downloadSpeechPack())
+        assertEquals(0, bridge.stt.packRequests)
     }
 
     @Test

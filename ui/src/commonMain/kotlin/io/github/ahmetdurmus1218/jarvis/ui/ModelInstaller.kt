@@ -257,6 +257,35 @@ class ModelInstaller(
         }
     }
 
+    /**
+     * Asks the operating system to fetch its own Turkish on-device speech pack (Android 13+), after the
+     * same approval as any download. Returns the text to show.
+     */
+    suspend fun downloadSpeechPack(): String {
+        val stt = bridge.speechInput ?: return "Bu cihazda ses tanıma yok."
+        if (settings.state.value.fullOffline) return "Tam offline mod açık; önce Ayarlar'dan kapatın."
+        val req = ApprovalRequest(
+            title = "İnternet erişimi onayı",
+            action = "Android'in Türkçe cihaz içi ses tanıma paketi indirilecek",
+            hosts = listOf("Android sistemi (Google ses servisleri)"),
+            totalBytes = null,
+            reason = "Mikrofonla konuşabilmek için telefonun kendi Türkçe ses tanıma paketi gerekiyor. İndirmeyi Jarvis değil Android sistemi yapar; Jarvis hiçbir ses ya da metin göndermez. Paket kurulduktan sonra ses tanıma tamamen internetsiz çalışır.",
+            lines = emptyList(),
+        )
+        val method = requestApproval(req)
+        if (method == null) {
+            netLog.record(NetworkEvent(now.now().epochMillis, req.hosts.first(), 0, "Türkçe ses paketi", "-", "reddedildi"))
+            return rejectionText()
+        }
+        val ok = stt.downloadLanguagePack()
+        netLog.record(NetworkEvent(now.now().epochMillis, req.hosts.first(), 0, "Türkçe ses paketi (sistem indirir)", method.label, if (ok) "istendi" else "hata"))
+        return if (ok) {
+            "İndirme Android'e iletildi. Birkaç dakika sürebilir; bitince mikrofon Türkçe çalışır."
+        } else {
+            "Android bu indirmeyi başlatamadı. Telefon Ayarları → Sistem → Diller → Konuşma tanıma bölümünden Türkçe'yi ekleyin."
+        }
+    }
+
     fun delete(item: LockedItem) {
         bridge.models.delete(item)
         _status.value = _status.value - item.id
