@@ -4,7 +4,7 @@ Jarvis telefonunuzda (Android) ve bilgisayarınızda (Windows) **tamamen interne
 bir yapay zekâ asistanıdır. Konuşmalarınız, hafızası ve belgeleriniz cihazınızdan çıkmaz. Abonelik, API
 anahtarı ya da reklam yoktur.
 
-> **Durum:** v0.2.2. Gerçek yapay zekâ modeli ve Jarvis'in kendi Türkçe ses tanıması (Whisper) çalışıyor: telefonda Gemma 4 (LiteRT-LM), PC'de Qwen 3.5 9B
+> **Durum:** v0.2.4. Gerçek yapay zekâ modeli ve Jarvis'in kendi Türkçe ses tanıması (Whisper) çalışıyor: telefonda Gemma 4 (LiteRT-LM), PC'de Qwen 3.5 9B
 > (llama.cpp, Vulkan). Model indirilmeden önce Jarvis "sahte model" ile deneme modunda cevap verir.
 > Offline Wikipedia ve belge araması v0.3'te gelecek. Ayrıntılar: [`docs/PLAN.md`](docs/PLAN.md).
 
@@ -48,6 +48,15 @@ GitHub'da bu sayfanın sağındaki **Releases** bölümüne girin, en üstteki s
    içinde gelir.)
 3. Başlat menüsünden **Jarvis**'i açın. İlk açılışta kurulum sihirbazı çalışır; indirme için onay penceresi
    çıkar. *(v0.5'te bu adım Windows'un yönetici onayı (UAC) ve güvenlik duvarı kurallarıyla güçlenecek.)*
+
+4. **Mikrofon:** Sohbet ekranında 🎤'a tıklayın. İlk seferde **"Jarvis'in ses tanımasını indir (375 MB)"**
+   düğmesi çıkar; onaylayın. Sonra 🎤'a tıklayıp konuşun, susunca Jarvis kendisi durur. Ses bilgisayarda çözülür.
+   "Mikrofondan hiç ses gelmiyor" derse: Windows Ayarlar → Gizlilik ve güvenlik → Mikrofon →
+   "Masaüstü uygulamalarının mikrofonunuza erişmesine izin verin" açık olmalı.
+5. **Gerçek model:** Modeller ekranından **Qwen 3.5 9B** ve **llama.cpp (Vulkan)** indirin.
+
+**Sohbet modu:** Üstteki "SOHBET MODU" düğmesine basarsanız Jarvis cevabını bitirince sizi yeniden dinler;
+eller serbest konuşabilirsiniz. Susarsanız ya da "sus" derseniz durur.
 
 Jarvis'in dosyaları: `%LOCALAPPDATA%\Jarvis` (Gezgin'in adres çubuğuna yazıp Enter'a basarak açabilirsiniz).
 

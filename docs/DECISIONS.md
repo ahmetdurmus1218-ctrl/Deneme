@@ -145,3 +145,21 @@ gerekirse espeak'li son sürüm (1.13.x) değerlendirilecek.
 İndirmeler ekranın `rememberCoroutineScope`'unda başlatılıyordu; sekme değiştirince ya da sihirbaz
 kapanınca iptal ediliyordu (Kapı aktarımı da iptal). Artık `ModelInstaller` kendi kapsamında çalıştırır
 (`installInBackground`); biyometrik onay istemi kendisi ana iş parçacığına geçer.
+
+## D24 — PC'de Whisper: sherpa-onnx Java API + Java Sound
+PC mikrofonu Java Sound `TargetDataLine` ile 16 kHz mono kaydeder (desteklenmezse 48/44,1 kHz kaydedilip
+çekirdekteki `Downsampler` ile 16 kHz'e indirilir), konuşma sonunu telefondaki aynı `UtteranceCapture`
+bulur, Whisper small sherpa-onnx'in Java API'siyle (GitHub sürüm dosyaları: `sherpa-onnx-jvm` + Windows
+x64 yerel kütüphaneleri, SHA-256 sabitli) bilgisayarda çözer. Linux yerel kütüphanesi yalnızca testlerde.
+`DesktopWhisperTest` Türkçe kaydı sahte bir 48 kHz ses kartından gerçek yakalama + Whisper yoluna verir;
+CI bunu hem Linux'ta hem Windows'ta (Windows DLL'leriyle) çalıştırır. Hiç ses gelmiyorsa (seviye hep 0)
+Windows'un mikrofon gizlilik ayarı gösterilir.
+
+## D25 — Arayüz: sahne + sohbet modu
+Kullanıcı arayüzü "dijital biriyle konuşuyormuş gibi" istedi (örnek: halilozat/jarvis'in HUD'ı). Sohbet
+listesi yerine tam ekran bir sahne: tek bir Canvas'ta, tek animasyon saatinden türetilen katmanlı bir
+çekirdek (rememberInfiniteTransition — test saatine uyumlu), durum etiketi, son konuşma, konuşurken daktilo
+altyazı ve kayarak gelen cam kartlar; geçmiş ayrı görünümde. Saat, her karede değil dakikada bir yeniden
+çizilir (`derivedStateOf`). Sohbet modu: sesle sorulan bir tur tamamen cevaplanıp seslendirilince 350 ms
+sonra yeniden dinlenir; sessizlik, "sus" ya da yazıyla soru döngüyü bitirir (denetleyici testleriyle).
+Tasarım CI'daki ekran görüntülerinden (günlüğe base64 basılır) gözden geçirilir.

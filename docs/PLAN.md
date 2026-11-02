@@ -53,6 +53,12 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [ ] PC'de Whisper (sherpa-onnx JNI) — v0.4.
 - [ ] Piper (Türkçe ses): sherpa-onnx 2.0 espeak-ng'yi çıkardı; Türkçe fonem dönüştürücü gerekiyor (bkz. D22) — v0.4.
 
+## v0.2.4 — Yeni arayüz, PC mikrofonu, sohbet modu
+- [x] Sahne tasarımı: canlı çekirdek, durum, daktilo altyazı, cam kartlar, sayaç sayılar, geçmiş görünümü, durum çubuğu.
+- [x] Sohbet modu (eller serbest), testli.
+- [x] PC'de Whisper mikrofon (Windows'ta CI testiyle doğrulandı).
+- [ ] Sıradaki arayüz adımları: kamera ile el/yüz takibi ve efektler (kullanıcı kararı bekleniyor), Mark 1/Mark 2 gibi yoğunluk seçeneği.
+
 ## v0.3 — Bilgi
 - [ ] Android: java-libkiwix (`org.kiwix:libkiwix` 2.7.0 doğrulandı) ile Türkçe Wikipedia ZIM araması/okuma (`wiki_ara`, `wiki_oku`).
 - [ ] PC: `kiwix-serve` (3.8.1 kilitli) alt süreç + arama API'si.

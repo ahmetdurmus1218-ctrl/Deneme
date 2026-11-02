@@ -67,6 +67,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -90,6 +91,7 @@ fun ChatScreen(controller: JarvisController, engineLabel: String, micAvailable: 
     var input by remember { mutableStateOf("") }
     var showHistory by remember { mutableStateOf(false) }
     val accent by animateColorAsState(mode.accent(), tween(600))
+    val focus = LocalFocusManager.current
 
     Column(Modifier.fillMaxSize().hudBackground(accent)) {
         StatusBar(
@@ -154,7 +156,15 @@ fun ChatScreen(controller: JarvisController, engineLabel: String, micAvailable: 
                 ),
             )
             if (mode == CoreMode.SPEAKING) TextButton(onClick = controller::stopSpeaking) { Text("Sus", color = JarvisColors.Amber) }
-            Button(onClick = { controller.send(input); input = "" }, enabled = input.isNotBlank(), shape = RoundedCornerShape(22.dp)) { Text("Gönder") }
+            Button(
+                onClick = {
+                    controller.send(input)
+                    input = ""
+                    focus.clearFocus() // closes the phone keyboard so the answer is visible
+                },
+                enabled = input.isNotBlank(),
+                shape = RoundedCornerShape(22.dp),
+            ) { Text("Gönder") }
             if (micAvailable) MicButton(mode == CoreMode.LISTENING, level, onTap = controller::toggleListening, onHoldStart = controller::startListening, onHoldEnd = controller::stopListening)
         }
     }
@@ -212,8 +222,13 @@ private fun HudChip(text: String, active: Boolean, onClick: () -> Unit) {
  */
 @Composable
 private fun Stage(mode: CoreMode, level: Float, engineLabel: String, last: Turn?, subtitle: String, onCoreTap: (() -> Unit)?) {
+    val scroll = rememberScrollState()
+    // Keep the newest answer in view (the keyboard or a small screen can push it below the fold).
+    LaunchedEffect(last?.id, last?.scenes?.size, last?.done) {
+        if (last != null) scroll.animateScrollTo(scroll.maxValue)
+    }
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+        Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
