@@ -35,6 +35,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Ayarlar'daki model seçimi etkin; kurulu model yoksa sahte modele dönülür ve bu ekranda yazar.
 - [x] Testler: motor seçici / akış biçimi (çekirdek), llama-server istemcisi yerel sahte sunucuyla, zip-slip reddi, PC model seçimi.
 - [ ] Gerçek cihazda Gemma 4 ve RX 6600'de Qwen ile performans ölçümü (kullanıcı geri bildirimiyle).
+- [x] `v0.2.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v0.2.0
 
 ## v0.3 — Bilgi
 - [ ] Android: java-libkiwix (`org.kiwix:libkiwix` 2.7.0 doğrulandı) ile Türkçe Wikipedia ZIM araması/okuma (`wiki_ara`, `wiki_oku`).
