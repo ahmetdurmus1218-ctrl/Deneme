@@ -18,7 +18,13 @@ jobs:
       - name: Resolve and hash all model sources
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python3 tools/lock-models.py --select tools/models.select.json --out models.lock.json
+        run: |
+          cp models.lock.json /tmp/old.lock.json 2>/dev/null || echo '{"items":[]}' > /tmp/old.lock.json
+          python3 tools/lock-models.py --select tools/models.select.json --out models.lock.json
+          # Only the items matter; a new timestamp alone is not a change.
+          if python3 -c "import json,sys; a=json.load(open('/tmp/old.lock.json'))['items']; b=json.load(open('models.lock.json'))['items']; sys.exit(0 if a==b else 1)"; then
+            cp /tmp/old.lock.json models.lock.json
+          fi
       - name: Validate lock schema
         run: python3 tools/check-lock-schema.py models.lock.json
       - name: Piper voice model card (license info)

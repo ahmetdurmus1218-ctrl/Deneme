@@ -103,7 +103,8 @@ class AndroidSpeechOutput(context: Context) : SpeechOutput {
         if (status == TextToSpeech.SUCCESS) {
             ready = true
             voice = pickOfflineTurkishVoice()
-            voice?.let { tts.voice = it } ?: tts.setLanguage(TURKISH)
+            val v = voice
+            if (v != null) tts.setVoice(v) else tts.setLanguage(TURKISH)
         }
         initDone.complete(status == TextToSpeech.SUCCESS)
     }
