@@ -91,4 +91,16 @@ class VoiceCommandTest {
         assertNull(QuickCommandRouter.route("yüzde elli indirim ne demek"))
         assertNull(QuickCommandRouter.route("on yıl önce ne oldu"))
     }
+
+    @Test
+    fun arithmeticIsShownWithSymbols() {
+        val m = io.github.ahmetdurmus1218.jarvis.core.text.MathText
+        assertEquals("12 × 7", m.pretty("12 carpi 7"))
+        assertEquals("12 × 7", m.pretty("12 çarpı 7"))
+        assertEquals("100 ÷ 4 + 3", m.pretty("100/4 arti 3"))
+        assertEquals("9 − 2", m.pretty("9 eksi 2"))
+        assertEquals("5 - 3", m.pretty("5 - 3"))
+        assertEquals("2^10", m.pretty("2^10"))
+        assertEquals("carpimi", m.pretty("carpimi"), "only whole words")
+    }
 }

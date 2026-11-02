@@ -50,6 +50,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -179,7 +180,7 @@ private fun StatusBar(
     ) {
         Column(Modifier.weight(1f)) {
             Text("J.A.R.V.I.S", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, letterSpacing = 3.sp, fontSize = 15.sp)
-            Text("● ÇEVRİMDIŞI · VERİ CİHAZDA", color = JarvisColors.Green, fontFamily = FontFamily.Monospace, fontSize = 10.sp, letterSpacing = 1.sp)
+            Text("● ÇEVRİMDIŞI", color = JarvisColors.Green, fontFamily = FontFamily.Monospace, fontSize = 10.sp, letterSpacing = 1.sp, maxLines = 1)
         }
         HudChip(if (conversationMode) "SOHBET MODU ✓" else "SOHBET MODU", conversationMode) { onConversationMode(!conversationMode) }
         Spacer(Modifier.width(6.dp))
@@ -218,7 +219,9 @@ private fun Stage(mode: CoreMode, level: Float, engineLabel: String, last: Turn?
     ) {
         Spacer(Modifier.height(4.dp))
         val coreModifier = if (onCoreTap != null) Modifier.clip(CircleShape).clickable(onClick = onCoreTap) else Modifier
-        HudCore(mode, level, coreModifier, size = 250.dp)
+        // Large while waiting; smaller once there is an answer to read.
+        val coreSize by animateDpAsState(if (last == null) 250.dp else 170.dp, tween(600))
+        HudCore(mode, level, coreModifier, size = coreSize)
         Text(
             when (mode) {
                 CoreMode.IDLE -> "HAZIR"

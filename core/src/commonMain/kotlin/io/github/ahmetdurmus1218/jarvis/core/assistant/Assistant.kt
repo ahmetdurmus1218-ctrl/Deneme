@@ -245,7 +245,7 @@ object QuickResponder {
             val r = io.github.ahmetdurmus1218.jarvis.core.tools.Calculator.format(
                 io.github.ahmetdurmus1218.jarvis.core.tools.Calculator.evaluate(cmd.expression),
             )
-            Sahne("Sonuç $r.", Gorsel(GorselTip.SAYI, deger = r, etiket = cmd.expression))
+            Sahne("Sonuç $r.", Gorsel(GorselTip.SAYI, deger = r, etiket = io.github.ahmetdurmus1218.jarvis.core.text.MathText.pretty(cmd.expression)))
         } catch (e: io.github.ahmetdurmus1218.jarvis.core.tools.Calculator.CalcException) {
             Sahne("Bunu hesaplayamadım: ${e.message}.")
         }

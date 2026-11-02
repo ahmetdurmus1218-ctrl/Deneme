@@ -83,7 +83,7 @@ class MockLlmEngine(private val tokenDelayMs: Long = 12, private val chunkSize: 
                 val r = field(json, "sonuc")
                 if (r != null) {
                     reply(
-                        Sahne("Sonuç $r efendim.", Gorsel(GorselTip.SAYI, deger = r, etiket = field(json, "ifade"))),
+                        Sahne("Sonuç $r efendim.", Gorsel(GorselTip.SAYI, deger = r, etiket = field(json, "ifade")?.let(io.github.ahmetdurmus1218.jarvis.core.text.MathText::pretty))),
                         kaynaklar = listOf(Kaynak("Hesap makinesi", "arac", "hesapla")),
                     )
                 } else {

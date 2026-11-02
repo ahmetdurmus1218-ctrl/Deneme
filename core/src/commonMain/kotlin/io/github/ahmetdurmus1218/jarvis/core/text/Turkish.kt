@@ -58,3 +58,23 @@ object Turkish {
     /** @param isoDayOfWeek 1 = Monday .. 7 = Sunday */
     fun dayName(isoDayOfWeek: Int): String = DAYS[isoDayOfWeek - 1]
 }
+
+/** How a spoken or typed arithmetic expression is shown on a card: "12 carpi 7" → "12 × 7". */
+object MathText {
+    // Java's \b only knows ASCII letters, so the Turkish spellings are replaced as plain text.
+    private val turkish = listOf("çarpı" to "×", "bölü" to "÷", "artı" to "+")
+    private val ascii = listOf(
+        Regex("\\bcarpi\\b") to "×",
+        Regex("\\bbolu\\b") to "÷",
+        Regex("\\barti\\b") to "+",
+        Regex("\\beksi\\b") to "−",
+    )
+
+    fun pretty(expression: String): String {
+        var s = expression
+        for ((w, sym) in turkish) s = s.replace(w, sym)
+        for ((rx, sym) in ascii) s = s.replace(rx, sym)
+        s = s.replace("*", " × ").replace("/", " ÷ ")
+        return s.replace(Regex("\\s+"), " ").trim()
+    }
+}
