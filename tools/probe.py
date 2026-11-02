@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+import urllib.parse
 import urllib.request
 
 UNSTABLE = re.compile(r"(alpha|beta|rc|dev|eap|snapshot|-m\d|preview|pre)", re.I)
@@ -129,7 +130,7 @@ def kiwix(path, pattern, limit=4):
 def android_sdk():
     try:
         xml = get("https://dl.google.com/android/repository/repository2-3.xml")
-        plats = sorted(set(re.findall(r'path="platforms;(android-[\w.-]+)"', xml)))
+        plats = sorted(set(re.findall(r'path="platforms;android-(\d+(?:\.\d+)?)"', xml)), key=lambda v: float(v))
         bts = sorted(set(re.findall(r'path="build-tools;([\d.]+)"', xml)), key=vkey)
         print("SDK platforms:", " ".join(plats[-8:]))
         print("SDK build-tools:", " ".join(bts[-5:]))
@@ -137,7 +138,9 @@ def android_sdk():
         print(f"SDK: ERROR {e}")
 
 
-def redirects(url):
+def redirects(url, depth=0):
+    if depth > 5:
+        return
     try:
         req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "jarvis-probe"})
         class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -148,7 +151,10 @@ def redirects(url):
             r = opener.open(req, timeout=60)
             print(f"REDIRECT {url}: {r.status} (no redirect)")
         except urllib.error.HTTPError as e:
-            print(f"REDIRECT {url}: {e.code} -> {e.headers.get('Location')}")
+            loc = e.headers.get('Location')
+            print(f"REDIRECT {url[:100]}: {e.code} -> {(loc or '')[:120]}")
+            if loc and e.code in (301, 302, 303, 307, 308):
+                redirects(urllib.parse.urljoin(url, loc), depth + 1)
     except Exception as e:  # noqa: BLE001
         print(f"REDIRECT {url}: ERROR {e}")
 
@@ -164,6 +170,8 @@ def main():
             maven(PORTAL, c)
     if section in ("all", "sdk"):
         android_sdk()
+    if section == "all":
+        print("GRADLE 9.8.2 sha256:", get("https://services.gradle.org/distributions/gradle-9.8.2-bin.zip.sha256").strip())
     if section in ("all", "models"):
         hf_search("gemma-4", author="litert-community")
         hf_files("litert-community/gemma-4-E4B-it-litert-lm", r"\.litertlm$")
@@ -181,6 +189,12 @@ def main():
         kiwix("release/kiwix-tools/", r"win-x86_64.*sha256$")
         kiwix("zim/wikipedia/", r"wikipedia_tr_all_nopic.*(sha256|md5)$")
         redirects("https://download.kiwix.org/zim/wikipedia/wikipedia_tr_all_nopic_2026-09.zim")
+        for u in ["https://download.kiwix.org/zim/wikipedia/wikipedia_tr_all_nopic_2026-09.zim.sha256",
+                  "https://download.kiwix.org/release/kiwix-tools/kiwix-tools_win-x86_64-3.8.1.zip.sha256"]:
+            try:
+                print(f"SHA {u}: {get(u).strip()[:200]}")
+            except Exception as e:  # noqa: BLE001
+                print(f"SHA {u}: ERROR {e}")
         redirects("https://huggingface.co/rhasspy/piper-voices/resolve/main/tr/tr_TR/dfki/medium/tr_TR-dfki-medium.onnx")
         redirects("https://github.com/k2-fsa/sherpa-onnx/releases/download/v2.0.1/sherpa-onnx-2.0.1.aar")
         gh_release("ggml-org/llama.cpp", r"win.*x64")
