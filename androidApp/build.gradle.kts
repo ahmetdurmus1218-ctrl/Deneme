@@ -1,3 +1,7 @@
+import java.io.File
+import java.net.URI
+import java.security.MessageDigest
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -10,31 +14,39 @@ apply(from = rootProject.file("gradle/signing.gradle.kts"))
 val sherpaVersion = libs.versions.sherpa.onnx.get()
 val sherpaSha256 = "a8d09d1d32f3eb8520482c6d3d43fae674681c5b050385967c70a3c2c9bf0ee7"
 val sherpaAar = layout.buildDirectory.file("third-party/sherpa-onnx-$sherpaVersion.aar")
-val fetchSherpaAar by tasks.registering {
+val fetchSherpaAar = tasks.register("fetchSherpaAar") {
     val out = sherpaAar
+    val url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaVersion/sherpa-onnx-$sherpaVersion.aar"
+    val expected = sherpaSha256
+    inputs.property("sha256", expected)
     outputs.file(out)
-    doLast {
-        val target = out.get().asFile
-        fun sha256(f: java.io.File): String {
-            val md = java.security.MessageDigest.getInstance("SHA-256")
-            f.inputStream().use { input ->
-                val buf = ByteArray(1 shl 16)
-                while (true) { val n = input.read(buf); if (n < 0) break; md.update(buf, 0, n) }
+    doLast { fetchVerified(url, expected, out.get().asFile) }
+}
+
+/** Downloads [url] to [target] unless a file with the expected SHA-256 is already there. */
+fun fetchVerified(url: String, expected: String, target: File) {
+    fun sha256(f: File): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        f.inputStream().use { input ->
+            val buf = ByteArray(1 shl 16)
+            while (true) {
+                val n = input.read(buf)
+                if (n < 0) break
+                md.update(buf, 0, n)
             }
-            return md.digest().joinToString("") { "%02x".format(it) }
         }
-        if (target.isFile && sha256(target) == sherpaSha256) return@doLast
-        target.parentFile.mkdirs()
-        val url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaVersion/sherpa-onnx-$sherpaVersion.aar"
-        val tmp = java.io.File(target.path + ".part")
-        java.net.URI(url).toURL().openStream().use { input -> tmp.outputStream().use { input.copyTo(it) } }
-        val actual = sha256(tmp)
-        if (actual != sherpaSha256) {
-            tmp.delete()
-            throw GradleException("sherpa-onnx AAR SHA-256 mismatch: expected $sherpaSha256, got $actual")
-        }
-        tmp.renameTo(target)
+        return md.digest().joinToString("") { b -> "%02x".format(b) }
     }
+    if (target.isFile && sha256(target) == expected) return
+    target.parentFile.mkdirs()
+    val tmp = File(target.path + ".part")
+    URI(url).toURL().openStream().use { input -> tmp.outputStream().use { input.copyTo(it) } }
+    val actual = sha256(tmp)
+    if (actual != expected) {
+        tmp.delete()
+        throw GradleException("SHA-256 mismatch for $url: expected $expected, got $actual")
+    }
+    if (!tmp.renameTo(target)) throw GradleException("could not move ${tmp.name} into place")
 }
 
 android {
