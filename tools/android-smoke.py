@@ -15,6 +15,7 @@ Usage: python3 tools/android-smoke.py <dir-with-apks> [--download]
 """
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -113,7 +114,9 @@ def shot(name):
     png = f"smoke-shots/{name}.png"
     with open(png, "wb") as f:
         f.write(subprocess.run(["adb", "exec-out", "screencap", "-p"], capture_output=True).stdout)
-    subprocess.run(["convert", png, "-resize", "360x", "-quality", "70", png[:-4] + ".jpg"], check=False)
+    tool = shutil.which("magick") or shutil.which("convert")
+    if tool:  # optional: a small JPEG next to the PNG
+        subprocess.run([tool, png, "-resize", "360x", "-quality", "70", png[:-4] + ".jpg"], check=False)
     print(f"[shot] {name}: {' | '.join(screen_texts())}", flush=True)
 
 
