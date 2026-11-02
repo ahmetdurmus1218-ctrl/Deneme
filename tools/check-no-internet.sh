@@ -48,7 +48,7 @@ if [[ -n "$GATE_APK" ]]; then
   # The gate must not ask for anything beyond what downloading needs.
   while read -r p; do
     case "$p" in
-      android.permission.INTERNET|io.github.ahmetdurmus1218.jarvis.permission.GATE|io.github.ahmetdurmus1218.jarvis.gate.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION) ;;
+      android.permission.INTERNET|android.permission.FOREGROUND_SERVICE|android.permission.FOREGROUND_SERVICE_DATA_SYNC|android.permission.POST_NOTIFICATIONS|io.github.ahmetdurmus1218.jarvis.permission.GATE|io.github.ahmetdurmus1218.jarvis.gate.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION) ;;
       "") ;;
       *) echo "::error::Gate APK requests unexpected permission $p"; fail=1 ;;
     esac

@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 import kotlin.coroutines.resume
 
@@ -81,7 +83,13 @@ class GateClient(private val context: Context, private val storage: AndroidModel
         cont.invokeOnCancellation { runCatching { context.unbindService(conn) } }
     }
 
-    override suspend fun download(item: LockedItem, onProgress: (DownloadProgress) -> Unit): DownloadOutcome {
+    /** One transfer at a time: the shared fields below belong to the running transfer. */
+    private val transferLock = Mutex()
+
+    override suspend fun download(item: LockedItem, onProgress: (DownloadProgress) -> Unit): DownloadOutcome =
+        transferLock.withLock { downloadLocked(item, onProgress) }
+
+    private suspend fun downloadLocked(item: LockedItem, onProgress: (DownloadProgress) -> Unit): DownloadOutcome {
         refresh()
         if (_state.value !is DownloadState.Ready) return DownloadOutcome.Failed("Kapı yüklü değil")
         val dest: File = storage.partialFile(item)
@@ -129,6 +137,7 @@ class GateClient(private val context: Context, private val storage: AndroidModel
             val outcome = result.await()
             if (outcome !is DownloadOutcome.Done) return outcome
             // Kale recomputes the hash itself; it never trusts the gate's value.
+            if (!dest.isFile) return DownloadOutcome.Failed("İndirilen dosya bulunamadı; tekrar deneyin")
             val (sha, size) = withContext(Dispatchers.IO) { Hashing.sha256(dest) }
             return outcome.copy(sha256 = sha, bytes = size)
         } catch (e: Exception) {

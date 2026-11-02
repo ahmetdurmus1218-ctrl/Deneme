@@ -78,19 +78,22 @@ fun ModelsScreen(bridge: PlatformBridge, registry: ModelRegistry, installer: Mod
         }) { Text("Dosyadan yükle") }
         msg?.let { Text(it, color = JarvisColors.Amber) }
         if (items.isEmpty()) Text("Bu sürümün kilit dosyasında model yok.", color = JarvisColors.Amber)
+        val busy by installer.busy.collectAsState()
         items.groupBy { it.group }.forEach { (_, group) ->
-            group.forEach { item ->
-                val installed = remember(version) { bridge.models.isInstalled(item) }
-                ItemRow(item, status[item.id], installed)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (installed) {
-                        TextButton(onClick = { installer.delete(item) }) { Text("Sil") }
-                    } else {
-                        TextButton(onClick = { scope.launch { installer.install(group, "Kullanıcı isteği: ${item.title}") } }) { Text("İndir") }
-                    }
+            // One button per group: Whisper needs encoder + decoder + tokens together.
+            val installedFlags = group.map { item -> remember(version, item.id) { bridge.models.isInstalled(item) } }
+            group.forEachIndexed { i, item -> ItemRow(item, status[item.id], installedFlags[i]) }
+            val missing = group.filterIndexed { i, _ -> !installedFlags[i] }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (missing.isEmpty()) {
+                    TextButton(enabled = !busy, onClick = { group.forEach { installer.delete(it) } }) { Text("Sil") }
+                } else {
+                    val label = if (group.size > 1) "İndir (${missing.size} dosya, ${formatBytes(missing.sumOf { it.size })})" else "İndir"
+                    TextButton(enabled = !busy, onClick = { scope.launch { installer.install(group, "Kullanıcı isteği: ${group.first().title}") } }) { Text(label) }
                 }
             }
         }
+        if (busy) Text("Bir indirme sürüyor; bitene kadar diğer düğmeler bekler.", color = JarvisColors.TextDim, fontSize = 12.sp)
         val unverified = remember(version) { bridge.models.importedUnverifiedFiles() }
         if (unverified.isNotEmpty()) {
             Text("Doğrulanmamış dosyalar", color = JarvisColors.Red, fontWeight = FontWeight.SemiBold)

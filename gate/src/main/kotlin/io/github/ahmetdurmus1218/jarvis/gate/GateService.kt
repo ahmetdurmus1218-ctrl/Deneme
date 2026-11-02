@@ -1,6 +1,10 @@
 package io.github.ahmetdurmus1218.jarvis.gate
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
+import android.content.pm.ServiceInfo
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -16,6 +20,7 @@ import androidx.core.os.BundleCompat
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Bound service, protected by the signature permission GATE. Every message is additionally checked
@@ -27,6 +32,12 @@ class GateService : Service() {
     private val cancelFlags = ConcurrentHashMap<String, AtomicBoolean>()
     private val downloader by lazy { GateDownloader() }
     private lateinit var messenger: Messenger
+    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
+
+    private companion object {
+        const val CHANNEL = "downloads"
+        const val NOTIFICATION_ID = 1
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -34,6 +45,41 @@ class GateService : Service() {
     }
 
     override fun onBind(intent: Intent): IBinder = messenger.binder
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_NOT_STICKY
+
+    private val running = AtomicInteger(0)
+
+    /**
+     * Long downloads must survive the screen turning off or Jarvis going to the background, so while
+     * a transfer runs the gate is a foreground service with a visible notification. Allowed because
+     * the (visible) Jarvis app is bound to it; if Android refuses, the download still runs.
+     */
+    private fun enterForeground() {
+        if (running.getAndIncrement() > 0) return
+        try {
+            val nm = getSystemService(NotificationManager::class.java)
+            nm.createNotificationChannel(NotificationChannel(CHANNEL, "İndirmeler", NotificationManager.IMPORTANCE_LOW))
+            val n = Notification.Builder(this, CHANNEL)
+                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setContentTitle("Jarvis Kapı")
+                .setContentText("Onayladığınız dosya indiriliyor…")
+                .setOngoing(true)
+                .build()
+            startForegroundService(Intent(this, GateService::class.java))
+            startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } catch (e: Exception) {
+            GateLog(this).add("ön plan servisi açılamadı: ${e.javaClass.simpleName}")
+        }
+    }
+
+    private fun leaveForeground() {
+        if (running.decrementAndGet() > 0) return
+        runCatching {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
+    }
 
     override fun onDestroy() {
         cancelFlags.values.forEach { it.set(true) }
@@ -79,6 +125,7 @@ class GateService : Service() {
         }
         val flag = AtomicBoolean(false)
         cancelFlags[req.itemId] = flag
+        enterForeground()
         executor.execute {
             val log = GateLog(this)
             try {
@@ -100,6 +147,7 @@ class GateService : Service() {
                 }
             } finally {
                 cancelFlags.remove(req.itemId)
+                mainHandler.post { leaveForeground() }
             }
         }
     }

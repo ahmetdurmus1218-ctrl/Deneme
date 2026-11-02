@@ -7,6 +7,9 @@ import io.github.ahmetdurmus1218.jarvis.core.net.DownloadPolicy
 import io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent
 import io.github.ahmetdurmus1218.jarvis.core.time.NowProvider
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -108,8 +111,27 @@ class ModelInstaller(
     /**
      * Installs [items] after ONE approval covering exactly these files. Returns true if all succeeded.
      */
-    suspend fun install(items: List<LockedItem>, reason: String): Boolean {
-        val pending = items.filterNot { bridge.models.isInstalled(it) }
+    private val installLock = Mutex()
+    private val _busy = MutableStateFlow(false)
+    /** True while an approval or download is running; screens disable their download buttons. */
+    val busy: StateFlow<Boolean> = _busy.asStateFlow()
+
+    /**
+     * Installs [items] after ONE approval covering exactly these files. Returns true if all succeeded.
+     * Only one install runs at a time: a second request waits, then skips what is already installed
+     * (two buttons of the same group must never download the same file twice).
+     */
+    suspend fun install(items: List<LockedItem>, reason: String): Boolean = installLock.withLock {
+        _busy.value = true
+        try {
+            installLocked(items, reason)
+        } finally {
+            _busy.value = false
+        }
+    }
+
+    private suspend fun installLocked(items: List<LockedItem>, reason: String): Boolean {
+        val pending = items.distinctBy { it.id }.filterNot { bridge.models.isInstalled(it) }
         if (pending.isEmpty()) return true
         if (settings.state.value.fullOffline) {
             pending.forEach { setStatus(it.id, ItemStatus.Failed("Tam offline mod açık")) }
@@ -151,7 +173,17 @@ class ModelInstaller(
 
     private suspend fun downloadOne(item: LockedItem, method: ApprovalMethod): Boolean {
         setStatus(item.id, ItemStatus.Downloading(0, item.size))
-        val outcome = bridge.downloader.download(item) { p -> setStatus(item.id, ItemStatus.Downloading(p.bytes, p.total)) }
+        // Mobile networks drop connections (Wi-Fi ↔ LTE switch). The gate resumes with Range,
+        // so a failed attempt is retried a few times before giving up.
+        var outcome: DownloadOutcome = DownloadOutcome.Failed("başlamadı")
+        for (attempt in 1..MAX_ATTEMPTS) {
+            outcome = bridge.downloader.download(item) { p -> setStatus(item.id, ItemStatus.Downloading(p.bytes, p.total)) }
+            if (outcome is DownloadOutcome.Done || bridge.downloader.state.value is DownloadState.Unavailable) break
+            if (attempt < MAX_ATTEMPTS) {
+                setStatus(item.id, ItemStatus.Failed("Bağlantı koptu, yeniden deneniyor ($attempt/$MAX_ATTEMPTS)…"))
+                delay(RETRY_DELAY_MS * attempt)
+            }
+        }
         return when (outcome) {
             is DownloadOutcome.Failed -> {
                 setStatus(item.id, ItemStatus.Failed(outcome.message))
@@ -174,6 +206,11 @@ class ModelInstaller(
                 ok
             }
         }
+    }
+
+    companion object {
+        const val MAX_ATTEMPTS = 4
+        const val RETRY_DELAY_MS = 3_000L
     }
 
     sealed interface ImportResult {

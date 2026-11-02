@@ -8,6 +8,7 @@ import io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -30,7 +31,7 @@ class ModelInstallerTest {
         override fun append(name: String, line: String) { m[name] = (m[name].orEmpty()) + line + "\n" }
     }
 
-    private class FakeBridge(private val returnSha: String, private val approve: Boolean = true) : PlatformBridge {
+    private class FakeBridge(private val returnSha: String, private val approve: Boolean = true, private val failFirst: Int = 0) : PlatformBridge {
         val committed = mutableListOf<String>()
         val deletedTemp = mutableListOf<String>()
         var downloads = 0
@@ -49,6 +50,7 @@ class ModelInstallerTest {
             override fun refresh() {}
             override suspend fun download(item: LockedItem, onProgress: (DownloadProgress) -> Unit): DownloadOutcome {
                 downloads++
+                if (downloads <= failFirst) return DownloadOutcome.Failed("Software caused connection abort", 3)
                 onProgress(DownloadProgress(item.size, item.size))
                 return DownloadOutcome.Done("/tmp/${item.fileName}.part", item.size, returnSha, item.host)
             }
@@ -118,5 +120,48 @@ class ModelInstallerTest {
         settings.update { it.copy(fullOffline = true) }
         assertFalse(inst.install(listOf(item), "test"))
         assertEquals(0, bridge.downloads)
+    }
+
+    @Test
+    fun droppedConnectionIsRetriedAndResumes() = runTest {
+        val bridge = FakeBridge(good, failFirst = 2)
+        val (inst, log) = installer(bridge)
+        val job = launch { inst.approval.first { it != null }; inst.answerApproval(true) }
+        assertTrue(inst.install(listOf(item), "test"))
+        job.join()
+        assertEquals(3, bridge.downloads)
+        assertIs<ItemStatus.Done>(inst.status.value["m"])
+        assertEquals("tamam", log.events.value.single().result)
+    }
+
+    @Test
+    fun givesUpAfterTheLastAttempt() = runTest {
+        val bridge = FakeBridge(good, failFirst = 100)
+        val (inst, _) = installer(bridge)
+        val job = launch { inst.approval.first { it != null }; inst.answerApproval(true) }
+        assertFalse(inst.install(listOf(item), "test"))
+        job.join()
+        assertEquals(ModelInstaller.MAX_ATTEMPTS, bridge.downloads)
+        assertIs<ItemStatus.Failed>(inst.status.value["m"])
+    }
+
+    @Test
+    fun twoButtonsForTheSameGroupDownloadOnce() = runTest {
+        val bridge = FakeBridge(good)
+        val (inst, _) = installer(bridge)
+        val approver = launch {
+            while (true) {
+                inst.approval.first { it != null }
+                inst.answerApproval(true)
+                inst.approval.first { it == null }
+            }
+        }
+        val a = async { inst.install(listOf(item), "a") }
+        val b = async { inst.install(listOf(item), "b") }
+        assertTrue(a.await())
+        assertTrue(b.await())
+        approver.cancel()
+        assertEquals(1, bridge.downloads)
+        assertEquals(listOf("m"), bridge.committed)
     }
 }

@@ -42,5 +42,11 @@ class StatusActivity : Activity() {
         root.addView(text(if (log.isEmpty()) "Henüz işlem yok." else log.asReversed().joinToString("\n"), 13f))
         root.addView(text("Kapı'yı kaldırırsanız Jarvis tamamen çevrimdışı çalışmaya devam eder.", 13f, Color.rgb(138, 160, 180)))
         setContentView(ScrollView(this).apply { addView(root) })
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            // Only so the download notification is visible; downloads work without it.
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
+        }
     }
 }

@@ -23,6 +23,11 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] CI tamamen yeşil: birim testleri, Android lint, APK'lar, "Kale'de İnternet yok" denetimi, PC arayüz gezintisi, Windows MSI ve Android emülatöründe uçtan uca test (Kapı üzerinden gerçek indirme + iki kez SHA-256).
 - [x] `v0.1.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v0.1.0 (jarvis.apk, jarvis-kapi.apk, Jarvis-Setup-0.1.0.msi, models.lock.json, SHA256SUMS.txt). Bu oturumdan etiket gönderimi engelli olduğu için sürüm `.github/release-request` dosyasıyla tetiklendi; sonraki sürümlerde bu dosyaya yeni etiketi yazmak yeterli.
 
+## v0.1.1 — Gerçek telefonda bulunan indirme hataları
+- [x] Grup başına tek indirme düğmesi, indirmeler sırayla (aynı dosya iki kez indirilmez — ENOENT hatası).
+- [x] Bağlantı koptuğunda kaldığı yerden otomatik yeniden deneme (4 deneme).
+- [x] Kapı indirme sırasında ön plan servisi (bildirimli), ekran kapansa da sürer.
+
 ## v0.2 — Gerçek LLM
 - [ ] Android: LiteRT-LM (`com.google.ai.edge.litertlm:litertlm-android`, 0.19.0 doğrulandı) + Gemma 4 E4B, RAM < 12 GB ya da yükleme hatasında E2B; GPU → CPU geri dönüşü; akışlı çıktı.
 - [ ] PC: llama.cpp `llama-server` (Vulkan, b12034 kilitli) alt süreç, `127.0.0.1`, OpenAI uyumlu uç nokta, kapanınca alt süreci kapat; Qwen 3.5 9B Q4_K_M (kilitli), alternatif Gemma 4 E4B GGUF; düşünme modu.
