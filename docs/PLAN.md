@@ -41,6 +41,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Mikrofon düğmesi: dokun-konuş (sessizlikte kendisi durur) + basılı tutarak konuşma.
 - [x] Android 13+: Türkçe cihaz içi ses paketi kontrolü, onaylı "Türkçe ses paketini indir" düğmesi (sistem indirir, ağ kaydına yazılır).
 - [x] Anlaşılır Türkçe hata mesajları; meşgul/kopan tanıyıcıda otomatik yeniden deneme.
+- [x] `v0.2.1` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v0.2.1
 
 ## v0.3 — Bilgi
 - [ ] Android: java-libkiwix (`org.kiwix:libkiwix` 2.7.0 doğrulandı) ile Türkçe Wikipedia ZIM araması/okuma (`wiki_ara`, `wiki_oku`).
