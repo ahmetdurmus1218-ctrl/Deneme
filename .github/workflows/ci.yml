@@ -53,7 +53,7 @@ jobs:
       - name: Android lint
         run: ./gradlew --no-daemon :androidApp:lintRelease :gate:lintRelease
       - name: Build APKs
-        run: ./gradlew --no-daemon :androidApp:assembleRelease :gate:assembleRelease
+        run: ./gradlew --no-daemon :androidApp:assembleRelease :androidApp:assembleReleaseAndroidTest :gate:assembleRelease
       - name: Kale has no INTERNET permission
         run: bash tools/check-no-internet.sh androidApp/build/outputs/apk/release/androidApp-release.apk gate/build/outputs/apk/release/gate-release.apk
       - name: Upload test reports
@@ -71,6 +71,7 @@ jobs:
           name: apks
           path: |
             androidApp/build/outputs/apk/release/*.apk
+            androidApp/build/outputs/apk/androidTest/release/*.apk
             gate/build/outputs/apk/release/*.apk
           retention-days: 7
 

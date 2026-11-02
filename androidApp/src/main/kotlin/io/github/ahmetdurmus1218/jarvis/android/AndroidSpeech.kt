@@ -81,6 +81,12 @@ class AndroidSpeechInput(
             listener.onError(PACK_MISSING)
             return
         }
+        // Seen on the emulator and on phones: the service exists but has no Turkish model, and it
+        // disconnects (error 11) the moment listening starts. Say so instead of failing cryptically.
+        if (pack == SpeechInput.LanguagePack.UNSUPPORTED) {
+            listener.onError(TURKISH_UNSUPPORTED)
+            return
+        }
         if (mine != session) return
         val r = try {
             obtainRecognizer()
@@ -225,20 +231,22 @@ class AndroidSpeechInput(
         SpeechRecognizer.ERROR_AUDIO -> "Mikrofon açılamadı (başka bir uygulama kullanıyor olabilir)."
         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Mikrofon izni gerekli. Telefon Ayarları → Uygulamalar → Jarvis → İzinler → Mikrofon."
         SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Ses tanıma meşgul, bir saniye sonra tekrar deneyin."
-        SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED -> "Telefonun cihaz içi ses tanıması Türkçe'yi desteklemiyor. Şimdilik yazarak kullanın; Jarvis'in kendi ses tanıması (Whisper) sonraki sürümde geliyor."
+        SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED -> "Telefonun cihaz içi ses tanıması Türkçe'yi desteklemiyor. $WHISPER_HINT"
         SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> PACK_MISSING
-        SpeechRecognizer.ERROR_SERVER_DISCONNECTED -> "Ses tanıma servisi kapandı, tekrar deneyin."
+        SpeechRecognizer.ERROR_SERVER_DISCONNECTED -> "Telefonun ses tanıma servisi Türkçe dinlemeyi başlatamadı. $WHISPER_HINT"
         SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT, SpeechRecognizer.ERROR_SERVER ->
             "Telefonun ses tanıması internet istedi; Jarvis yalnızca cihaz içi tanıma kullanır. Türkçe ses paketini indirin (Ayarlar)."
-        else -> "Ses tanıma hatası (kod $code). Şimdilik yazarak kullanabilirsiniz."
+        else -> "Ses tanıma hatası (kod $code). $WHISPER_HINT"
     }
 
     private companion object {
         const val TAG = "JarvisMic"
         const val READY_TIMEOUT_MS = 6_000L
-        const val NOT_STARTING = "Telefonun cihaz içi ses tanıma servisi cevap vermedi. Şimdilik yazarak kullanın; Jarvis'in kendi ses tanıması (Whisper) bu sorunu çözecek."
+        const val WHISPER_HINT = "Aşağıdaki düğmeyle Jarvis'in kendi ses tanımasını (Whisper, 375 MB) indirin; her telefonda internetsiz çalışır."
+        const val TURKISH_UNSUPPORTED = "Bu telefonun kendi ses tanıması Türkçe'yi internetsiz desteklemiyor. $WHISPER_HINT"
+        const val NOT_STARTING = "Telefonun cihaz içi ses tanıma servisi cevap vermedi. $WHISPER_HINT"
         const val NOTHING_HEARD = "Bir şey duyamadım. Mikrofona dokunun ve konuşun; susunca kendisi durur."
-        const val PACK_MISSING = "Telefonda Türkçe cihaz içi ses paketi yüklü değil. Jarvis → Ayarlar → \"Türkçe ses paketini indir\" düğmesini kullanın."
+        const val PACK_MISSING = "Telefonda Türkçe cihaz içi ses paketi yüklü değil. Ayarlar'daki \"Türkçe ses paketini indir\" düğmesini kullanın ya da $WHISPER_HINT"
     }
 }
 

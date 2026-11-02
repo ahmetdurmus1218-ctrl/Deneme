@@ -138,6 +138,20 @@ def step(msg):
     print(f"\n=== {msg}", flush=True)
 
 
+def scroll_find(pred, what, tries=12):
+    """Swipes up until a node matching pred is fully visible above the bottom navigation."""
+    for _ in range(tries):
+        root = dump()
+        nav = find(tab("Ayarlar"), root)
+        nav_top = bounds(nav)[1] if nav is not None else 10 ** 6
+        for n in nodes(root):
+            if pred(n) and bounds(n)[3] < nav_top:
+                return n
+        adb("shell", "input", "swipe", "540", "1600", "540", "900", "400")
+        time.sleep(1)
+    raise SystemExit(f"not found after scrolling: {what}")
+
+
 def mic_feedback():
     baseline = set(screen_texts())
     tap(wait_for(text_is("🎤"), "mic button"))
@@ -259,6 +273,67 @@ def main():
             tap(first)
         wait_for(text_has("tamam"), "gate log")
         shot("08-kapi-durum")
+        check_no_crash()
+
+        step("Whisper from the chat: mic → 'Turkish unsupported' → one-tap download (3 files, one approval)")
+        adb("shell", "am", "start", "-W", "-n", f"{KALE}/.android.MainActivity")
+        tap(wait_for(tab("Sohbet"), "chat tab"))
+        tap(wait_for(text_is("🎤"), "mic button"))
+        offer = wait_for(lambda n: label(n).startswith("Jarvis'in ses tanımasını indir"), "Whisper offer in the chat", timeout=30)
+        shot("09-kale-whisper-teklif")
+        tap(offer)
+        wait_for(text_is("İnternet erişimi onayı"), "approval screen")
+        wait_for(text_has("huggingface.co"), "target host on approval screen")
+        wait_for(text_has("3 dosya indirilecek"), "one approval for the whole group")
+        tap(wait_for(text_is("Onayla"), "approve button"))
+        time.sleep(4)
+        adb("shell", "input", "text", PIN)
+        adb("shell", "input", "keyevent", "66")
+        seen_progress = False
+        end = time.time() + 900
+        while time.time() < end:
+            texts = screen_texts()
+            busy = [t for t in texts if t.startswith("Whisper indiriliyor") or t.startswith("Whisper hazırlanıyor")]
+            if busy:
+                if not seen_progress:
+                    print("progress:", busy[0])
+                seen_progress = True
+            elif seen_progress:
+                if any(t.startswith("Jarvis'in ses tanımasını indir") for t in texts):
+                    raise SystemExit("Whisper download failed: " + " | ".join(texts))
+                break
+            time.sleep(3)
+        else:
+            raise SystemExit("Whisper download did not finish: " + " | ".join(screen_texts()))
+        shot("10-kale-whisper-indi")
+        tap(wait_for(tab("Modeller"), "Models tab"))
+        scroll_find(lambda n: label(n).startswith("Whisper small (tokens)"), "Whisper rows")
+        texts = screen_texts()
+        if any(t.startswith("İndir (3 dosya") for t in texts):
+            raise SystemExit("Whisper group still shows a download button")
+        tap(wait_for(tab("Ağ"), "network tab"))
+        time.sleep(1)
+        ok_entries = sum(1 for t in screen_texts() if "Sonuç: tamam" in t)
+        print("network log 'tamam' entries:", ok_entries)
+        if ok_entries < 4:
+            raise SystemExit("expected Piper + 3 Whisper files in the network log")
+        check_no_crash()
+
+        step("Whisper decodes Turkish ON the device with the installed files (same code path as the mic)")
+        adb("install", "-r", find_apk(apk_dir, "androidApp-release-androidTest.apk"))
+        out = adb("shell", "am", "instrument", "-w",
+                  f"{KALE}.test/io.github.ahmetdurmus1218.jarvis.probe.WhisperProbe", check=False)
+        print(out)
+        if "INSTRUMENTATION_RESULT: result=PASS" not in out:
+            raise SystemExit("Whisper probe failed")
+
+        step("mic with Whisper installed: tap → listening → feedback")
+        adb("shell", "am", "start", "-W", "-n", f"{KALE}/.android.MainActivity")
+        tap(wait_for(tab("Sohbet"), "chat tab"))
+        mic_feedback()
+        shot("11-kale-mikrofon-whisper")
+        tap(wait_for(tab("Ayarlar"), "settings tab"))
+        wait_for(text_has("Ses tanıma: Whisper small"), "Whisper is the active recognizer")
         check_no_crash()
 
     print("\nSMOKE TEST PASSED", flush=True)

@@ -54,6 +54,12 @@ interface SpeechInput {
 
     enum class LanguagePack { READY, DOWNLOADABLE, UNSUPPORTED, UNKNOWN }
 
+    /**
+     * Lock-file group of Jarvis's own speech model (Whisper) when it could be used but is not installed
+     * yet; the chat screen then offers a one-tap download. Null when installed or not applicable.
+     */
+    val ownModelGroup: String? get() = null
+
     interface Listener {
         fun onPartial(text: String)
         fun onFinal(text: String)

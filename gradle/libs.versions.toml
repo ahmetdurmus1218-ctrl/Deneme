@@ -15,6 +15,8 @@ androidx-fragment = "1.9.1"
 androidx-lifecycle = "2.11.0"
 okhttp = "5.5.1"
 litertlm = "0.19.0"
+# GitHub release asset of k2-fsa/sherpa-onnx (not on Maven); SHA-256 pinned in androidApp/build.gradle.kts
+sherpa-onnx = "2.0.1"
 android-compileSdk = "37"
 android-targetSdk = "37"
 android-minSdk = "31"

@@ -7,6 +7,11 @@ import io.github.ahmetdurmus1218.jarvis.core.net.DownloadPolicy
 import io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent
 import io.github.ahmetdurmus1218.jarvis.core.time.NowProvider
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -51,6 +56,8 @@ class ModelInstaller(
     private val settings: SettingsStore,
     private val netLog: NetworkLogStore,
     private val now: NowProvider = NowProvider.System,
+    /** Downloads live here, not in a screen's scope: leaving the screen must not cancel them. */
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private val _approval = MutableStateFlow<ApprovalRequest?>(null)
     val approval: StateFlow<ApprovalRequest?> = _approval.asStateFlow()
@@ -129,6 +136,13 @@ class ModelInstaller(
             _busy.value = false
         }
     }
+
+    /**
+     * Starts [install] in the installer's own scope, so switching tabs or closing the wizard does not
+     * cancel a running download. [onDone] receives the result.
+     */
+    fun installInBackground(items: List<LockedItem>, reason: String, onDone: (Boolean) -> Unit = {}): Job =
+        scope.launch { onDone(install(items, reason)) }
 
     private suspend fun installLocked(items: List<LockedItem>, reason: String): Boolean {
         val pending = items.distinctBy { it.id }.filterNot { bridge.models.isInstalled(it) }

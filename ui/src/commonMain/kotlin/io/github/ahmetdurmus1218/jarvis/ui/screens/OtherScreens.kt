@@ -90,7 +90,7 @@ fun ModelsScreen(bridge: PlatformBridge, registry: ModelRegistry, installer: Mod
                     TextButton(enabled = !busy, onClick = { group.forEach { installer.delete(it) } }) { Text("Sil") }
                 } else {
                     val label = if (group.size > 1) "İndir (${missing.size} dosya, ${formatBytes(missing.sumOf { it.size })})" else "İndir"
-                    TextButton(enabled = !busy, onClick = { scope.launch { installer.install(group, "Kullanıcı isteği: ${group.first().title}") } }) { Text(label) }
+                    TextButton(enabled = !busy, onClick = { installer.installInBackground(group, "Kullanıcı isteği: ${group.first().title}") }) { Text(label) }
                 }
             }
         }

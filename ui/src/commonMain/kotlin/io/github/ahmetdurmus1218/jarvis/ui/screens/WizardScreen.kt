@@ -89,8 +89,8 @@ fun WizardScreen(
                         enabled = gate is DownloadState.Ready && bundle.isNotEmpty(),
                         onClick = {
                             step = Step.DOWNLOAD
-                            scope.launch {
-                                downloadOk = installer.install(bundle, "İlk kurulum: dil modeli, ses tanıma, ses sentezi ve çevrimdışı Wikipedia.")
+                            installer.installInBackground(bundle, "İlk kurulum: dil modeli, ses tanıma, ses sentezi ve çevrimdışı Wikipedia.") {
+                                downloadOk = it
                             }
                         },
                     ) { Text("Tek onayla indir") }
@@ -113,7 +113,7 @@ fun WizardScreen(
                 Text("3/4 · İndirme ve doğrulama", color = JarvisColors.TextDim)
                 bundle.forEach { ItemRow(it, status[it.id], bridge.models.isInstalled(it)) }
                 when (downloadOk) {
-                    null -> Text("İndiriliyor… Uygulamayı açık tutun.", color = JarvisColors.TextDim)
+                    null -> Text("İndiriliyor… Başka ekrana geçebilirsiniz; indirme sürer.", color = JarvisColors.TextDim)
                     true -> Button(onClick = { step = Step.TEST }) { Text("Devam") }
                     false -> {
                         Text("Bazı dosyalar kurulamadı. Daha sonra Modeller ekranından tekrar deneyebilirsiniz.", color = JarvisColors.Amber)

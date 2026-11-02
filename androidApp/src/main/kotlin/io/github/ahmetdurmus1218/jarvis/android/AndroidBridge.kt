@@ -26,6 +26,8 @@ import io.github.ahmetdurmus1218.jarvis.ui.Approver
 import io.github.ahmetdurmus1218.jarvis.ui.DeviceInfo
 import io.github.ahmetdurmus1218.jarvis.ui.PlatformBridge
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
 import kotlin.coroutines.resume
@@ -50,10 +52,11 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
     override val files: AppFiles = AndroidFiles(app)
     override val models = AndroidModelStorage(app) { activity?.pickDocument() }
     override val downloader = GateClient(app, models)
-    override val speechInput = AndroidSpeechInput(
-        app,
-        ensureMicPermission = { activity?.ensurePermission(android.Manifest.permission.RECORD_AUDIO) ?: false },
-        launch = { block -> activity?.launchOnUi(block) },
+    private val micPermission: suspend () -> Boolean = { activity?.ensurePermission(android.Manifest.permission.RECORD_AUDIO) ?: false }
+    /** Whisper (Jarvis's own, hash-verified model) when installed, else the phone's on-device recognizer. */
+    override val speechInput = PreferWhisperSpeechInput(
+        WhisperSpeechInput(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, micPermission),
+        AndroidSpeechInput(app, ensureMicPermission = micPermission, launch = { block -> activity?.launchOnUi(block) }),
     )
     override val speechOutput = AndroidSpeechOutput(app)
 
@@ -70,7 +73,13 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
     }
 
     override val approver = object : Approver {
-        override suspend fun confirm(title: String, subtitle: String): ApprovalResult {
+        // BiometricPrompt must be created and shown on the main thread; downloads call this from a
+        // background scope (they outlive the screen that started them).
+        override suspend fun confirm(title: String, subtitle: String): ApprovalResult = withContext(Dispatchers.Main) {
+            confirmOnMain(title, subtitle)
+        }
+
+        private suspend fun confirmOnMain(title: String, subtitle: String): ApprovalResult {
             val act = activity ?: return ApprovalResult.Rejected("Uygulama ön planda değil")
             val allowed = BIOMETRIC_STRONG or DEVICE_CREDENTIAL
             if (BiometricManager.from(act).canAuthenticate(allowed) != BiometricManager.BIOMETRIC_SUCCESS) {

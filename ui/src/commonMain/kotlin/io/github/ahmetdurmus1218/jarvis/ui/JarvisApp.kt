@@ -32,6 +32,7 @@ import io.github.ahmetdurmus1218.jarvis.core.memory.MemoryStore
 import io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry
 import io.github.ahmetdurmus1218.jarvis.core.time.NowProvider
 import io.github.ahmetdurmus1218.jarvis.ui.screens.ApprovalScreen
+import io.github.ahmetdurmus1218.jarvis.ui.screens.SpeechModelOffer
 import io.github.ahmetdurmus1218.jarvis.ui.screens.ChatScreen
 import io.github.ahmetdurmus1218.jarvis.ui.screens.MemoryScreen
 import io.github.ahmetdurmus1218.jarvis.ui.screens.ModelsScreen
@@ -109,7 +110,18 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                 ) { padding ->
                     Column(Modifier.padding(padding)) {
                         when (tab) {
-                            Tab.CHAT -> ChatScreen(controller, graph.engineLabel, graph.bridge.speechInput?.isAvailable() == true)
+                            Tab.CHAT -> {
+                                // Re-read after every install, so the offer disappears once Whisper is in place.
+                                val installed by graph.installer.installedVersion.collectAsState()
+                                val stt = graph.bridge.speechInput
+                                val offer = remember(installed, stt) {
+                                    stt?.ownModelGroup?.let { g ->
+                                        graph.registry.forPlatform(graph.bridge.platform).filter { it.group == g }
+                                            .takeIf { it.isNotEmpty() }?.let { SpeechModelOffer(it, graph.installer) }
+                                    }
+                                }
+                                ChatScreen(controller, graph.engineLabel, stt != null, offer)
+                            }
                             Tab.MODELS -> ModelsScreen(graph.bridge, graph.registry, graph.installer)
                             Tab.MEMORY -> MemoryScreen(graph.memory, graph.settings)
                             Tab.NETLOG -> NetworkLogScreen(netEvents, formatTime)

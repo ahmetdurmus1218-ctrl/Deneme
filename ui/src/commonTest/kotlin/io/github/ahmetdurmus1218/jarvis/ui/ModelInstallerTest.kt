@@ -8,7 +8,12 @@ import io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -115,6 +120,26 @@ class ModelInstallerTest {
         assertIs<ItemStatus.Failed>(st)
         assertTrue(st.hashMismatch)
         assertEquals("hash uyuşmadı", log.events.value.single().result)
+    }
+
+    @Test
+    fun leavingTheScreenDoesNotCancelTheDownload() = runTest {
+        val bridge = FakeBridge(good)
+        val settings = SettingsStore(bridge.files)
+        val log = NetworkLogStore(bridge.files)
+        val installerScope = CoroutineScope(StandardTestDispatcher(testScheduler) + Job())
+        val inst = ModelInstaller(bridge, ModelRegistry(ModelLock(1, items = listOf(item))), settings, log, scope = installerScope)
+        // The "screen" starts the download and then goes away (tab switch): its scope is cancelled.
+        val screen = CoroutineScope(StandardTestDispatcher(testScheduler) + Job())
+        var result: Boolean? = null
+        screen.launch { inst.installInBackground(listOf(item), "test") { result = it } }
+        advanceUntilIdle()
+        screen.cancel()
+        inst.answerApproval(true)
+        advanceUntilIdle()
+        assertEquals(true, result)
+        assertEquals(listOf("m"), bridge.committed)
+        installerScope.cancel()
     }
 
     @Test

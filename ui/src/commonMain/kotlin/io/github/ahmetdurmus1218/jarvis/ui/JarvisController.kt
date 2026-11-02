@@ -170,7 +170,11 @@ class JarvisController(
     fun startListening() {
         val stt = bridge.speechInput ?: return
         if (!stt.isAvailable()) {
-            _partial.value = "Bu telefonda cihaz içi ses tanıma yok. Yazarak kullanabilirsiniz."
+            _partial.value = if (stt.ownModelGroup != null) {
+                "Bu telefonun kendi ses tanıması Türkçe'yi internetsiz desteklemiyor. Jarvis'in kendi ses tanımasını (Whisper) indirin."
+            } else {
+                "Bu cihazda ses tanıma yok. Yazarak kullanabilirsiniz."
+            }
             return
         }
         stopSpeaking()

@@ -42,10 +42,13 @@ object QuickCommandRouter {
 
     private const val VOWELS = "aeiou"
 
+    /** "Jarvis" as Turkish speech recognition often writes it (Whisper: "Cervis", "Carvis"…), normalized. */
+    private const val WAKE = "(?:jarvis|jarviz|jervis|cervis|cerviz|carvis|carviz)"
+
     /** Removes the wake word and politeness words around a command. */
     internal fun clean(normalized: String): String = normalized
-        .replace(Regex("^(?:hey |ey )?jarvis\\b[ ,]*"), "")
-        .replace(Regex("[ ,]*\\bjarvis$"), "")
+        .replace(Regex("^(?:hey |ey )?$WAKE\\b[ ,]*"), "")
+        .replace(Regex("[ ,]*\\b$WAKE$"), "")
         .replace(Regex("^lutfen "), "")
         .replace(Regex(" lutfen$"), "")
         .trim()

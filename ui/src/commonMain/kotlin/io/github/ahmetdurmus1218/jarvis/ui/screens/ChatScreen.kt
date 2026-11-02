@@ -35,7 +35,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.ahmetdurmus1218.jarvis.core.models.LockedItem
+import io.github.ahmetdurmus1218.jarvis.core.models.formatBytes
 import io.github.ahmetdurmus1218.jarvis.ui.CoreMode
+import io.github.ahmetdurmus1218.jarvis.ui.ItemStatus
+import io.github.ahmetdurmus1218.jarvis.ui.ModelInstaller
 import io.github.ahmetdurmus1218.jarvis.ui.JarvisController
 import io.github.ahmetdurmus1218.jarvis.ui.Turn
 import io.github.ahmetdurmus1218.jarvis.ui.components.HudCore
@@ -43,8 +47,11 @@ import io.github.ahmetdurmus1218.jarvis.ui.components.SceneCard
 import io.github.ahmetdurmus1218.jarvis.ui.components.SourceChips
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisColors
 
+/** Jarvis's own speech model, offered in the chat when the phone's recognizer cannot do Turkish. */
+class SpeechModelOffer(val items: List<LockedItem>, val installer: ModelInstaller)
+
 @Composable
-fun ChatScreen(controller: JarvisController, engineLabel: String, micAvailable: Boolean) {
+fun ChatScreen(controller: JarvisController, engineLabel: String, micAvailable: Boolean, speechModel: SpeechModelOffer? = null) {
     val turns by controller.turns.collectAsState()
     val mode by controller.mode.collectAsState()
     val level by controller.level.collectAsState()
@@ -90,6 +97,7 @@ fun ChatScreen(controller: JarvisController, engineLabel: String, micAvailable: 
                 modifier = Modifier.fillMaxWidth().background(JarvisColors.Surface).padding(10.dp),
             )
         }
+        if (speechModel != null && partial.isNotBlank() && mode != CoreMode.LISTENING) SpeechModelBar(speechModel)
         Row(
             Modifier.fillMaxWidth().background(JarvisColors.Surface).padding(10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -141,6 +149,34 @@ private fun MicButton(active: Boolean, onTap: () -> Unit, onHoldStart: () -> Uni
         contentAlignment = Alignment.Center,
     ) {
         Text(if (active) "■" else "🎤", fontSize = 22.sp)
+    }
+}
+
+@Composable
+private fun SpeechModelBar(offer: SpeechModelOffer) {
+    val status by offer.installer.status.collectAsState()
+    val busy by offer.installer.busy.collectAsState()
+    val states = offer.items.map { status[it.id] }
+    val done = states.count { it is ItemStatus.Done }
+    val active = states.firstOrNull { it is ItemStatus.Downloading } as? ItemStatus.Downloading
+    val failed = states.firstOrNull { it is ItemStatus.Failed } as? ItemStatus.Failed
+    Column(
+        Modifier.fillMaxWidth().background(JarvisColors.Surface).padding(horizontal = 10.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        when {
+            active != null -> Text(
+                "Whisper indiriliyor (${done + 1}/${offer.items.size}): ${formatBytes(active.bytes)} / ${formatBytes(active.total)}",
+                color = JarvisColors.Cyan, fontSize = 13.sp,
+            )
+            busy -> Text("Whisper hazırlanıyor…", color = JarvisColors.Cyan, fontSize = 13.sp)
+            else -> {
+                failed?.let { Text(it.message, color = JarvisColors.Amber, fontSize = 12.sp) }
+                Button(onClick = {
+                    offer.installer.installInBackground(offer.items, "Mikrofon: Jarvis'in kendi Türkçe ses tanıması (Whisper small). Kurulduktan sonra ses tanıma tamamen internetsiz çalışır.")
+                }) { Text("Jarvis'in ses tanımasını indir (${formatBytes(offer.items.sumOf { it.size })})") }
+            }
+        }
     }
 }
 

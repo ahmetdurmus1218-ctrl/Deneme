@@ -55,6 +55,12 @@ class VoiceCommandTest {
         assertEquals(QuickCommand.DateToday, QuickCommandRouter.route("Jarvis bugün ayın kaçı lütfen"))
         assertEquals(QuickCommand.StopSpeaking, QuickCommandRouter.route("Tamam sus artık"))
         assertEquals(QuickCommand.OpenApp("kamera"), QuickCommandRouter.route("Jarvis kamerayı açar mısın"))
+        // Whisper often hears the wake word as "Cervis" / "Carvis".
+        assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("Merhaba Cervis, saat kaç?".removePrefix("Merhaba ")))
+        assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("Çervis saat kaç"))
+        assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("Saat kaç Carvis?"))
+        // A real word that merely looks similar is not stripped.
+        assertEquals(null, QuickCommandRouter.route("servis saat kaçta"))
     }
 
     @Test
