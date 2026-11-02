@@ -171,7 +171,7 @@ class JarvisController(
         val stt = bridge.speechInput ?: return
         if (!stt.isAvailable()) {
             _partial.value = if (stt.ownModelGroup != null) {
-                "Bu telefonun kendi ses tanıması Türkçe'yi internetsiz desteklemiyor. Jarvis'in kendi ses tanımasını (Whisper) indirin."
+                "Jarvis'in kendi Türkçe ses tanıması (Whisper) henüz kurulu değil. Aşağıdaki düğmeyle bir kez indirin; sonra tamamen internetsiz çalışır."
             } else {
                 "Bu cihazda ses tanıma yok. Yazarak kullanabilirsiniz."
             }

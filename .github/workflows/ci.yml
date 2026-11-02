@@ -33,7 +33,15 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Whisper files for the PC microphone test (from models.lock.json, SHA-256 checked)
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/whisper
+          key: whisper-${{ hashFiles('models.lock.json') }}
+      - run: python3 tools/fetch-models.py "$RUNNER_TEMP/whisper" stt-whisper-small
       - name: Unit tests (core, ui, desktop incl. UI walkthrough, gate)
+        env:
+          JARVIS_WHISPER_DIR: ${{ runner.temp }}/whisper
         run: ./gradlew --no-daemon :core:jvmTest :ui:jvmTest :desktopApp:jvmTest :gate:testDebugUnitTest
       - name: Desktop UI walkthrough (text of every screen)
         if: always()
@@ -123,9 +131,22 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Package MSI
+      - name: Whisper files for the PC microphone test
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/whisper
+          key: whisper-${{ hashFiles('models.lock.json') }}
+      - shell: bash
+        run: python tools/fetch-models.py "$RUNNER_TEMP/whisper" stt-whisper-small
+      - name: Desktop tests on Windows (Whisper with the Windows DLLs) and MSI
         shell: bash
-        run: ./gradlew --no-daemon :desktopApp:packageMsi
+        env:
+          JARVIS_WHISPER_DIR: ${{ runner.temp }}/whisper
+        run: ./gradlew --no-daemon :desktopApp:jvmTest :desktopApp:packageMsi
+      - name: Desktop test output (Windows)
+        if: always()
+        shell: bash
+        run: grep -h "Whisper (PC path)" desktopApp/build/test-results/jvmTest/*.xml || true
       - name: jpackage logs
         if: failure()
         shell: bash
