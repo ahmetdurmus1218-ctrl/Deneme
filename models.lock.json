@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-02T11:29:07Z",
+  "generator": "tools/lock-models.py",
+  "items": [
+    {
+      "id": "llm-gemma4-e4b-litertlm",
+      "kind": "llm",
+      "platforms": [
+        "android"
+      ],
+      "title": "Gemma 4 E4B (LiteRT-LM)",
+      "group": "llm-android-e4b",
+      "minRamGb": 12,
+      "license": "apache-2.0",
+      "url": "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/e6a3892a8c22cf87ff99583996149cf3cb32452b/gemma-4-E4B-it.litertlm",
+      "fileName": "gemma-4-E4B-it.litertlm",
+      "size": 3659530240,
+      "sha256": "0b2a8980ce155fd97673d8e820b4d29d9c7d99b8fa6806f425d969b145bd52e0",
+      "revision": "e6a3892a8c22cf87ff99583996149cf3cb32452b",
+      "origin": "hf:litert-community/gemma-4-E4B-it-litert-lm@e6a3892a8c22cf87ff99583996149cf3cb32452b/gemma-4-E4B-it.litertlm",
+      "host": "huggingface.co"
+    },
+    {
+      "id": "llm-gemma4-e2b-litertlm",
+      "kind": "llm",
+      "platforms": [
+        "android"
+      ],
+      "title": "Gemma 4 E2B (LiteRT-LM)",
+      "group": "llm-android-e2b",
+      "minRamGb": 6,
+      "license": "apache-2.0",
+      "url": "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/1caa527c1e88b55f046fcd8d2b4265606680663d/gemma-4-E2B-it.litertlm",
+      "fileName": "gemma-4-E2B-it.litertlm",
+      "size": 2588147712,
+      "sha256": "181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c",
+      "revision": "1caa527c1e88b55f046fcd8d2b4265606680663d",
+      "origin": "hf:litert-community/gemma-4-E2B-it-litert-lm@1caa527c1e88b55f046fcd8d2b4265606680663d/gemma-4-E2B-it.litertlm",
+      "host": "huggingface.co"
+    },
+    {
+      "id": "llm-qwen35-9b-q4km",
+      "kind": "llm",
+      "platforms": [
+        "desktop"
+      ],
+      "title": "Qwen 3.5 9B Q4_K_M (GGUF)",
+      "group": "llm-desktop-qwen",
+      "minVramGb": 8,
+      "license": "apache-2.0",
+      "url": "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/3885219b6810b007914f3a7950a8d1b469d598a5/Qwen3.5-9B-Q4_K_M.gguf",
+      "fileName": "Qwen3.5-9B-Q4_K_M.gguf",
+      "size": 5680522464,
+      "sha256": "03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8",
+      "revision": "3885219b6810b007914f3a7950a8d1b469d598a5",
+      "origin": "hf:unsloth/Qwen3.5-9B-GGUF@3885219b6810b007914f3a7950a8d1b469d598a5/Qwen3.5-9B-Q4_K_M.gguf",
+      "host": "huggingface.co"
+    },
+    {
+      "id": "llm-gemma4-e4b-gguf",
+      "kind": "llm",
+      "platforms": [
+        "desktop"
+      ],
+      "title": "Gemma 4 E4B Q4_0 (GGUF)",
+      "group": "llm-desktop-gemma",
+      "license": "apache-2.0",
+      "url": "https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/a69f018d7678a2b9f5e705f8903d6fb29b9b25dc/gemma-4-E4B-it-Q4_0.gguf",
+      "fileName": "gemma-4-E4B-it-Q4_0.gguf",
+      "size": 4590807392,
+      "sha256": "a555b900214b477d8880e7832e0b8925e139b0159640036b09fe472b6f2097f2",
+      "revision": "a69f018d7678a2b9f5e705f8903d6fb29b9b25dc",
+      "origin": "hf:ggml-org/gemma-4-E4B-it-GGUF@a69f018d7678a2b9f5e705f8903d6fb29b9b25dc/gemma-4-E4B-it-Q4_0.gguf",
+      "host": "huggingface.co"
+    },
+    {
+      "id": "stt-whisper-small-encoder",
+      "kind": "stt",
+      "platforms": [
+        "android",
+        "desktop"
+      ],
+      "title": "Whisper small (encoder, int8)",
+      "group": "stt-whisper-small",
+      "license": "mit",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/8f3c18b358db4d1f2fc1eae49d75cd20989e4309/small-encoder.int8.onnx",
+      "fileName": "small-encoder.int8.onnx",
+      "size": 112442483,
+      "sha256": "4cbe7b22fa9026b843b60a68640c747de05bafb1a11b57edc0e66c232d9f33a9",
+      "revision": "8f3c18b358db4d1f2fc1eae49d75cd20989e4309",
+      "origin": "hf:csukuangfj/sherpa-onnx-whisper-small@8f3c18b358db4d1f2fc1eae49d75cd20989e4309/small-encoder.int8.onnx",
+      "host": "huggingface.co"
+    },
+    {
+      "id": "stt-whisper-small-decoder",
+      "kind": "stt",
+      "platforms": [
+        "android",
+        "desktop"
+      ],
+      "title": "Whisper small (decoder, int8)",
+      "group": "stt-whisper-small",
+      "license": "mit",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/8f3c18b358db4d1f2fc1eae49d75cd20989e4309/small-decoder.int8.onnx",
+      "fileName": "small-decoder.int8.onnx",
+      "size": 262226114,
+      "sha256": "acad50b5c782696e91b55914cc5ab4f756f1532f76e22aa6fc615f39fb69a8ee",
+      "revision": "8f3c18b358db4d1f2fc1eae49d75cd20989e4309",
+      "origin": "hf:csukuangfj/sherpa-onnx-whisper-small@8f3c18b358db4d1f2fc1eae49d75cd20989e4309/small-decoder.int8.onnx",
+      "host": "huggingface.co"
+    },
+    {
+      "id": "stt-whisper-small-tokens",
+      "kind": "stt",
+      "platforms": [
+        "android",
+        "desktop"
+      ],
+      "title": "Whisper small (tokens)",
+      "group": "stt-whisper-small",
+      "license": "mit",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/8f3c18b358db4d1f2fc1eae49d75cd20989e4309/small-tokens.txt",
+      "fileName": "small-tokens.txt",
+      "size": 816730,
+      "sha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126",
+      "revision": "8f3c18b358db4d1f2fc1eae49d75cd20989e4309",
+      "origin": "hf:csukuangfj/sherpa-onnx-whisper-small@8f3c18b358db4d1f2fc1eae49d75cd20989e4309/small-tokens.txt",
+      "host": "huggingface.co"
+    },
+    {
+      "id": "tts-piper-tr-dfki-medium",
+      "kind": "tts",
+      "platforms": [
+        "android",
+        "desktop"
+      ],
+      "title": "Piper Türkçe ses (tr_TR-dfki-medium, sherpa-onnx paketi)",
+      "group": "tts-piper-tr",
+      "license": "see docs/DECISIONS.md",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-tr_TR-dfki-medium.tar.bz2",
+      "fileName": "vits-piper-tr_TR-dfki-medium.tar.bz2",
+      "size": 67201221,
+      "sha256": "b63babaefcdd63202c7079aba25b72a2013825ad5895e2aeff03d1ae5a5b3bbf",
+      "revision": "tts-models",
+      "origin": "github:k2-fsa/sherpa-onnx@tts-models/vits-piper-tr_TR-dfki-medium.tar.bz2",
+      "host": "github.com"
+    },
+    {
+      "id": "wiki-tr-nopic",
+      "kind": "zim",
+      "platforms": [
+        "android",
+        "desktop"
+      ],
+      "title": "Türkçe Wikipedia (resimsiz)",
+      "group": "wiki-tr",
+      "license": "CC BY-SA 4.0",
+      "url": "https://mirror.download.kiwix.org/zim/wikipedia/wikipedia_tr_all_nopic_2026-09.zim",
+      "fileName": "wikipedia_tr_all_nopic_2026-09.zim",
+      "size": 3746434106,
+      "sha256": "136930794c46a9f7283a4903881d06721a872b6550a4f352492999a33b61069b",
+      "revision": "2026-09",
+      "origin": "kiwix:zim/wikipedia/wikipedia_tr_all_nopic_2026-09.zim",
+      "host": "mirror.download.kiwix.org"
+    },
+    {
+      "id": "bin-llama-server-vulkan",
+      "kind": "binary",
+      "platforms": [
+        "desktop"
+      ],
+      "title": "llama.cpp llama-server (Windows, Vulkan)",
+      "group": "bin-llama",
+      "license": "mit",
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12034/llama-b12034-bin-win-vulkan-x64.zip",
+      "fileName": "llama-b12034-bin-win-vulkan-x64.zip",
+      "size": 37523364,
+      "sha256": "df6ab37942d02aeb8ab3de5984711ea866826a94d50f7a9c5960a0d18a9d4269",
+      "revision": "b12034",
+      "origin": "github:ggml-org/llama.cpp@b12034/llama-b12034-bin-win-vulkan-x64.zip",
+      "host": "github.com"
+    },
+    {
+      "id": "bin-kiwix-tools",
+      "kind": "binary",
+      "platforms": [
+        "desktop"
+      ],
+      "title": "kiwix-tools (kiwix-serve, Windows x86_64)",
+      "group": "bin-kiwix",
+      "license": "gpl-3.0",
+      "url": "https://mirror.download.kiwix.org/release/kiwix-tools/kiwix-tools_win-x86_64-3.8.1.zip",
+      "fileName": "kiwix-tools_win-x86_64-3.8.1.zip",
+      "size": 18301924,
+      "sha256": "fcd01ed2b93e9a68632c7863c83b9f66bf64406a66357be1df7b8b75596f3e45",
+      "revision": "3.8.1",
+      "origin": "kiwix:release/kiwix-tools/kiwix-tools_win-x86_64-3.8.1.zip",
+      "host": "mirror.download.kiwix.org"
+    }
+  ]
+}
