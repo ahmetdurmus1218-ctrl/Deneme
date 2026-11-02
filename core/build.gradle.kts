@@ -8,7 +8,7 @@ plugins {
 
 // models.lock.json (repo root) is compiled into core as a string constant, so the apps carry the
 // exact hashes they were built with and cannot be pointed at other files at runtime.
-val generateLockedModels by tasks.registering {
+val generateLockedModels = tasks.register("generateLockedModels") {
     val input = rootProject.layout.projectDirectory.file("models.lock.json")
     val outDir = layout.buildDirectory.dir("generated/lock/kotlin")
     inputs.file(input).optional()

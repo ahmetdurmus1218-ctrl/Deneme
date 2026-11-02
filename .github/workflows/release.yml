@@ -91,6 +91,7 @@ jobs:
         env:
           SIGNING: ${{ needs.android.outputs.signing }}
         run: |
+          cp models.lock.json dist/
           cd dist
           sha256sum * > SHA256SUMS.txt
           cat SHA256SUMS.txt

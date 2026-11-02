@@ -19,11 +19,12 @@ class SceneStreamParserTest {
     fun emitsEachSceneAsSoonAsItCloses() {
         val scenes = mutableListOf<Sahne>()
         val parser = SceneStreamParser { scenes += it }
-        val firstSceneEnd = json.indexOf("}},") + 2
+        // "}}," = end of the visual object, end of the first scene, separator
+        val firstSceneClose = json.indexOf("}},") + 1
         for ((i, c) in json.withIndex()) {
             parser.feed(c.toString())
-            if (i == firstSceneEnd - 1) assertEquals(0, scenes.size, "not before the closing brace")
-            if (i == firstSceneEnd) assertEquals(1, scenes.size, "right after the closing brace")
+            if (i == firstSceneClose - 1) assertEquals(0, scenes.size, "not before the scene's closing brace")
+            if (i == firstSceneClose) assertEquals(1, scenes.size, "right after the scene's closing brace")
         }
         assertEquals(2, scenes.size)
         assertEquals("Birinci sahne.", scenes[0].ses)
