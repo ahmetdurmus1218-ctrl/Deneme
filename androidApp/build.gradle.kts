@@ -59,13 +59,22 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = project.extra["jarvisVersionCode"] as Int
         versionName = project.version.toString()
-        // 64-bit phones (all Android 12+ devices ship 64-bit) and the x86_64 emulator used by CI.
-        ndk { abiFilters += setOf("arm64-v8a", "x86_64") }
         // On-device probes run by the CI emulator test (no test framework needed), see src/androidTest.
         testInstrumentationRunner = "io.github.ahmetdurmus1218.jarvis.probe.WhisperProbe"
     }
     // The probe APK targets the release app that the emulator test installs.
     testBuildType = "release"
+
+    // One APK per CPU type: jarvis.apk is the arm64 build (every Android 12+ phone is 64-bit ARM);
+    // the x86_64 build exists only for the CI emulator. Shipping both in one APK doubled its size.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "x86_64")
+            isUniversalApk = false
+        }
+    }
 
     signingConfigs {
         create("jarvis") {
@@ -94,6 +103,8 @@ android {
     packaging {
         resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
         jniLibs.pickFirsts += setOf("**/libc++_shared.so")
+        // Compressed native libraries: a much smaller download; Android unpacks them once at install.
+        jniLibs.useLegacyPackaging = true
     }
 
     lint {

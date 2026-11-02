@@ -55,7 +55,10 @@ jobs:
       - name: Build APKs
         run: ./gradlew --no-daemon :androidApp:assembleRelease :androidApp:assembleReleaseAndroidTest :gate:assembleRelease
       - name: Kale has no INTERNET permission
-        run: bash tools/check-no-internet.sh androidApp/build/outputs/apk/release/androidApp-release.apk gate/build/outputs/apk/release/gate-release.apk
+        run: |
+          bash tools/check-no-internet.sh androidApp/build/outputs/apk/release/androidApp-arm64-v8a-release.apk gate/build/outputs/apk/release/gate-release.apk
+          bash tools/check-no-internet.sh androidApp/build/outputs/apk/release/androidApp-x86_64-release.apk
+          ls -la androidApp/build/outputs/apk/release/ gate/build/outputs/apk/release/
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v4

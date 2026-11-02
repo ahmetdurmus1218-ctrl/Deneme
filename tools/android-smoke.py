@@ -189,7 +189,7 @@ def main():
     download = "--download" in sys.argv
 
     step("install")
-    adb("install", "-r", find_apk(apk_dir, "androidApp-release.apk"))
+    adb("install", "-r", find_apk(apk_dir, "androidApp-x86_64-release.apk"))  # the emulator is x86_64
     adb("install", "-r", find_apk(apk_dir, "gate-release.apk"))
 
     step("permissions as granted by Android")

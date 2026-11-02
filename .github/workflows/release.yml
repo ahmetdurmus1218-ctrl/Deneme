@@ -65,11 +65,11 @@ jobs:
           V="${TAG#v}"
           ./gradlew --no-daemon -Pjarvis.version="$V" :core:jvmTest :ui:jvmTest :androidApp:assembleRelease :gate:assembleRelease
       - name: Kale has no INTERNET permission
-        run: bash tools/check-no-internet.sh androidApp/build/outputs/apk/release/androidApp-release.apk gate/build/outputs/apk/release/gate-release.apk
+        run: bash tools/check-no-internet.sh androidApp/build/outputs/apk/release/androidApp-arm64-v8a-release.apk gate/build/outputs/apk/release/gate-release.apk
       - name: Rename
         run: |
           mkdir -p dist
-          cp androidApp/build/outputs/apk/release/androidApp-release.apk dist/jarvis.apk
+          cp androidApp/build/outputs/apk/release/androidApp-arm64-v8a-release.apk dist/jarvis.apk
           cp gate/build/outputs/apk/release/gate-release.apk dist/jarvis-kapi.apk
       - uses: actions/upload-artifact@v4
         with:
