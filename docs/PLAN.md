@@ -27,7 +27,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Grup başına tek indirme düğmesi, indirmeler sırayla (aynı dosya iki kez indirilmez — ENOENT hatası).
 - [x] Bağlantı koptuğunda kaldığı yerden otomatik yeniden deneme (4 deneme).
 - [x] Kapı indirme sırasında ön plan servisi (bildirimli), ekran kapansa da sürer.
-- [x] `v0.1.1` yayımlandı.
+- [x] `v0.1.1` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v0.1.1
 
 ## v0.2 — Gerçek LLM
 - [x] Android: LiteRT-LM (`com.google.ai.edge.litertlm:litertlm-android` 0.19.0) + Gemma 4 E4B, RAM < 12 GB ya da yükleme hatasında E2B; GPU → CPU geri dönüşü; akışlı çıktı; düşünme modu (desteklenmezse onsuz yeniden dener).
