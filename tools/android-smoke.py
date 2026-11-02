@@ -215,6 +215,11 @@ def main():
         wait_for(text_has("Sonuç: tamam"), "network log entry")
         shot("07-kale-ag-kaydi")
         adb("shell", "am", "start", "-W", "-n", f"{GATE}/.StatusActivity")
+        # Android 13+: Kapı asks once for the notification permission (download progress notification).
+        allow = text_is("Allow")
+        first = wait_for(lambda n: allow(n) or text_has("tamam")(n), "gate log or notification prompt")
+        if allow(first):
+            tap(first)
         wait_for(text_has("tamam"), "gate log")
         shot("08-kapi-durum")
         check_no_crash()
