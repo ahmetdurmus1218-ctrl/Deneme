@@ -59,7 +59,7 @@ def nodes(root):
 
 
 def screen_texts(root=None):
-    return [label(n) for n in nodes(root or dump()) if label(n)]
+    return [label(n) for n in nodes(root if root is not None else dump()) if label(n)]
 
 
 def find(pred, root=None):
@@ -138,6 +138,38 @@ def step(msg):
     print(f"\n=== {msg}", flush=True)
 
 
+def mic_feedback():
+    baseline = set(screen_texts())
+    tap(wait_for(text_is("🎤"), "mic button"))
+    allow_labels = ("While using the app", "Only this time", "Allow", "Uygulamayı kullanırken", "İzin ver")
+    timeline, new_texts = [], []
+    end = time.time() + 20
+    while time.time() < end:
+        root = dump()
+        allow = find(lambda n: label(n) in allow_labels, root)
+        if allow is not None:
+            timeline.append("[permission prompt → allow]")
+            tap(allow)
+            time.sleep(1)
+            continue
+        texts = [t for t in screen_texts(root) if t not in baseline]
+        if texts and (not timeline or timeline[-1] != texts):
+            timeline.append(texts)
+        new_texts += texts
+        time.sleep(1)
+    print("mic timeline:")
+    for t in timeline:
+        print("   ", t)
+    log = adb("logcat", "-d", "-s", "JarvisMic:*", check=False)
+    print("JarvisMic log:\n" + "\n".join("    " + l for l in log.splitlines()[-30:]))
+    if not new_texts:
+        raise SystemExit("tapping the mic changed nothing on screen")
+    # Leave the recognizer idle for the next steps.
+    if find(text_is("■")) is not None:
+        tap(find(text_is("■")))
+        time.sleep(1)
+
+
 def main():
     apk_dir = sys.argv[1]
     download = "--download" in sys.argv
@@ -174,6 +206,11 @@ def main():
     answer = wait_for(text_re(r"^Saat \d\d:\d\d\.$"), "time answer")
     print("answer:", label(answer))
     shot("02-kale-saat")
+
+    step("microphone: tap → permission → visible feedback (never silent)")
+    mic_feedback()
+    shot("02b-kale-mikrofon")
+    check_no_crash()
 
     step("gate detected")
     tap(wait_for(tab("Modeller"), "Models tab"))

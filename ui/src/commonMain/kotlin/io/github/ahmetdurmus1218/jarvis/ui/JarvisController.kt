@@ -169,7 +169,10 @@ class JarvisController(
 
     fun startListening() {
         val stt = bridge.speechInput ?: return
-        if (!stt.isAvailable()) return
+        if (!stt.isAvailable()) {
+            _partial.value = "Bu telefonda cihaz içi ses tanıma yok. Yazarak kullanabilirsiniz."
+            return
+        }
         stopSpeaking()
         _partial.value = ""
         _mode.value = CoreMode.LISTENING

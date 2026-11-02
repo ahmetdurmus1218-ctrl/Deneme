@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.Build
+import android.util.Log
 import android.speech.RecognitionListener
 import android.speech.RecognitionSupport
 import android.speech.RecognitionSupportCallback
@@ -40,6 +41,8 @@ class AndroidSpeechInput(
     private var recognizer: SpeechRecognizer? = null
     /** Set while we cancel on purpose, so the resulting ERROR_CLIENT is not shown as a failure. */
     @Volatile private var cancelling = false
+    /** Increments per start(); callbacks and the watchdog of an older session are ignored. */
+    private var session = 0
 
     override fun isAvailable(): Boolean = SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
 
@@ -64,23 +67,45 @@ class AndroidSpeechInput(
     }
 
     private suspend fun startOnMain(listener: SpeechInput.Listener, retryIfBusy: Boolean) {
+        val mine = ++session
+        Log.i(TAG, "start: onDeviceAvailable=${isAvailable()} sdk=${Build.VERSION.SDK_INT}")
+        listener.onPartial("Mikrofon açılıyor…")
         if (!ensureMicPermission()) {
+            Log.i(TAG, "mic permission denied")
             listener.onError("Mikrofon izni gerekli. Telefon Ayarları → Uygulamalar → Jarvis → İzinler → Mikrofon.")
             return
         }
-        if (languagePack() == SpeechInput.LanguagePack.DOWNLOADABLE) {
+        val pack = languagePack()
+        Log.i(TAG, "turkish pack: $pack")
+        if (pack == SpeechInput.LanguagePack.DOWNLOADABLE) {
             listener.onError(PACK_MISSING)
             return
         }
-        val r = obtainRecognizer()
+        if (mine != session) return
+        val r = try {
+            obtainRecognizer()
+        } catch (e: Exception) {
+            Log.w(TAG, "createOnDeviceSpeechRecognizer failed", e)
+            listener.onError("Telefonun cihaz içi ses tanıması açılamadı: ${e.message ?: e.javaClass.simpleName}")
+            return
+        }
         cancelling = false
+        var ready = false
+        var finished = false
         r.setRecognitionListener(object : RecognitionListener {
-            override fun onReadyForSpeech(params: Bundle?) {}
-            override fun onBeginningOfSpeech() {}
+            override fun onReadyForSpeech(params: Bundle?) {
+                Log.i(TAG, "ready for speech")
+                ready = true
+                if (mine == session) listener.onPartial("Dinliyorum, konuşun…")
+            }
+            override fun onBeginningOfSpeech() { Log.i(TAG, "speech began") }
             override fun onRmsChanged(rmsdB: Float) = listener.onLevel(((rmsdB + 2f) / 12f).coerceIn(0f, 1f))
             override fun onBufferReceived(buffer: ByteArray?) {}
             override fun onEndOfSpeech() {}
             override fun onError(error: Int) {
+                Log.i(TAG, "error $error (cancelling=$cancelling)")
+                finished = true
+                if (mine != session) return
                 when {
                     cancelling && error == SpeechRecognizer.ERROR_CLIENT -> listener.onError("")
                     error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY && retryIfBusy -> {
@@ -100,6 +125,9 @@ class AndroidSpeechInput(
                 }
             }
             override fun onResults(results: Bundle?) {
+                finished = true
+                Log.i(TAG, "results: ${results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.size ?: 0} candidates")
+                if (mine != session) return
                 val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
                 if (text.isBlank()) listener.onError(NOTHING_HEARD) else listener.onFinal(text)
             }
@@ -110,9 +138,24 @@ class AndroidSpeechInput(
         })
         try {
             r.startListening(recognizerIntent())
+            Log.i(TAG, "startListening sent")
         } catch (e: Exception) {
+            Log.w(TAG, "startListening failed", e)
             dropRecognizer()
             listener.onError("Ses tanıma başlatılamadı: ${e.message ?: e.javaClass.simpleName}")
+            return
+        }
+        // Some phones accept the request and then never answer: never leave the user waiting silently.
+        launch {
+            kotlinx.coroutines.delay(READY_TIMEOUT_MS)
+            if (mine == session && !ready && !finished) {
+                Log.w(TAG, "no onReadyForSpeech after ${READY_TIMEOUT_MS} ms")
+                finished = true
+                cancelling = true
+                runCatching { r.cancel() }
+                dropRecognizer()
+                listener.onError(NOT_STARTING)
+            }
         }
     }
 
@@ -191,6 +234,9 @@ class AndroidSpeechInput(
     }
 
     private companion object {
+        const val TAG = "JarvisMic"
+        const val READY_TIMEOUT_MS = 6_000L
+        const val NOT_STARTING = "Telefonun cihaz içi ses tanıma servisi cevap vermedi. Şimdilik yazarak kullanın; Jarvis'in kendi ses tanıması (Whisper) bu sorunu çözecek."
         const val NOTHING_HEARD = "Bir şey duyamadım. Mikrofona dokunun ve konuşun; susunca kendisi durur."
         const val PACK_MISSING = "Telefonda Türkçe cihaz içi ses paketi yüklü değil. Jarvis → Ayarlar → \"Türkçe ses paketini indir\" düğmesini kullanın."
     }
