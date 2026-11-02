@@ -1,0 +1,187 @@
+package io.github.ahmetdurmus1218.jarvis.desktop.llm
+
+import io.github.ahmetdurmus1218.jarvis.core.llm.ChatMessage
+import io.github.ahmetdurmus1218.jarvis.core.llm.GenerationConfig
+import io.github.ahmetdurmus1218.jarvis.core.llm.LlmEngine
+import io.github.ahmetdurmus1218.jarvis.core.llm.Role
+import io.github.ahmetdurmus1218.jarvis.core.models.LockedItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import java.io.File
+import java.net.ServerSocket
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.time.Duration
+import java.util.zip.ZipFile
+
+/** Talks to llama-server's OpenAI-compatible endpoint on 127.0.0.1 (streaming, server-sent events). */
+class LlamaServerClient(private val baseUrl: String, private val http: HttpClient = HttpClient.newHttpClient()) {
+
+    fun requestBody(messages: List<ChatMessage>, config: GenerationConfig): String = buildJsonObject {
+        put("stream", true)
+        put("max_tokens", config.maxTokens)
+        put("temperature", config.temperature.toDouble())
+        put("messages", buildJsonArray {
+            for (m in messages) {
+                add(buildJsonObject {
+                    put("role", when (m.role) {
+                        Role.SYSTEM -> "system"
+                        Role.ASSISTANT -> "assistant"
+                        Role.USER, Role.TOOL -> "user"
+                    })
+                    put("content", m.content)
+                })
+            }
+        })
+        // Qwen 3.5 / Gemma 4 chat templates read this switch (llama-server runs with --jinja).
+        put("chat_template_kwargs", buildJsonObject { put("enable_thinking", config.thinking) })
+    }.toString()
+
+    fun stream(messages: List<ChatMessage>, config: GenerationConfig): Flow<String> = flow {
+        val req = HttpRequest.newBuilder(URI.create("$baseUrl/v1/chat/completions"))
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofMinutes(10))
+            .POST(HttpRequest.BodyPublishers.ofString(requestBody(messages, config)))
+            .build()
+        val resp = http.send(req, HttpResponse.BodyHandlers.ofLines())
+        if (resp.statusCode() != 200) {
+            val body = resp.body().use { it.toList().joinToString(" ").take(300) }
+            error("llama-server HTTP ${resp.statusCode()}: $body")
+        }
+        resp.body().use { lines ->
+            for (line in lines.iterator()) {
+                if (line == "data: [DONE]") break
+                parseSseLine(line)?.let { if (it.isNotEmpty()) emit(it) }
+            }
+        }
+    }.flowOn(Dispatchers.IO)
+
+    fun healthy(): Boolean = runCatching {
+        val req = HttpRequest.newBuilder(URI.create("$baseUrl/health")).timeout(Duration.ofSeconds(2)).GET().build()
+        http.send(req, HttpResponse.BodyHandlers.discarding()).statusCode() == 200
+    }.getOrDefault(false)
+
+    companion object {
+        private val json = Json { ignoreUnknownKeys = true }
+
+        /** Answer text in one SSE line, or null. Reasoning ("thinking") text is never returned. */
+        fun parseSseLine(line: String): String? {
+            if (!line.startsWith("data:")) return null
+            val payload = line.removePrefix("data:").trim()
+            if (payload.isEmpty() || payload == "[DONE]") return null
+            val obj = runCatching { json.parseToJsonElement(payload).jsonObject }.getOrNull() ?: return null
+            val choice = (obj["choices"]?.jsonArray?.firstOrNull() as? JsonObject) ?: return null
+            val delta = choice["delta"] as? JsonObject ?: return null
+            return (delta["content"] as? JsonPrimitive)?.contentOrNull
+        }
+    }
+}
+
+/**
+ * Owns the llama-server process: extracts the hash-verified llama.cpp zip once, starts the server on
+ * 127.0.0.1 with the chosen GGUF model (all layers on the GPU through Vulkan) and stops it when the
+ * app exits or the model changes.
+ */
+class LlamaServerEngine(
+    val model: LockedItem,
+    private val modelPath: String,
+    private val serverZip: File,
+    private val binDir: File,
+) : LlmEngine, AutoCloseable {
+    override val id: String = model.title.substringBefore(" (") + " · llama.cpp"
+    val serverZipName: String get() = serverZip.name
+    private val lock = Mutex()
+    @Volatile private var process: Process? = null
+    @Volatile private var client: LlamaServerClient? = null
+
+    init {
+        Runtime.getRuntime().addShutdownHook(Thread { close() })
+    }
+
+    private fun serverExecutable(): File {
+        val target = File(binDir, serverZip.nameWithoutExtension).apply { mkdirs() }
+        val marker = File(target, ".extracted")
+        if (!marker.isFile) {
+            extractZip(serverZip, target)
+            marker.writeText(serverZip.name)
+        }
+        return target.walkTopDown().firstOrNull { it.isFile && (it.name == "llama-server.exe" || it.name == "llama-server") }
+            ?.also { it.setExecutable(true) }
+            ?: error("llama-server bulunamadı (${serverZip.name})")
+    }
+
+    private suspend fun ensureStarted(): LlamaServerClient = lock.withLock {
+        val running = process
+        client?.let { if (running != null && running.isAlive) return it }
+        val exe = serverExecutable()
+        val port = ServerSocket(0).use { it.localPort }
+        val p = ProcessBuilder(
+            exe.absolutePath, "-m", modelPath,
+            "--host", "127.0.0.1", "--port", port.toString(),
+            "-ngl", "99", "-c", "8192", "--jinja",
+        ).directory(exe.parentFile).redirectErrorStream(true).redirectOutput(File(binDir, "llama-server.log")).start()
+        process = p
+        val c = LlamaServerClient("http://127.0.0.1:$port")
+        val deadline = System.currentTimeMillis() + 180_000
+        while (!c.healthy()) {
+            if (!p.isAlive) error("llama-server kapandı (ayrıntı: ${File(binDir, "llama-server.log").absolutePath})")
+            if (System.currentTimeMillis() > deadline) {
+                p.destroy()
+                error("llama-server 3 dakikada hazır olmadı")
+            }
+            kotlinx.coroutines.delay(500)
+        }
+        client = c
+        c
+    }
+
+    override fun stream(messages: List<ChatMessage>, config: GenerationConfig): Flow<String> = flow {
+        emitAll(ensureStarted().stream(messages, config))
+    }.flowOn(Dispatchers.IO)
+
+    override fun close() {
+        process?.let { p ->
+            p.descendants().forEach { it.destroy() }
+            p.destroy()
+        }
+        process = null
+        client = null
+    }
+
+    private suspend fun kotlinx.coroutines.flow.FlowCollector<String>.emitAll(f: Flow<String>) = f.collect { emit(it) }
+
+    companion object {
+        /** Extracts [zip] into [target]; entries that would land outside [target] ("zip slip") are refused. */
+        fun extractZip(zip: File, target: File) {
+            val root = target.canonicalPath + File.separator
+            ZipFile(zip).use { z ->
+                for (entry in z.entries()) {
+                    val out = File(target, entry.name).canonicalFile
+                    require(out.path.startsWith(root)) { "Geçersiz zip girdisi: ${entry.name}" }
+                    if (entry.isDirectory) {
+                        out.mkdirs()
+                    } else {
+                        out.parentFile.mkdirs()
+                        z.getInputStream(entry).use { input -> out.outputStream().use { input.copyTo(it) } }
+                    }
+                }
+            }
+        }
+    }
+}

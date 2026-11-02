@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.sp
 import io.github.ahmetdurmus1218.jarvis.core.assistant.Assistant
 import io.github.ahmetdurmus1218.jarvis.core.assistant.DefaultTools
+import io.github.ahmetdurmus1218.jarvis.core.llm.EngineSelector
 import io.github.ahmetdurmus1218.jarvis.core.llm.LlmEngine
 import io.github.ahmetdurmus1218.jarvis.core.llm.MockLlmEngine
 import io.github.ahmetdurmus1218.jarvis.core.memory.InMemoryMemoryStore
@@ -49,14 +50,24 @@ private enum class Tab(val label: String, val icon: String) {
 }
 
 /** Long-lived objects for one app process. */
-class AppGraph(val bridge: PlatformBridge, engine: LlmEngine = MockLlmEngine()) {
+/**
+ * Long-lived objects for one app process.
+ * [realEngine] returns the platform's real model when one is installed (LiteRT-LM on Android,
+ * llama-server on Windows); until then the mock answers.
+ */
+class AppGraph(
+    val bridge: PlatformBridge,
+    fallback: LlmEngine = MockLlmEngine(),
+    realEngine: ((AppGraph) -> LlmEngine?)? = null,
+) {
     val registry: ModelRegistry = ModelRegistry.bundled
     val settings = SettingsStore(bridge.files)
     val netLog = NetworkLogStore(bridge.files)
     val memory: MemoryStore = InMemoryMemoryStore { NowProvider.System.now().epochMillis }
+    val engine = EngineSelector(fallback) { realEngine?.invoke(this) }
     val assistant = Assistant(engine, DefaultTools.create(memory), memory)
     val installer = ModelInstaller(bridge, registry, settings, netLog)
-    val engineLabel: String = if (engine.id == "mock") "sahte model (v0.1)" else engine.id
+    val engineLabel: String get() = engine.id.let { if (it == "mock") "sahte model (gerçek model kurulu değil)" else it }
 }
 
 @Composable

@@ -27,11 +27,14 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Grup başına tek indirme düğmesi, indirmeler sırayla (aynı dosya iki kez indirilmez — ENOENT hatası).
 - [x] Bağlantı koptuğunda kaldığı yerden otomatik yeniden deneme (4 deneme).
 - [x] Kapı indirme sırasında ön plan servisi (bildirimli), ekran kapansa da sürer.
+- [x] `v0.1.1` yayımlandı.
 
 ## v0.2 — Gerçek LLM
-- [ ] Android: LiteRT-LM (`com.google.ai.edge.litertlm:litertlm-android`, 0.19.0 doğrulandı) + Gemma 4 E4B, RAM < 12 GB ya da yükleme hatasında E2B; GPU → CPU geri dönüşü; akışlı çıktı.
-- [ ] PC: llama.cpp `llama-server` (Vulkan, b12034 kilitli) alt süreç, `127.0.0.1`, OpenAI uyumlu uç nokta, kapanınca alt süreci kapat; Qwen 3.5 9B Q4_K_M (kilitli), alternatif Gemma 4 E4B GGUF; düşünme modu.
-- [ ] Ayarlar'daki model seçiminin etkinleşmesi.
+- [x] Android: LiteRT-LM (`com.google.ai.edge.litertlm:litertlm-android` 0.19.0) + Gemma 4 E4B, RAM < 12 GB ya da yükleme hatasında E2B; GPU → CPU geri dönüşü; akışlı çıktı; düşünme modu (desteklenmezse onsuz yeniden dener).
+- [x] PC: llama.cpp `llama-server` (Vulkan, b12038 kilitli) alt süreç, `127.0.0.1` + boş port, OpenAI uyumlu akışlı uç nokta (SSE), pencere kapanınca alt süreç ağacı kapanır; Qwen 3.5 9B Q4_K_M (varsayılan), alternatif Gemma 4 E4B GGUF; düşünme modu (`enable_thinking`).
+- [x] Ayarlar'daki model seçimi etkin; kurulu model yoksa sahte modele dönülür ve bu ekranda yazar.
+- [x] Testler: motor seçici / akış biçimi (çekirdek), llama-server istemcisi yerel sahte sunucuyla, zip-slip reddi, PC model seçimi.
+- [ ] Gerçek cihazda Gemma 4 ve RX 6600'de Qwen ile performans ölçümü (kullanıcı geri bildirimiyle).
 
 ## v0.3 — Bilgi
 - [ ] Android: java-libkiwix (`org.kiwix:libkiwix` 2.7.0 doğrulandı) ile Türkçe Wikipedia ZIM araması/okuma (`wiki_ara`, `wiki_oku`).
@@ -49,5 +52,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [ ] Belgelerin son hali.
 
 ## Kaldığım yer
-Oturum 1 (2026-11-02): Bölüm 0 ve v0.1 kodu yazıldı, CI yeşile çekildi (Android + Windows MSI), ardından
-"max" seviyesinde inceleme ve sertleştirme yapıldı. v0.1.0 yayımlandı. Sıradaki adım: v0.2 (LiteRT-LM + Gemma 4 E4B/E2B, llama-server + Qwen 3.5 9B).
+Oturum 1 (2026-11-02): Bölüm 0 ve v0.1 yazıldı, CI yeşil, "max" incelemesi yapıldı, v0.1.0 ve gerçek
+telefondaki indirme hataları için v0.1.1 yayımlandı. v0.2 (gerçek LLM: Android LiteRT-LM + Gemma 4,
+PC llama-server + Qwen 3.5 9B) yazıldı ve v0.2.0 olarak yayımlandı. Sıradaki adım: v0.3 (offline
+Wikipedia: java-libkiwix / kiwix-serve, belge araması, araç çağırma ve kaynak çipleri).

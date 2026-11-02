@@ -4,8 +4,9 @@ Jarvis telefonunuzda (Android) ve bilgisayarınızda (Windows) **tamamen interne
 bir yapay zekâ asistanıdır. Konuşmalarınız, hafızası ve belgeleriniz cihazınızdan çıkmaz. Abonelik, API
 anahtarı ya da reklam yoktur.
 
-> **Durum:** v0.1 deneme sürümü. Arayüz, sesli komutlar, kurulum sihirbazı ve güvenli indirme çalışıyor;
-> dil modeli henüz "sahte" (deneme modu). Gerçek model v0.2'de gelecek. Ayrıntılar: [`docs/PLAN.md`](docs/PLAN.md).
+> **Durum:** v0.2. Gerçek yapay zekâ modeli çalışıyor: telefonda Gemma 4 (LiteRT-LM), PC'de Qwen 3.5 9B
+> (llama.cpp, Vulkan). Model indirilmeden önce Jarvis "sahte model" ile deneme modunda cevap verir.
+> Offline Wikipedia ve belge araması v0.3'te gelecek. Ayrıntılar: [`docs/PLAN.md`](docs/PLAN.md).
 
 ---
 

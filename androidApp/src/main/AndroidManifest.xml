@@ -49,6 +49,10 @@
         android:theme="@style/Theme.Jarvis"
         android:usesCleartextTraffic="false">
 
+        <!-- LiteRT-LM GPU backend (OpenCL); optional, CPU is used when missing. -->
+        <uses-native-library android:name="libOpenCL.so" android:required="false" />
+        <uses-native-library android:name="libvndksupport.so" android:required="false" />
+
         <activity
             android:name=".android.MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|uiMode|density"

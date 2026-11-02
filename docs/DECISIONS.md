@@ -102,3 +102,16 @@ Android emülatöründe uçtan uca bir test çalıştırır: iki APK'yı kurar, 
 `tools/models.select.json` içinde "latest" denen kaynaklar (ör. llama.cpp) kilit üretildiği anda çözülüp
 tam sürüm + özetle sabitlenir. Kilit yalnızca seçim dosyası/betik değiştiğinde ya da elle tetiklendiğinde
 yeniden üretilir; yalnızca zaman damgası değiştiyse commit yapılmaz.
+
+## D20 — Gerçek LLM seçimi ve geri dönüş
+Asistan tek bir `EngineSelector` üzerinden konuşur: her soruda kurulu ve doğrulanmış modele bakar, yoksa
+sahte modele döner (arayüz "sahte model" der). Android'de seçim: Ayarlar'daki model → RAM ≥ 12 GB ise
+Gemma 4 E4B → E2B. Yükleme başarısız olursa model o oturum için işaretlenir ve bir sonrakine geçilir;
+LiteRT-LM önce GPU, olmazsa CPU arka ucuyla açılır. PC'de seçim: Ayarlar'daki model → Qwen 3.5 9B →
+Gemma 4 E4B GGUF; doğrulanmış llama.cpp (Vulkan) zip'i de kurulu olmalıdır. Zip ilk kullanımda
+`%LOCALAPPDATA%\Jarvis\bin` altına (dışarı taşan girdiler reddedilerek) açılır, `llama-server`
+`127.0.0.1` ve rastgele boş bir bağlantı noktasında `-ngl 99 -c 8192 --jinja` ile başlatılır, pencere
+kapanınca ya da model değişince alt süreçleriyle birlikte kapatılır. Düşünme modu Qwen/Gemma sohbet
+şablonlarının `enable_thinking` anahtarıyla açılıp kapanır; düşünme metni (`reasoning_content`)
+kullanıcıya gösterilmez, yalnızca cevap metni akar. Bazı LiteRT-LM sürümleri biriken metni, bazıları
+yalnızca yeni parçayı döndürdüğü için `DeltaTracker` ikinci parçada biçimi anlayıp tekrar etmeyi önler.

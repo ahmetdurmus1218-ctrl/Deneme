@@ -159,7 +159,7 @@ fun SettingsScreen(bridge: PlatformBridge, settings: SettingsStore, registry: Mo
     ScreenColumn("Ayarlar") {
         Text("Model", fontWeight = FontWeight.SemiBold)
         val llms = registry.forPlatform(bridge.platform).filter { it.kind == "llm" }
-        Text("Bu sürüm (v0.1) sahte bir dil modeli kullanır; seçim v0.2'de etkinleşir.", color = JarvisColors.TextDim, fontSize = 12.sp)
+        Text("Kurulu modellerden biri seçilmezse cihaza uygun olan kendiliğinden kullanılır. Hiç model kurulu değilse Jarvis deneme modunda çalışır.", color = JarvisColors.TextDim, fontSize = 12.sp)
         llms.forEach { m ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(m.title, modifier = Modifier.weight(1f))
