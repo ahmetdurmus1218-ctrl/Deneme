@@ -73,6 +73,11 @@ jobs:
           ./gradlew --no-daemon -Pjarvis.version="$V" :desktopApp:jvmTest :desktopApp:packageMsi
           mkdir -p dist
           cp desktopApp/build/compose/binaries/main/msi/*.msi "dist/Jarvis-Setup-${V%%-*}.msi"
+      - name: jpackage logs
+        if: failure()
+        shell: bash
+        run: |
+          for f in desktopApp/build/compose/logs/*/*.txt; do echo "=== $f"; tail -n 80 "$f"; done || true
       - uses: actions/upload-artifact@v4
         with:
           name: windows

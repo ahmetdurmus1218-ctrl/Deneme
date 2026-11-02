@@ -34,7 +34,8 @@ compose.desktop {
             packageName = "Jarvis"
             // MSI needs MAJOR.MINOR.BUILD; strip any "-suffix".
             packageVersion = project.version.toString().substringBefore('-')
-            description = "Jarvis — çevrimdışı Türkçe kişisel asistan"
+            // ASCII only: WiX builds the MSI with code page 1252, which has no ı/ş/ğ.
+            description = "Jarvis - offline Turkish personal assistant"
             vendor = "Jarvis"
             copyright = "Jarvis"
             // Bundle a complete Java runtime so the user never installs Java.
