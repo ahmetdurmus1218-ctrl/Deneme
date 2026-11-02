@@ -98,6 +98,11 @@ def text_has(t):
     return lambda n: t in label(n)
 
 
+def tab(name):
+    """Bottom navigation items merge icon and label ("📦, Modeller")."""
+    return lambda n: label(n) == name or (label(n).endswith(name) and len(label(n)) <= len(name) + 5)
+
+
 def text_re(rx):
     r = re.compile(rx)
     return lambda n: bool(r.search(label(n)))
@@ -168,7 +173,7 @@ def main():
     shot("02-kale-saat")
 
     step("gate detected")
-    tap(wait_for(text_is("Modeller"), "Models tab"))
+    tap(wait_for(tab("Modeller"), "Models tab"))
     wait_for(text_has("İndirme yolu: Jarvis Kapı"), "gate status")
     shot("03-kale-modeller")
     check_no_crash()
@@ -183,7 +188,7 @@ def main():
             idx = next((i for i, n in enumerate(ns) if label(n).startswith("Piper Türkçe ses")), None)
             if idx is not None:
                 after = [n for n in ns[idx + 1:] if label(n) == "İndir"]
-                nav = find(text_is("Ayarlar"), root)
+                nav = find(tab("Ayarlar"), root)
                 nav_top = bounds(nav)[1] if nav is not None else 10 ** 6
                 if after and bounds(after[0])[3] < nav_top:
                     target = after[0]
@@ -203,7 +208,7 @@ def main():
         adb("shell", "input", "keyevent", "66")
         wait_for(text_has("SHA-256 doğrulandı"), "verified install", timeout=300)
         shot("06-kale-kuruldu")
-        tap(wait_for(text_is("Ağ"), "network tab"))
+        tap(wait_for(tab("Ağ"), "network tab"))
         wait_for(text_has("Sonuç: tamam"), "network log entry")
         shot("07-kale-ag-kaydi")
         adb("shell", "am", "start", "-W", "-n", f"{GATE}/.StatusActivity")
