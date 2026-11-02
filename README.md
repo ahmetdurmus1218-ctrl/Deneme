@@ -89,6 +89,18 @@ Jarvis'in dosyaları: `%LOCALAPPDATA%\Jarvis` (Gezgin'in adres çubuğuna yazıp
 - **Telemetri, analitik, reklam ve çökme raporu yoktur.** Yedekleme/cihazlar arası aktarım da kapalıdır.
 - **"Tam offline mod"** (Ayarlar) açıkken hiçbir indirme yapılmaz.
 
+### Bu güvenceler nasıl denetleniyor?
+
+Her değişiklikte GitHub otomatik olarak şunları yapar; biri bile başarısız olursa sürüm yayımlanmaz:
+- Telefon uygulamasının izinlerini APK'dan okur; "İnternet" görürse durur.
+- Gerçek bir Android emülatöründe iki uygulamayı kurar, Android'in verdiği izinleri okur, Jarvis'i açar,
+  "saat kaç" diye sorar ve Kapı üzerinden en küçük modeli (Türkçe ses, 67 MB) gerçekten indirip iki kez
+  doğrular.
+- Bilgisayar arayüzünü baştan sona gezen bir test çalıştırır (sihirbaz, sohbet, onay ekranı, ağ kaydı).
+- İndirme kurallarını (izinli siteler, yasak dosya türleri, boyut sınırı, sertifika sabitleme, yarıda kalan
+  indirmeyi sürdürme, bozuk dosyayı silme) ve "dış içerik okunduktan sonra hafıza değiştirilemez" kuralını
+  ayrı ayrı test eder.
+
 ## 7. İmza anahtarı (isteğe bağlı, bir kez yapılır)
 
 Release'deki APK'lar, sizin anahtarınız tanımlanmadıysa depodaki **herkese açık test anahtarıyla**
