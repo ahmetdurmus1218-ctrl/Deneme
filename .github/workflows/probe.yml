@@ -15,3 +15,17 @@ jobs:
       - run: python3 tools/probe.py all
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: TLS chain SPKI pins (for certificate pinning)
+        run: |
+          for h in huggingface.co cdn-lfs.hf.co cas-bridge.xethub.hf.co download.kiwix.org mirror.download.kiwix.org github.com objects.githubusercontent.com release-assets.githubusercontent.com; do
+            echo "== $h"
+            echo | openssl s_client -servername $h -connect $h:443 -showcerts 2>/dev/null \
+              | awk '/BEGIN CERT/{n++} {print > ("/tmp/c" n ".pem")}' || true
+            for f in /tmp/c[0-9]*.pem; do
+              [ -s "$f" ] || continue
+              subj=$(openssl x509 -in $f -noout -subject -enddate 2>/dev/null | tr '\n' ' ')
+              pin=$(openssl x509 -in $f -pubkey -noout 2>/dev/null | openssl pkey -pubin -outform der 2>/dev/null | openssl dgst -sha256 -binary | base64)
+              echo "  $subj pin=sha256/$pin"
+            done
+            rm -f /tmp/c*.pem
+          done

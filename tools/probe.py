@@ -106,7 +106,7 @@ def hf_files(repo, pattern=r"."):
 def gh_release(repo, pattern, n=1):
     try:
         rels = json.loads(get(f"https://api.github.com/repos/{repo}/releases?per_page=5"))
-        rels = [r for r in rels if not r.get("prerelease") and not r.get("draft")][:n]
+        rels = [r for r in rels if not r.get("draft")][:n]
         for r in rels:
             print(f"GH {repo}: {r['tag_name']} {r['published_at']}")
             for a in r["assets"]:
@@ -116,15 +116,41 @@ def gh_release(repo, pattern, n=1):
         print(f"GH {repo}: ERROR {e}")
 
 
-def kiwix(path, pattern):
+def kiwix(path, pattern, limit=4):
     try:
         html = get(f"https://download.kiwix.org/{path}")
-        names = sorted(set(re.findall(r'href="([^"]+)"', html)))
-        for nme in names:
-            if re.search(pattern, nme):
-                print(f"KIWIX {path}{nme}")
+        names = sorted(set(n for n in re.findall(r'href="([^"]+)"', html) if re.search(pattern, n)))
+        for nme in names[-limit:]:
+            print(f"KIWIX {path}{nme}")
     except Exception as e:  # noqa: BLE001
         print(f"KIWIX {path}: ERROR {e}")
+
+
+def android_sdk():
+    try:
+        xml = get("https://dl.google.com/android/repository/repository2-3.xml")
+        plats = sorted(set(re.findall(r'path="platforms;(android-[\w.-]+)"', xml)))
+        bts = sorted(set(re.findall(r'path="build-tools;([\d.]+)"', xml)), key=vkey)
+        print("SDK platforms:", " ".join(plats[-8:]))
+        print("SDK build-tools:", " ".join(bts[-5:]))
+    except Exception as e:  # noqa: BLE001
+        print(f"SDK: ERROR {e}")
+
+
+def redirects(url):
+    try:
+        req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "jarvis-probe"})
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *a, **k):
+                return None
+        opener = urllib.request.build_opener(NoRedirect)
+        try:
+            r = opener.open(req, timeout=60)
+            print(f"REDIRECT {url}: {r.status} (no redirect)")
+        except urllib.error.HTTPError as e:
+            print(f"REDIRECT {url}: {e.code} -> {e.headers.get('Location')}")
+    except Exception as e:  # noqa: BLE001
+        print(f"REDIRECT {url}: ERROR {e}")
 
 
 def main():
@@ -136,27 +162,30 @@ def main():
             maven(CENTRAL, c)
         for c in PORTAL_COORDS:
             maven(PORTAL, c)
+    if section in ("all", "sdk"):
+        android_sdk()
     if section in ("all", "models"):
         hf_search("gemma-4", author="litert-community")
+        hf_files("litert-community/gemma-4-E4B-it-litert-lm", r"\.litertlm$")
         hf_search("gemma-4-E4B")
         hf_search("Qwen3.5-9B-GGUF")
         hf_search("gemma-4-E4B-it-GGUF")
-        hf_search("sherpa-onnx-whisper")
-        hf_search("multilingual-e5-small")
-        for repo in ["litert-community/gemma-4-E4B-it-litert-lm", "litert-community/gemma-4-E2B-it-litert-lm",
-                     "Qwen/Qwen3.5-9B-GGUF", "unsloth/Qwen3.5-9B-GGUF", "ggml-org/gemma-4-E4B-it-GGUF",
-                     "unsloth/gemma-4-E4B-it-GGUF"]:
-            hf_files(repo, r"\.(litertlm|gguf|task)$|README")
-        hf_files("rhasspy/piper-voices", r"^tr/")
-        hf_files("csukuangfj/sherpa-onnx-whisper-turbo", r".")
-        hf_files("csukuangfj/sherpa-onnx-whisper-small", r".")
+        hf_search("sherpa-onnx-whisper", limit=8)
+        hf_files("litert-community/gemma-4-E2B-it-litert-lm", r"^[^/]*\.litertlm$")
+        hf_files("unsloth/Qwen3.5-9B-GGUF", r"Q4_K_M")
+        hf_files("ggml-org/gemma-4-E4B-it-GGUF", r"Q4")
+        hf_files("rhasspy/piper-voices", r"^tr/.*(onnx|json)$")
+
         kiwix("zim/wikipedia/", r"wikipedia_tr_all")
-        kiwix("release/kiwix-tools/", r"win|linux-x86_64")
-        gh_release("ggml-org/llama.cpp", r"win.*(vulkan|cpu).*x64")
+        kiwix("release/kiwix-tools/", r"win-x86_64.*zip$")
+        kiwix("release/kiwix-tools/", r"win-x86_64.*sha256$")
+        kiwix("zim/wikipedia/", r"wikipedia_tr_all_nopic.*(sha256|md5)$")
+        redirects("https://download.kiwix.org/zim/wikipedia/wikipedia_tr_all_nopic_2026-09.zim")
+        redirects("https://huggingface.co/rhasspy/piper-voices/resolve/main/tr/tr_TR/dfki/medium/tr_TR-dfki-medium.onnx")
+        redirects("https://github.com/k2-fsa/sherpa-onnx/releases/download/v2.0.1/sherpa-onnx-2.0.1.aar")
+        gh_release("ggml-org/llama.cpp", r"win.*x64")
         gh_release("k2-fsa/sherpa-onnx", r"(\.aar$|win-x64.*jni|sherpa-onnx-v[\d.]+\.jar|java)")
-        gh_release("kiwix/java-libkiwix", r".")
-        gh_release("google-ai-edge/LiteRT-LM", r".")
-        gh_release("k2-fsa/sherpa-onnx", r"vits-piper-tr", n=1)
+        gh_release("google-ai-edge/LiteRT-LM", r"android|aar")
 
 
 if __name__ == "__main__":
