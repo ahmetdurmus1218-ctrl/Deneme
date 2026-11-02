@@ -15,7 +15,9 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import io.github.ahmetdurmus1218.jarvis.core.llm.MockLlmEngine
@@ -114,6 +116,14 @@ class AppUiTest {
         rule.waitUntil(timeoutMs) { rule.onAllNodesWithText(text, substring = substring).fetchSemanticsNodes().isNotEmpty() }
     }
 
+    /** Scrolls the node into view first: long screens (bundle list, models) put buttons below the fold. */
+    private fun click(node: SemanticsNodeInteraction) {
+        runCatching { node.performScrollTo() }
+        node.performClick()
+    }
+
+    private fun click(text: String) = click(rule.onNodeWithText(text))
+
     private fun ask(text: String) {
         rule.onNode(hasSetTextAction()).performTextInput(text)
         rule.onNodeWithText("Gönder").performClick()
@@ -133,14 +143,14 @@ class AppUiTest {
         waitForText("Kurulum sihirbazı")
         waitForText("1/4 · Cihaz kontrolü")
         shot("01-sihirbaz-cihaz")
-        rule.onNodeWithText("Devam").performClick()
+        click("Devam")
         waitForText("2/4 · Önerilen paket")
         waitForText("Qwen 3.5 9B Q4_K_M (GGUF)")
         shot("02-sihirbaz-paket")
-        rule.onNodeWithText("İndirmeden devam et").performClick()
+        click("İndirmeden devam et")
         waitForText("4/4 · Ses testi")
-        rule.onNodeWithText("Bitir").performClick()
-        rule.onNodeWithText("Sohbete geç").performClick()
+        click("Bitir")
+        click("Sohbete geç")
 
         // 2. Chat: quick command, tool call with a verified number, knowledge question without sources
         waitForText("Gönder")
@@ -161,11 +171,11 @@ class AppUiTest {
         rule.onNodeWithText("Modeller").performClick()
         waitForText("İndirme yolu: jarvis-kapi (test)")
         shot("05-modeller")
-        rule.onAllNodesWithText("İndir")[0].performClick()
+        click(rule.onAllNodesWithText("İndir")[0])
         waitForText("İnternet erişimi onayı")
         waitForText("huggingface.co", substring = true)
         shot("06-onay-ekrani")
-        rule.onNodeWithText("Reddet").performClick()
+        click("Reddet")
         waitForText("Onay verilmedi: Onay ekranında reddedildi")
 
         // 4. Network log shows the refused request; nothing was downloaded
