@@ -172,6 +172,7 @@ fun SettingsScreen(bridge: PlatformBridge, settings: SettingsStore, registry: Mo
             }
         }
         Toggle("Sesli yanıt", s.voiceEnabled) { v -> settings.update { it.copy(voiceEnabled = v) } }
+        Toggle("Sohbet modu (cevaptan sonra yeniden dinler)", s.conversationMode) { v -> settings.update { it.copy(conversationMode = v) } }
         Text("Konuşma hızı: ${(s.speechRate * 100).toInt()}%")
         Slider(value = s.speechRate, onValueChange = { v -> settings.update { it.copy(speechRate = v) } }, valueRange = 0.6f..1.6f)
         Toggle("Web araması (her sorguda onay istenir)", s.webSearch) { v -> settings.update { it.copy(webSearch = v) } }

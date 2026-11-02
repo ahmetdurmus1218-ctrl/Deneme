@@ -17,6 +17,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 data class Turn(
@@ -81,8 +82,25 @@ class JarvisController(
                     queued = 0
                     _subtitle.value = ""
                     if (_mode.value == CoreMode.SPEAKING) _mode.value = CoreMode.IDLE
+                    maybeContinueConversation()
                 }
             }
+        }
+    }
+
+    /** Turn started by voice whose answer should be followed by listening again (conversation mode). */
+    private var continueAfter: Long? = null
+
+    /** Conversation mode: once a spoken question is fully answered and spoken, listen again. */
+    private fun maybeContinueConversation() {
+        val id = continueAfter ?: return
+        if (!settings.state.value.conversationMode) return
+        val turn = _turns.value.firstOrNull { it.id == id } ?: return
+        if (!turn.done || queued > 0 || _mode.value != CoreMode.IDLE) return
+        continueAfter = null
+        scope.launch {
+            delay(CONTINUE_DELAY_MS)
+            if (_mode.value == CoreMode.IDLE && currentTurnId == id) startListening()
         }
     }
 
@@ -141,6 +159,7 @@ class JarvisController(
         when (ev) {
             is AssistantEvent.Quick -> {
                 if (ev.command == QuickCommand.StopSpeaking) {
+                    continueAfter = null // "sus" also ends the hands-free conversation
                     stopSpeaking()
                     updateTurn(id) { it.copy(done = true, scenes = listOf(VerifiedScene(Sahne("Tamam, susuyorum.")))) }
                     return
@@ -160,8 +179,9 @@ class JarvisController(
             }
             is AssistantEvent.Failed -> updateTurn(id) { it.copy(done = true, error = ev.message) }
         }
-        if (ev is AssistantEvent.Completed || ev is AssistantEvent.Quick) {
+        if (ev is AssistantEvent.Completed || ev is AssistantEvent.Quick || ev is AssistantEvent.Failed) {
             if (queued == 0 && _mode.value == CoreMode.THINKING) _mode.value = CoreMode.IDLE
+            if (ev !is AssistantEvent.Failed) maybeContinueConversation() else continueAfter = null
         }
     }
 
@@ -186,6 +206,8 @@ class JarvisController(
                 _partial.value = ""
                 _level.value = 0f
                 if (_mode.value == CoreMode.LISTENING) _mode.value = CoreMode.IDLE
+                // Set before send(): a quick command can finish synchronously inside it.
+                continueAfter = nextId
                 send(text)
             }
             override fun onError(message: String) {
@@ -218,5 +240,10 @@ class JarvisController(
         stopSpeaking()
         _turns.value = emptyList()
         _mode.value = CoreMode.IDLE
+    }
+
+    companion object {
+        /** Pause between Jarvis finishing and listening again, so its own voice is not recorded. */
+        const val CONTINUE_DELAY_MS = 350L
     }
 }

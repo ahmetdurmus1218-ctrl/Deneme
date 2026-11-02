@@ -47,13 +47,28 @@ class JarvisControllerTest {
         override fun stop() { stops++ }
     }
 
-    private class Bridge(val tts: Tts) : PlatformBridge {
+    /** Answers each start() with the next scripted utterance; null = "heard nothing". */
+    private class ScriptedStt(vararg said: String?) : SpeechInput {
+        private val script = ArrayDeque(said.toList())
+        var starts = 0
+        override val engineName = "script"
+        override fun isAvailable() = true
+        override fun start(listener: SpeechInput.Listener) {
+            starts++
+            val next = if (script.isEmpty()) null else script.removeFirst()
+            if (next == null) listener.onError("Bir şey duyamadım.") else listener.onFinal(next)
+        }
+        override fun stop() {}
+        override fun cancel() {}
+    }
+
+    private class Bridge(val tts: Tts, val stt: SpeechInput? = null) : PlatformBridge {
         val executed = mutableListOf<QuickCommand>()
         override val platform = Platform.ANDROID
         override val appVersion = "test"
         override fun deviceInfo() = DeviceInfo("test", 8.0, 1L shl 40)
         override val files: AppFiles = Files()
-        override val speechInput: SpeechInput? = null
+        override val speechInput: SpeechInput? = stt
         override val speechOutput: SpeechOutput = tts
         override val approver = object : Approver {
             override suspend fun confirm(title: String, subtitle: String) = ApprovalResult.Approved(ApprovalMethod.DIALOG)
@@ -86,12 +101,64 @@ class JarvisControllerTest {
      */
     private fun TestScope.controllerScope(): CoroutineScope = CoroutineScope(coroutineContext + Job())
 
-    private fun setup(engine: LlmEngine = MockLlmEngine(tokenDelayMs = 0), scope: CoroutineScope): Triple<JarvisController, Bridge, Tts> {
+    private fun setup(engine: LlmEngine = MockLlmEngine(tokenDelayMs = 0), scope: CoroutineScope, stt: SpeechInput? = null): Triple<JarvisController, Bridge, Tts> {
         val tts = Tts()
-        val bridge = Bridge(tts)
+        val bridge = Bridge(tts, stt)
         val memory = InMemoryMemoryStore()
         val assistant = Assistant(engine, DefaultTools.create(memory, now), memory, now)
         return Triple(JarvisController(scope, bridge, assistant, memory, SettingsStore(bridge.files)), bridge, tts)
+    }
+
+    @Test
+    fun conversationModeListensAgainUntilSilence() = runTest {
+        val scope = controllerScope()
+        val stt = ScriptedStt("saat kaç", "bugün ayın kaçı", null)
+        val (c, _, tts) = setup(scope = scope, stt = stt)
+        c.settings.update { it.copy(conversationMode = true) }
+        c.startListening()
+        advanceUntilIdle()
+        // Two spoken questions answered hands-free, then silence ends the conversation.
+        assertEquals(3, stt.starts)
+        assertEquals(2, c.turns.value.size)
+        assertEquals(2, tts.spoken.size)
+        assertEquals(CoreMode.IDLE, c.mode.value)
+        scope.cancel()
+    }
+
+    @Test
+    fun withoutConversationModeTheMicStaysOff() = runTest {
+        val scope = controllerScope()
+        val stt = ScriptedStt("saat kaç", "bugün ayın kaçı")
+        val (c, _, _) = setup(scope = scope, stt = stt)
+        c.startListening()
+        advanceUntilIdle()
+        assertEquals(1, stt.starts)
+        assertEquals(1, c.turns.value.size)
+        scope.cancel()
+    }
+
+    @Test
+    fun susEndsTheConversation() = runTest {
+        val scope = controllerScope()
+        val stt = ScriptedStt("tamam sus", "saat kaç")
+        val (c, _, _) = setup(scope = scope, stt = stt)
+        c.settings.update { it.copy(conversationMode = true) }
+        c.startListening()
+        advanceUntilIdle()
+        assertEquals(1, stt.starts)
+        scope.cancel()
+    }
+
+    @Test
+    fun typedQuestionsDoNotOpenTheMic() = runTest {
+        val scope = controllerScope()
+        val stt = ScriptedStt("saat kaç")
+        val (c, _, _) = setup(scope = scope, stt = stt)
+        c.settings.update { it.copy(conversationMode = true) }
+        c.send("Saat kaç?")
+        advanceUntilIdle()
+        assertEquals(0, stt.starts)
+        scope.cancel()
     }
 
     @Test

@@ -152,8 +152,10 @@ class AppUiTest {
         click("Bitir")
         click("Sohbete geç")
 
-        // 2. Chat: quick command, tool call with a verified number, knowledge question without sources
+        // 2. Chat: greeting, quick command, tool call with a verified number, knowledge question without sources
         waitForText("Gönder")
+        waitForText("efendim.", substring = true)
+        shot("02c-sohbet-karsilama")
         ask("Saat kaç?")
         rule.waitUntil(10_000) {
             rule.onAllNodes(hasText("Saat ", substring = true)).fetchSemanticsNodes().size >= 2

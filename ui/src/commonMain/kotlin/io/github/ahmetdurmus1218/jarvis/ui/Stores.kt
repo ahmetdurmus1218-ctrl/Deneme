@@ -12,6 +12,8 @@ data class Settings(
     /** Locked LLM item id chosen by the user; null = recommended. */
     val llmId: String? = null,
     val voiceEnabled: Boolean = true,
+    /** Hands-free: after answering a spoken question, Jarvis listens again by itself. */
+    val conversationMode: Boolean = false,
     val speechRate: Float = 1.0f,
     /** Web search is off by default; even when on, every query needs approval. */
     val webSearch: Boolean = false,

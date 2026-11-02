@@ -50,6 +50,14 @@ jobs:
             [ -f "$f" ] || continue
             echo "=== $(basename "$f" .txt): $(cat "$f")"
           done
+      - name: Desktop UI screenshots as text (base64, for reviewing the design from the log)
+        if: always()
+        run: |
+          for f in 02c-sohbet-karsilama 03-sohbet-hesap 04-sohbet-kaynak-yok; do
+            p="desktopApp/build/ui-screens/$f.jpg"
+            [ -f "$p" ] || continue
+            echo "=== IMG $f"; base64 -w0 "$p"; echo; echo "=== END $f"
+          done
       - name: Upload desktop UI screenshots
         if: always()
         uses: actions/upload-artifact@v4

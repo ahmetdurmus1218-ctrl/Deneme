@@ -15,6 +15,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,25 +37,39 @@ fun SceneCard(scene: VerifiedScene, modifier: Modifier = Modifier) {
     Column(
         modifier
             .fillMaxWidth()
-            .background(JarvisColors.SurfaceHigh, RoundedCornerShape(14.dp))
-            .border(1.dp, JarvisColors.CyanDim.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
-            .padding(14.dp),
+            .background(
+                Brush.verticalGradient(listOf(JarvisColors.Glass, JarvisColors.Surface.copy(alpha = 0.55f))),
+                RoundedCornerShape(16.dp),
+            )
+            .border(
+                1.dp,
+                Brush.linearGradient(listOf(JarvisColors.GlassBorder, JarvisColors.Cyan.copy(alpha = 0.08f), JarvisColors.GlassBorder)),
+                RoundedCornerShape(16.dp),
+            )
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         when (g?.tip) {
-            GorselTip.BASLIK -> Text(g.baslik.orEmpty(), fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = JarvisColors.Cyan)
+            GorselTip.BASLIK -> Text(g.baslik.orEmpty().uppercase(), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = JarvisColors.Cyan, letterSpacing = 2.sp)
             GorselTip.SAYI -> {
                 g.etiket?.let { Text(it, color = JarvisColors.TextDim, fontSize = 13.sp) }
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text(g.deger.orEmpty(), fontSize = 34.sp, fontWeight = FontWeight.Bold, color = JarvisColors.Cyan)
+                    CountUp(g.deger.orEmpty(), fontSize = 40.sp, color = JarvisColors.CyanBright)
                     g.birim?.let {
                         Spacer(Modifier.width(6.dp))
                         Text(it, fontSize = 18.sp, color = JarvisColors.TextDim)
                     }
                 }
             }
-            GorselTip.LISTE -> g.ogeler.orEmpty().forEach { Text("•  $it") }
-            GorselTip.ADIMLAR -> g.ogeler.orEmpty().forEachIndexed { i, it -> Text("${i + 1}.  $it") }
+            GorselTip.LISTE -> g.ogeler.orEmpty().forEach {
+                Row { Text("◆  ", color = JarvisColors.Cyan, fontSize = 12.sp); Text(it) }
+            }
+            GorselTip.ADIMLAR -> g.ogeler.orEmpty().forEachIndexed { i, it ->
+                Row(verticalAlignment = Alignment.Top) {
+                    Text("${i + 1}".padStart(2, '0') + "  ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace)
+                    Text(it)
+                }
+            }
             GorselTip.ALINTI -> {
                 Text("“${g.metin.orEmpty()}”", fontStyle = FontStyle.Italic, fontSize = 17.sp)
                 g.kaynak?.let { Text("— $it", color = JarvisColors.TextDim, fontSize = 13.sp) }
@@ -66,6 +86,19 @@ fun SceneCard(scene: VerifiedScene, modifier: Modifier = Modifier) {
             if (scene.downgraded) Badge("doğrulanamayan değer kaldırıldı", JarvisColors.Red)
         }
     }
+}
+
+/**
+ * Shows a number counting up to its final value (plain integers only). Formatted values such as
+ * "5.910.320" or "8.848,86" are shown exactly as given: the verified text never changes.
+ */
+@Composable
+fun CountUp(value: String, fontSize: androidx.compose.ui.unit.TextUnit, color: androidx.compose.ui.graphics.Color) {
+    val target = value.takeIf { Regex("^\\d{1,9}$").matches(it) }?.toLong()
+    val progress = remember(value) { Animatable(if (target == null) 1f else 0f) }
+    LaunchedEffect(value) { if (target != null) progress.animateTo(1f, tween(900)) }
+    val shown = if (target == null || progress.value >= 1f) value else (target * progress.value).toLong().toString()
+    Text(shown, fontSize = fontSize, fontWeight = FontWeight.Bold, color = color, fontFamily = FontFamily.Monospace)
 }
 
 @Composable

@@ -10,7 +10,12 @@ object JarvisColors {
     val Surface = Color(0xFF0C121B)
     val SurfaceHigh = Color(0xFF131C28)
     val Cyan = Color(0xFF38D6FF)
+    val CyanBright = Color(0xFF7DF3FF)
     val CyanDim = Color(0xFF1B6F8A)
+    val Violet = Color(0xFF9D7CFF)
+    /** Translucent panels over the HUD background. */
+    val Glass = Color(0x2216324A)
+    val GlassBorder = Color(0x5538D6FF)
     val Amber = Color(0xFFFFB547)
     val Red = Color(0xFFFF5A5F)
     val Green = Color(0xFF4CD99A)
