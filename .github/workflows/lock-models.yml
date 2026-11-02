@@ -1,0 +1,36 @@
+name: lock-models
+# Runs tools/lock-models.py against the official sources and commits models.lock.json back to the branch.
+on:
+  push:
+    branches-ignore: [main]
+    paths: [tools/lock-models.py, tools/models.select.json, .github/workflows/lock-models.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lock-models-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Resolve and hash all model sources
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 tools/lock-models.py --select tools/models.select.json --out models.lock.json
+      - name: Validate lock schema
+        run: python3 tools/check-lock-schema.py models.lock.json
+      - name: Piper voice model card (license info)
+        run: curl -fsSL https://huggingface.co/rhasspy/piper-voices/raw/main/tr/tr_TR/dfki/medium/MODEL_CARD || true
+      - name: Commit lock file
+        run: |
+          cat models.lock.json
+          if git diff --quiet -- models.lock.json && git ls-files --error-unmatch models.lock.json >/dev/null 2>&1; then
+            echo "models.lock.json unchanged"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add models.lock.json
+          git commit -m "Update models.lock.json from official sources"
+          git push origin HEAD:${GITHUB_REF_NAME}
