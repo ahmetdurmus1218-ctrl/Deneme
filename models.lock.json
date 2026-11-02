@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-02T11:29:07Z",
+  "generatedAt": "2026-11-02T11:45:41Z",
   "generator": "tools/lock-models.py",
   "items": [
     {
@@ -173,12 +173,12 @@
       "title": "llama.cpp llama-server (Windows, Vulkan)",
       "group": "bin-llama",
       "license": "mit",
-      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12034/llama-b12034-bin-win-vulkan-x64.zip",
-      "fileName": "llama-b12034-bin-win-vulkan-x64.zip",
-      "size": 37523364,
-      "sha256": "df6ab37942d02aeb8ab3de5984711ea866826a94d50f7a9c5960a0d18a9d4269",
-      "revision": "b12034",
-      "origin": "github:ggml-org/llama.cpp@b12034/llama-b12034-bin-win-vulkan-x64.zip",
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12038/llama-b12038-bin-win-vulkan-x64.zip",
+      "fileName": "llama-b12038-bin-win-vulkan-x64.zip",
+      "size": 37523405,
+      "sha256": "32cb894e0d3c7a042876f97315f427fd9a60fbe60f3cfaa20bb1626fed24cd08",
+      "revision": "b12038",
+      "origin": "github:ggml-org/llama.cpp@b12038/llama-b12038-bin-win-vulkan-x64.zip",
       "host": "github.com"
     },
     {
