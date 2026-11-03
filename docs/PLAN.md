@@ -118,6 +118,8 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Ses: yüksek öncelikli ses iş parçacığı, ses odağı, kısık medya sesini açma.
 - [x] İnsancıl üslup; sohbetteki ihtiyaçlar için "…ayım mı?" teklifleri, sesle ya da düğmeyle evet/hayır.
 - [x] Kütüphanede yoksa internette (tr.wikipedia.org) bakmayı teklif; her arama için ayrı onay, yalnızca arama metni gider, Kapı 1.1 / rick-kapi (D38).
+- [x] Testler: canlı tr.wikipedia.org sertifika sabitleme testi (Kapı + rick-kapi); emülatörde teklif + "Hayır", "Evet" → PIN → Kapı → Wikipedia → kaynaklı cevap → Ağ kaydı. CI'nın tamamı yeşil.
+- [x] `v1.1.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.1.0 (rick.apk 80 MB, rick-kapi.apk 8,6 MB, Rick-Setup-1.1.0.msi 110 MB).
 
 ## Kaldığım yer
 Oturum 2 (2026-11-03): v0.3–v0.5 ve halilozat özellikleri yayımlandı (v0.5.0). Ardından kullanıcının telefon
