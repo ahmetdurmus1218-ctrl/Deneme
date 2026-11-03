@@ -36,6 +36,12 @@ data class Settings(
     val hudMark: Int = 1,
     /** City for the offline sunrise/sunset on Mark 2. */
     val city: String = "İstanbul",
+    /** Theme id (see Themes). */
+    val theme: String = "jarvis",
+    /** Text size (0.85 … 1.4). */
+    val fontScale: Float = 1f,
+    /** Calmer animations. */
+    val reduceMotion: Boolean = false,
 )
 
 private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }

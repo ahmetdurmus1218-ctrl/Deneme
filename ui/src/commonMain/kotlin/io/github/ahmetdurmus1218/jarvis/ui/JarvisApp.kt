@@ -94,6 +94,8 @@ class AppGraph(
     }
     /** The user's books (kitaplık), sealed like the rest of the app's data. */
     val library = io.github.ahmetdurmus1218.jarvis.core.library.Library(textStore) { NowProvider.System.now().epochMillis }
+    /** The user's to-do list ("not al: …", "yapılacaklarım neler"). */
+    val todos = io.github.ahmetdurmus1218.jarvis.core.todo.TodoList(textStore) { NowProvider.System.now().epochMillis }
     /** The simulated home (lights, coffee machines) behind the home voice commands and the Ev panel. */
     val home = io.github.ahmetdurmus1218.jarvis.core.home.SmartHome()
     /** The user's own documents (PDF/TXT/MD), searched with BM25 by belge_ara. */
@@ -120,6 +122,19 @@ class AppGraph(
         memory,
         home = home,
         library = library,
+        todos = todos,
+        briefing = {
+            val now = NowProvider.System.now()
+            io.github.ahmetdurmus1218.jarvis.core.briefing.Briefing.Input(
+                now = now,
+                place = io.github.ahmetdurmus1218.jarvis.core.time.Places.byName(settings.state.value.city),
+                todos = todos.items(),
+                reading = library.books().filter { it.status == io.github.ahmetdurmus1218.jarvis.core.library.BookStatus.READING },
+                home = home.state(now.epochMillis),
+                facts = memory.list().size,
+                userName = settings.state.value.userName,
+            )
+        },
     )
     val installer = ModelInstaller(bridge, registry, settings, netLog)
     val engineLabel: String get() = engine.id.let { if (it == "mock") "sahte model (gerçek model kurulu değil)" else it }
@@ -161,7 +176,8 @@ private fun Mark2(graph: AppGraph, city: String, content: @Composable () -> Unit
 
 @Composable
 fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
-    JarvisTheme {
+    val themeSettings by graph.settings.state.collectAsState()
+    JarvisTheme(themeSettings.theme, themeSettings.fontScale, themeSettings.reduceMotion) {
         val scope = rememberCoroutineScope()
         val controller = remember { JarvisController(scope, graph.bridge, graph.assistant, graph.memory, graph.settings) { graph.engine.current.takeIf { it.id != "mock" } } }
         val settings by graph.settings.state.collectAsState()
@@ -173,6 +189,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         // "Jarvis, el kontrolünü aç" (closing is handled by the camera screen itself).
         var homeOpen by remember { mutableStateOf(false) }
         var libraryOpen by remember { mutableStateOf(false) }
+        var todoOpen by remember { mutableStateOf(false) }
         var notice by remember { mutableStateOf<String?>(null) }
         var sleeping by remember { mutableStateOf(false) }
         var waking by remember { mutableStateOf(false) }
@@ -259,7 +276,17 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                     desktop = graph.bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.DESKTOP,
                                 )
                                 val chat: @Composable () -> Unit = {
-                                    ChatScreen(controller, graph.engineLabel, stt != null, offer, vision, onHome = { homeOpen = true }, onLibrary = { libraryOpen = true })
+                                    ChatScreen(
+                                        controller, graph.engineLabel, stt != null, offer, vision,
+                                        menu = listOf(
+                                            "☀ Günlük brifing" to { controller.send("Jarvis, brifing ver") },
+                                            "✅ Yapılacaklar" to { todoOpen = true },
+                                            "🏠 Ev" to { homeOpen = true },
+                                            "📚 Kitaplık" to { libraryOpen = true },
+                                            "✋ El kontrolü" to { cameraOpen = true },
+                                            "🌙 Uyku modu" to { sleeping = true },
+                                        ),
+                                    )
                                 }
                                 if (settings.hudMark == 2) Mark2(graph, settings.city, chat) else chat()
                             }
@@ -272,6 +299,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                 }
             }
             if (homeOpen) HomePanel(graph.home) { homeOpen = false }
+            if (todoOpen) io.github.ahmetdurmus1218.jarvis.ui.screens.TodoPanel(graph.todos) { todoOpen = false }
             if (libraryOpen) LibraryPanel(graph.library, graph.assistant, pickPhoto = { graph.bridge.pickImageJpeg() }) { libraryOpen = false }
             if (sleeping) {
                 SleepScreen(graph.bridge, settings) { sleeping = false; waking = true }

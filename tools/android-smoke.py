@@ -92,6 +92,24 @@ def dismiss_system_anr(root):
     return False
 
 
+def type_into(field_pred, text):
+    """Types text into a field and waits until all of it arrived (adb input can drop the tail on a busy emulator)."""
+    for attempt in range(3):
+        field = wait_for(field_pred, "text field")
+        tap(field)
+        adb("shell", "input", "keyevent", "KEYCODE_MOVE_END")
+        for _ in range(40):
+            adb("shell", "input", "keyevent", "KEYCODE_DEL")
+        adb("shell", "input", "text", text.replace(" ", "%s"))
+        for _ in range(20):
+            n = find(field_pred)
+            if n is not None and n.get("text", "") == text:
+                return
+            time.sleep(0.5)
+        print(f"typing attempt {attempt + 1}: field shows {find(field_pred).get('text', '') if find(field_pred) is not None else None!r}", flush=True)
+    raise SystemExit(f"could not type {text!r}")
+
+
 def wait_for(pred, what, timeout=40):
     end = time.time() + timeout
     root = None
@@ -270,9 +288,7 @@ def main():
     tap(wait_for(text_is("Şimdilik atla (deneme modu)"), "skip button"))
 
     step("quick command")
-    field = wait_for(lambda n: n.get("class") == "android.widget.EditText", "text field")
-    tap(field)
-    adb("shell", "input", "text", "saat%skac")
+    type_into(lambda n: n.get("class") == "android.widget.EditText", "saat kac")
     tap(wait_for(text_is("Gönder"), "send button"))
     answer = wait_for(text_re(r"^Saat \d\d:\d\d\.$"), "time answer")
     print("answer:", label(answer))

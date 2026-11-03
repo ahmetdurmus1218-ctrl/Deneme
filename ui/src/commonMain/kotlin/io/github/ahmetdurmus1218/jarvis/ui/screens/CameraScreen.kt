@@ -118,7 +118,8 @@ fun CameraScreen(
     val installed by installer.installedVersion.collectAsState()
     val tracking = remember(installed) { camera?.trackingReady() == true }
     val text = rememberTextMeasurer()
-    engine.settings = settings.effects
+    // "Hareketi azalt" also calms the hand effects: no screen shake, no fire.
+    engine.settings = if (settings.reduceMotion) settings.effects.copy(fire = false) else settings.effects
 
     fun ask(question: String) {
         val cam = camera ?: return controller.showNotice("Bu cihazda kamera yok: PC'de 📷 menüsünden ekran ya da resim gösterebilirsiniz.")
@@ -193,8 +194,8 @@ fun CameraScreen(
         } else {
             DemoBackdrop(Modifier.fillMaxSize(), clock)
         }
-        val shakeX = if (engine.shake > 0f) sin(tick * 0.09f) * engine.shake * 18f else 0f
-        val shakeY = if (engine.shake > 0f) sin(tick * 0.13f + 1f) * engine.shake * 12f else 0f
+        val shakeX = if (engine.shake > 0f && !settings.reduceMotion) sin(tick * 0.09f) * engine.shake * 18f else 0f
+        val shakeY = if (engine.shake > 0f && !settings.reduceMotion) sin(tick * 0.13f + 1f) * engine.shake * 12f else 0f
         Canvas(Modifier.fillMaxSize().graphicsLayer { translationX = shakeX; translationY = shakeY }) {
             canvasW = size.width
             canvasH = size.height

@@ -21,6 +21,8 @@ sealed interface QuickCommand {
     data class Home(val action: io.github.ahmetdurmus1218.jarvis.core.home.HomeAction) : QuickCommand
     /** In-app: the user's library ("kitaplığıma … ekle", "… bitirdim"). */
     data class Library(val action: io.github.ahmetdurmus1218.jarvis.core.library.LibraryAction) : QuickCommand
+    /** In-app: the to-do list. */
+    data class Todo(val action: io.github.ahmetdurmus1218.jarvis.core.todo.TodoAction) : QuickCommand
     /** In-app: sleep mode ("uyku moduna geç"). */
     data object Sleep : QuickCommand
     /** In-app: opens / closes hand control (the camera with effects). */

@@ -192,7 +192,8 @@ class AppUiTest {
         waitForText("Hemen efendim.", substring = true)
         waitForText("TÜRK KAHVESİ · PİŞİYOR", substring = true)
         shot("08a-ev-kahve")
-        click("🏠")
+        click("☰")
+        click("🏠 Ev")
         waitForText("SİMÜLASYON")
         waitForText("Hazırlanıyor…", substring = true)
         shot("08b-ev-paneli")
@@ -201,11 +202,30 @@ class AppUiTest {
         // Library by voice, then the panel.
         ask("Jarvis, kitaplığıma Davranış'ı ekle")
         waitForText("Tamamdır efendim, Davranış kitaplığınıza eklendi.")
-        click("📚")
+        click("☰")
+        click("📚 Kitaplık")
         waitForText("📚 KİTAPLIK")
         waitForText("okunacak", substring = true)
         shot("08c-kitaplik")
         click("KAPAT")
+
+        // To-do by voice and the offline daily briefing.
+        ask("Jarvis, not al: süt al")
+        waitForText("Listeye ekledim: Süt al.")
+        click("☰")
+        click("☀ Günlük brifing")
+        waitForText("Hepsi bu kadar. İyi bir gün dilerim.", substring = true)
+        shot("08d-brifing")
+
+        // Themes: the whole app follows the chosen palette.
+        graph.settings.update { it.copy(theme = "mark3") }
+        rule.waitForIdle()
+        shot("08e-tema-mark3")
+        graph.settings.update { it.copy(theme = "gunisigi") }
+        rule.waitForIdle()
+        shot("08f-tema-gunisigi")
+        graph.settings.update { it.copy(theme = "jarvis") }
+        rule.waitForIdle()
 
         // 6. Hand control by voice command: the PC has no tracking camera, so it opens the demo
         // (the effects themselves are drawn in HandControlUiTest with a stepped clock).

@@ -63,8 +63,10 @@ fun HudCore(mode: CoreMode, level: Float, modifier: Modifier = Modifier, size: D
     )
     val levelAnim by animateFloatAsState(level, tween(90))
 
+    val calm = io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.reduceMotion
     Canvas(modifier.size(size)) {
-        val t = clock
+        // "Hareketi azalt": the same core, turning six times slower.
+        val t = if (calm) clock / 6f else clock
         val c = center
         val r = this.size.minDimension / 2f
         val spinBoost = if (mode == CoreMode.THINKING) 4f else 1f

@@ -15,6 +15,7 @@ import io.github.ahmetdurmus1218.jarvis.core.safety.InjectionScanner
 import io.github.ahmetdurmus1218.jarvis.core.scene.Gorsel
 import io.github.ahmetdurmus1218.jarvis.core.scene.GorselTip
 import io.github.ahmetdurmus1218.jarvis.core.scene.Kaynak
+import io.github.ahmetdurmus1218.jarvis.core.scene.Reply
 import io.github.ahmetdurmus1218.jarvis.core.scene.Sahne
 import io.github.ahmetdurmus1218.jarvis.core.scene.SceneJson
 import io.github.ahmetdurmus1218.jarvis.core.scene.SceneStreamParser
@@ -60,6 +61,9 @@ class Assistant(
     private val home: io.github.ahmetdurmus1218.jarvis.core.home.SmartHome? = null,
     /** The user's books, for the library commands (null: not available). */
     private val library: io.github.ahmetdurmus1218.jarvis.core.library.Library? = null,
+    private val todos: io.github.ahmetdurmus1218.jarvis.core.todo.TodoList? = null,
+    /** The offline daily briefing's facts (null: no briefing). */
+    private val briefing: (suspend () -> io.github.ahmetdurmus1218.jarvis.core.briefing.Briefing.Input)? = null,
 ) {
     companion object {
         const val MAX_TOOL_ROUNDS = 5
@@ -70,6 +74,22 @@ class Assistant(
     }
 
     fun ask(userText: String, history: List<ChatMessage> = emptyList()): Flow<AssistantEvent> = flow {
+        briefing?.let { input ->
+            if (io.github.ahmetdurmus1218.jarvis.core.briefing.Briefing.matches(userText)) {
+                val scenes = io.github.ahmetdurmus1218.jarvis.core.briefing.Briefing.scenes(input()).map { VerifiedScene(it) }
+                scenes.forEachIndexed { i, s -> emit(AssistantEvent.SceneReady(i, s)) }
+                val text = SceneJson.encodeToString(Reply.serializer(), Reply(scenes.map { it.sahne }))
+                emit(AssistantEvent.Completed(VerifiedReply(scenes, null, emptyList()), text))
+                return@flow
+            }
+        }
+        todos?.let { list ->
+            io.github.ahmetdurmus1218.jarvis.core.todo.TodoCommands.parse(userText, list)?.let { action ->
+                val said = io.github.ahmetdurmus1218.jarvis.core.todo.TodoCommands.apply(list, action)
+                emit(AssistantEvent.Quick(QuickCommand.Todo(action), VerifiedScene(Sahne(said))))
+                return@flow
+            }
+        }
         library?.let { lib ->
             io.github.ahmetdurmus1218.jarvis.core.library.LibraryCommands.parse(userText, lib)?.let { action ->
                 val said = io.github.ahmetdurmus1218.jarvis.core.library.LibraryCommands.apply(lib, action)
@@ -329,6 +349,7 @@ object QuickResponder {
         is QuickCommand.ShowPlanet -> Sahne("${cmd.kind.label} geliyor efendim.", Gorsel(GorselTip.BASLIK, baslik = cmd.kind.label))
         is QuickCommand.Home -> Sahne("")
         is QuickCommand.Library -> Sahne("")
+        is QuickCommand.Todo -> Sahne("")
         QuickCommand.Sleep -> Sahne("Uyku moduna geçiyorum. İki alkışla uyandırabilirsiniz.")
         is QuickCommand.HandControl -> Sahne(if (cmd.on) "El kontrolü açılıyor." else "El kontrolü kapatıldı.")
         is QuickCommand.Calculate -> try {

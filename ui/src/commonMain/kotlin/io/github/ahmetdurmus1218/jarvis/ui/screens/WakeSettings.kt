@@ -1,6 +1,9 @@
 package io.github.ahmetdurmus1218.jarvis.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -170,7 +173,34 @@ fun DisplaySettings(settings: SettingsStore) {
     val s by settings.state.collectAsState()
     var cities by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Ekran", fontWeight = FontWeight.SemiBold)
+        Text("Görünüm", fontWeight = FontWeight.SemiBold)
+        Text("Tema", fontSize = 13.sp)
+        io.github.ahmetdurmus1218.jarvis.ui.theme.Themes.all.chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                pair.forEach { p ->
+                    val selected = s.theme == p.id
+                    Row(
+                        Modifier.weight(1f)
+                            .background(p.background, RoundedCornerShape(10.dp))
+                            .border(if (selected) 2.dp else 1.dp, if (selected) p.accent else p.glassBorder, RoundedCornerShape(10.dp))
+                            .clickable { settings.update { it.copy(theme = p.id) } }
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        listOf(p.accent, p.second, p.amber).forEach { c -> Box(Modifier.size(12.dp).background(c, CircleShape)) }
+                        Text(p.label, color = p.text, fontSize = 11.sp, maxLines = 1)
+                    }
+                }
+            }
+        }
+        Text("Yazı boyutu: %${(s.fontScale * 100).toInt()}", fontSize = 13.sp)
+        Slider(value = s.fontScale, onValueChange = { v -> settings.update { it.copy(fontScale = (v * 20).toInt() / 20f) } }, valueRange = 0.85f..1.4f)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Hareketi azalt (sakin çekirdek, sarsıntı ve ateş yok)", fontSize = 13.sp, modifier = Modifier.weight(1f))
+            androidx.compose.material3.Switch(checked = s.reduceMotion, onCheckedChange = { v -> settings.update { it.copy(reduceMotion = v) } })
+        }
+        Text("Ekran", fontSize = 13.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(1 to "Mark 1 · sade", 2 to "Mark 2 · yoğun HUD").forEach { (m, label) ->
                 OutlinedButton(onClick = { settings.update { it.copy(hudMark = m) } }) {
