@@ -403,6 +403,9 @@ def main():
                 break
             time.sleep(1)
         wait_for(text_is("J.A.R.V.I.S · GÖRÜŞ"), "camera screen")
+        time.sleep(3)
+        shot("12a-kale-kamera-acik")
+        check_no_crash()
         tap(wait_for(lambda n: label(n).startswith("El ve yüz takibini indir"), "tracking download offer", timeout=30))
         wait_for(text_is("İnternet erişimi onayı"), "approval screen")
         wait_for(text_has("storage.googleapis.com"), "Google host on the approval screen")
@@ -439,5 +442,20 @@ def main():
     print("\nSMOKE TEST PASSED", flush=True)
 
 
+def dump_diagnostics():
+    """On failure: crashes, the app's own log tags and the activity on top, for the CI log."""
+    print("\n=== diagnostics", flush=True)
+    print(adb("logcat", "-d", "-b", "crash", check=False)[-8000:])
+    log = adb("logcat", "-d", "-v", "brief", check=False).splitlines()
+    keep = [l for l in log if any(k in l for k in ("AndroidRuntime", "JarvisCamera", "JarvisMic", "CameraX", "Camera2", "mediapipe", "F DEBUG", "libc", KALE))]
+    print("\n".join(keep[-120:]))
+    print(adb("shell", "dumpsys", "activity", "activities", check=False)[:3000])
+
+
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit as e:
+        if e.code not in (0, None):
+            dump_diagnostics()
+        raise
