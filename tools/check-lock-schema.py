@@ -10,11 +10,12 @@ from urllib.parse import urlparse
 
 ALLOWED_HOSTS = [r"huggingface\.co", r".+\.huggingface\.co", r"hf\.co", r".+\.hf\.co",
                  r"download\.kiwix\.org", r".+\.download\.kiwix\.org",
-                 r"github\.com", r"objects\.githubusercontent\.com", r"release-assets\.githubusercontent\.com"]
-EXT_ANDROID = (".litertlm", ".onnx", ".gguf", ".zim", ".tar.bz2", ".json", ".txt")
+                 r"github\.com", r"objects\.githubusercontent\.com", r"release-assets\.githubusercontent\.com",
+                 r"storage\.googleapis\.com"]
+EXT_ANDROID = (".litertlm", ".onnx", ".gguf", ".zim", ".tar.bz2", ".json", ".txt", ".task", ".tflite")
 EXT_DESKTOP_BINARY = (".zip",)
 FORBIDDEN = (".apk", ".dex", ".so", ".jar", ".exe", ".dll", ".bat", ".cmd", ".ps1", ".sh", ".msi")
-KINDS = {"llm", "stt", "tts", "zim", "embedding", "binary"}
+KINDS = {"llm", "stt", "tts", "zim", "embedding", "binary", "vision", "mmproj"}
 PLATFORMS = {"android", "desktop"}
 REQUIRED = {"id": str, "kind": str, "platforms": list, "title": str, "group": str, "url": str, "host": str,
             "fileName": str, "size": int, "sha256": str, "revision": str, "origin": str}

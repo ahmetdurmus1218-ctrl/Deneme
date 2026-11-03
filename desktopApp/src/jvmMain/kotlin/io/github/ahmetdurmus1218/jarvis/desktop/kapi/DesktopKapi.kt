@@ -192,6 +192,12 @@ internal object PinningTrust {
         "x4QzPSC810K5/cMjb05Qm4k3Bw5zBn4lTdO/nEW/Td4=",
     )
 
+    /** Google Trust Services roots R1, R3, R4 (storage.googleapis.com). */
+    private val GOOGLE = setOf(
+        "hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc=", "QXnt2YHvdHR3tJYmQIr0Paosp6t/nggsEGD4QJZ3Q0g=",
+        "mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=",
+    )
+
     fun pinsFor(host: String): Set<String> {
         val h = host.lowercase()
         return when {
@@ -199,6 +205,7 @@ internal object PinningTrust {
             h == "download.kiwix.org" || h.endsWith(".download.kiwix.org") -> LETS_ENCRYPT
             h == "github.com" -> SECTIGO
             h == "objects.githubusercontent.com" || h == "release-assets.githubusercontent.com" -> LETS_ENCRYPT
+            h == "storage.googleapis.com" -> GOOGLE
             else -> emptySet()
         }
     }

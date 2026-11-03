@@ -160,6 +160,28 @@ TEST_ZIM_URL = "https://raw.githubusercontent.com/openzim/zim-testing-suite/main
 TEST_ZIM_SHA = "72db7ae7708d3a4cff918495078901ec027b14b427433a2328286ec130d1c43b"
 
 
+# MediaPipe's own gesture/face test photos, pinned by SHA-256.
+TRACKING_PHOTOS = {
+    "thumb_up.jpg": "5d673c081ab13b8a1812269ff57047066f9c33c07db5f4178089e8cb3fdc0291",
+    "pointing_up.jpg": "ecf8ca2611d08fa25948a4fc10710af9120e88243a54da6356bacea17ff3e36e",
+    "victory.jpg": "84cb8853e3df614e0cb5c93a25e3e2f38ea5e4f92fd428ee7d867ed3479d5764",
+    "fist.jpg": "43fa1cabf3f90d574accc9a56986e2ee48638ce59fc65af1846487f73bb2ef24",
+    "portrait.jpg": "a6f11efaa834706db23f275b6115058fa87fc7f14362681e6abe14e82749de3e",
+}
+
+
+def fetch_pinned(url, sha, name):
+    import hashlib
+    import tempfile
+    import urllib.request
+    path = os.path.join(tempfile.gettempdir(), name)
+    urllib.request.urlretrieve(url, path)
+    got = hashlib.sha256(open(path, "rb").read()).hexdigest()
+    if got != sha:
+        raise SystemExit(f"{name}: SHA-256 mismatch {got}")
+    return path
+
+
 def fetch_test_zim():
     import hashlib
     import tempfile
@@ -369,6 +391,41 @@ def main():
         print(out)
         if "INSTRUMENTATION_RESULT: result=PASS" not in out:
             raise SystemExit("Wikipedia probe failed")
+
+        step("camera: open → permission → tracking models through Kapı (storage.googleapis.com) → 'BU NE?'")
+        adb("shell", "am", "start", "-W", "-n", f"{KALE}/.android.MainActivity")
+        tap(wait_for(tab("Sohbet"), "chat tab"))
+        tap(wait_for(text_is("📷"), "camera button"))
+        for _ in range(5):
+            allow = find(lambda n: label(n) in ("While using the app", "Only this time", "Allow"))
+            if allow is not None:
+                tap(allow)
+                break
+            time.sleep(1)
+        wait_for(text_is("J.A.R.V.I.S · GÖRÜŞ"), "camera screen")
+        tap(wait_for(lambda n: label(n).startswith("El ve yüz takibini indir"), "tracking download offer", timeout=30))
+        wait_for(text_is("İnternet erişimi onayı"), "approval screen")
+        wait_for(text_has("storage.googleapis.com"), "Google host on the approval screen")
+        tap(wait_for(text_is("Onayla"), "approve button"))
+        time.sleep(4)
+        adb("shell", "input", "text", PIN)
+        adb("shell", "input", "keyevent", "66")
+        wait_for(text_has("👍 dinle"), "gesture legend once tracking is installed", timeout=300)
+        shot("12-kale-kamera")
+        tap(wait_for(text_is("BU NE?"), "what-is-this button"))
+        answer = wait_for(lambda n: "Görmek için gerçek bir model gerekiyor" in label(n) or "görüntüsü alınamadı" in label(n), "vision answer", timeout=60)
+        print("vision answer:", label(answer))
+        shot("13-kale-kamera-cevap")
+        tap(wait_for(text_is("← GERİ"), "back"))
+        check_no_crash()
+
+        step("hand/face tracking ON the device: real photos → MediaPipe → Jarvis's gesture classifier")
+        for name, sha in TRACKING_PHOTOS.items():
+            adb("push", fetch_pinned(f"https://storage.googleapis.com/mediapipe-assets/{name}", sha, name), f"/data/local/tmp/{name}")
+        out = adb("shell", "am", "instrument", "-w", "-e", "probe", "tracking", "-e", "dir", "/data/local/tmp", PROBES, check=False)
+        print(out)
+        if "INSTRUMENTATION_RESULT: result=PASS" not in out:
+            raise SystemExit("tracking probe failed")
 
         step("mic with Whisper installed: tap → listening → feedback")
         adb("shell", "am", "start", "-W", "-n", f"{KALE}/.android.MainActivity")

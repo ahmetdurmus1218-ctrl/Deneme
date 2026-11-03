@@ -68,6 +68,25 @@ class LlamaServerTest {
     }
 
     @Test
+    fun imageQuestionsCarryThePictureAsADataUrl() {
+        val body = LlamaServerClient("http://127.0.0.1:1").requestBodyWithImage(
+            listOf(ChatMessage(Role.SYSTEM, "Sen Jarvis'sin."), ChatMessage(Role.USER, "Ekranda ne var?")),
+            byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte()),
+            GenerationConfig(maxTokens = 600, thinking = true),
+        )
+        val obj = Json.parseToJsonElement(body).jsonObject
+        val msgs = obj["messages"]!!.jsonArray
+        assertEquals("Sen Jarvis'sin.", msgs[0].jsonObject["content"]!!.jsonPrimitive.content)
+        val parts = msgs[1].jsonObject["content"]!!.jsonArray.map { it.jsonObject }
+        assertEquals("text", parts[0]["type"]!!.jsonPrimitive.content)
+        assertEquals("Ekranda ne var?", parts[0]["text"]!!.jsonPrimitive.content)
+        assertEquals("image_url", parts[1]["type"]!!.jsonPrimitive.content)
+        assertEquals("data:image/jpeg;base64,/9j/", parts[1]["image_url"]!!.jsonObject["url"]!!.jsonPrimitive.content)
+        assertEquals(false, obj["chat_template_kwargs"]!!.jsonObject["enable_thinking"]!!.jsonPrimitive.boolean, "no thinking for pictures")
+        assertEquals(true, obj["stream"]!!.jsonPrimitive.boolean)
+    }
+
+    @Test
     fun streamsFromAnOpenAiCompatibleServer() = runBlocking {
         var received = ""
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)

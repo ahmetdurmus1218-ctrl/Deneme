@@ -6,7 +6,7 @@ import kotlinx.serialization.json.Json
 @Serializable
 data class LockedItem(
     val id: String,
-    /** llm | stt | tts | zim | embedding | binary */
+    /** llm | stt | tts | zim | embedding | binary | vision (hand/face tracking) | mmproj (vision add-on of a GGUF model) */
     val kind: String,
     /** android | desktop */
     val platforms: List<String>,

@@ -14,9 +14,11 @@ object DownloadPolicy {
         "huggingface.co", "*.huggingface.co", "hf.co", "*.hf.co",
         "download.kiwix.org", "*.download.kiwix.org",
         "github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com",
+        // Google's official MediaPipe model files (hand and face tracking).
+        "storage.googleapis.com",
     )
 
-    val ALLOWED_EXTENSIONS: List<String> = listOf(".litertlm", ".onnx", ".gguf", ".zim", ".tar.bz2", ".json", ".txt")
+    val ALLOWED_EXTENSIONS: List<String> = listOf(".litertlm", ".onnx", ".gguf", ".zim", ".tar.bz2", ".json", ".txt", ".task", ".tflite")
 
     /** Only for pinned desktop binaries (llama-server, kiwix-serve), never on Android. */
     val DESKTOP_BINARY_EXTENSIONS: List<String> = listOf(".zip")

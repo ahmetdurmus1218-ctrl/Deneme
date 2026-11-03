@@ -60,6 +60,7 @@ class Assistant(
     companion object {
         const val MAX_TOOL_ROUNDS = 5
         const val NO_SOURCE_TEXT = "Bu bilgi kütüphanemde yok."
+        const val NO_VISION_TEXT = "Görmek için gerçek bir model gerekiyor. Telefonda Gemma 4'ü, bilgisayarda modelin görme eklentisini Modeller ekranından indirin."
         private const val REPAIR_PROMPT =
             "Önceki cevabın geçerli JSON değildi. Aynı cevabı yalnızca belirtilen JSON biçiminde, başka hiçbir metin olmadan yeniden yaz."
     }
@@ -146,6 +147,52 @@ class Assistant(
                     return@flow
                 }
             }
+        }
+    }
+
+    /**
+     * "Bu ne?" / "Bunu oku": a question about a camera picture or screenshot. No tools; the answer
+     * is a scene reply like any other. Numbers read from a picture cannot be checked against a
+     * source, so number cards are turned into titles by the verifier (section 5.4).
+     */
+    fun askAboutImage(question: String, jpeg: ByteArray): Flow<AssistantEvent> = flow {
+        val vision = (engine as? io.github.ahmetdurmus1218.jarvis.core.llm.EngineSelector)?.vision
+            ?: (engine as? io.github.ahmetdurmus1218.jarvis.core.llm.VisionLlm)?.takeIf { it.canSee() }
+        if (vision == null) {
+            emit(finish(listOf(Sahne(NO_VISION_TEXT, Gorsel(GorselTip.BASLIK, baslik = "Görme kurulu değil"))), null, emptyList(), emptyList(), false, ""))
+            return@flow
+        }
+        val messages = listOf(
+            ChatMessage(Role.SYSTEM, SystemPrompt.vision(now.now())),
+            ChatMessage(Role.USER, question),
+        )
+        val pending = mutableListOf<Sahne>()
+        val emitted = mutableListOf<VerifiedScene>()
+        val parser = SceneStreamParser { pending += it }
+        val stripper = ThinkStripper()
+        vision.streamWithImage(messages, jpeg, GenerationConfig(maxTokens = 600)).collect { token ->
+            parser.feed(stripper.feed(token))
+            while (pending.isNotEmpty()) {
+                val v = Verifier.verifyScene(pending.removeAt(0), emptyList(), false)
+                emitted += v
+                emit(AssistantEvent.SceneReady(emitted.size - 1, v))
+            }
+        }
+        when (val outcome = parser.finish()) {
+            is SceneStreamParser.Outcome.Parsed -> {
+                outcome.reply.sahneler.drop(emitted.size).forEach { s ->
+                    val v = Verifier.verifyScene(s, emptyList(), false)
+                    emitted += v
+                    emit(AssistantEvent.SceneReady(emitted.size - 1, v))
+                }
+                emit(AssistantEvent.Completed(VerifiedReply(emitted, outcome.reply.detay, emptyList()), parser.text))
+            }
+            is SceneStreamParser.Outcome.Broken ->
+                if (emitted.isNotEmpty()) {
+                    emit(AssistantEvent.Completed(VerifiedReply(emitted, null, emptyList()), parser.text))
+                } else {
+                    emit(finish(listOf(SceneStreamParser.plainTextScene(parser.text)), null, emptyList(), emptyList(), false, parser.text))
+                }
         }
     }
 

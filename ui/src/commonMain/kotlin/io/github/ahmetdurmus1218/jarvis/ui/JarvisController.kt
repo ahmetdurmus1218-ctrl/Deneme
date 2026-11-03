@@ -130,6 +130,31 @@ class JarvisController(
         )
     }
 
+    /**
+     * A question about a picture (camera snapshot, screenshot, image file). Shown as a normal turn;
+     * the picture itself is not kept.
+     */
+    fun askAboutImage(question: String, jpeg: ByteArray) {
+        stopSpeaking()
+        askJob?.cancel()
+        currentTurnId?.let { prev -> updateTurn(prev) { if (it.done) it else it.copy(done = true, interrupted = true) } }
+        val id = nextId++
+        currentTurnId = id
+        _turns.value = _turns.value + Turn(id, "📷 $question")
+        _mode.value = CoreMode.THINKING
+        askJob = scope.launch {
+            try {
+                assistant.askAboutImage(question, jpeg).collect { ev -> handle(id, ev) }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                updateTurn(id) { it.copy(done = true, error = e.message ?: "Beklenmeyen hata") }
+            } finally {
+                if (currentTurnId == id && _mode.value == CoreMode.THINKING) _mode.value = CoreMode.IDLE
+            }
+        }
+    }
+
     fun send(text: String) {
         val clean = text.trim()
         if (clean.isEmpty()) return

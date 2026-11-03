@@ -3,6 +3,7 @@ package io.github.ahmetdurmus1218.jarvis.android
 import android.app.ActivityManager
 import android.content.Context
 import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
@@ -15,6 +16,7 @@ import io.github.ahmetdurmus1218.jarvis.core.llm.DeltaTracker
 import io.github.ahmetdurmus1218.jarvis.core.llm.GenerationConfig
 import io.github.ahmetdurmus1218.jarvis.core.llm.LlmEngine
 import io.github.ahmetdurmus1218.jarvis.core.llm.Role
+import io.github.ahmetdurmus1218.jarvis.core.llm.VisionLlm
 import io.github.ahmetdurmus1218.jarvis.core.models.LockedItem
 import io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry
 import io.github.ahmetdurmus1218.jarvis.core.models.Platform
@@ -34,7 +36,7 @@ class LiteRtLmEngine(
     val item: LockedItem,
     private val modelPath: String,
     private val onLoadFailed: (LockedItem, Throwable) -> Unit,
-) : LlmEngine {
+) : LlmEngine, VisionLlm {
     @Volatile private var engine: Engine? = null
     @Volatile private var backendName: String = ""
     private val lock = Mutex()
@@ -42,16 +44,30 @@ class LiteRtLmEngine(
     override val id: String
         get() = item.title.substringBefore(" (") + if (backendName.isNotEmpty()) " · $backendName" else ""
 
+    /** Whether the loaded engine has Gemma's vision part (null until the first load). */
+    @Volatile private var visionLoaded: Boolean? = null
+
     private suspend fun ensureLoaded(): Engine = lock.withLock {
         engine?.let { return it }
         var last: Throwable? = null
-        for (backend in listOf<Backend>(Backend.GPU(), Backend.CPU())) {
+        // With the vision part first (camera "bu ne?"), then text only; each on GPU, then CPU.
+        val attempts = listOf(true to Backend.GPU(), true to Backend.CPU(), false to Backend.GPU(), false to Backend.CPU())
+        for ((withVision, backend) in attempts) {
             var e: Engine? = null
             try {
-                e = Engine(EngineConfig(modelPath = modelPath, backend = backend, cacheDir = context.cacheDir.path))
+                e = Engine(
+                    EngineConfig(
+                        modelPath = modelPath,
+                        backend = backend,
+                        visionBackend = if (withVision) backend else null,
+                        maxNumImages = if (withVision) 1 else null,
+                        cacheDir = context.cacheDir.path,
+                    ),
+                )
                 e.initialize()
                 engine = e
                 backendName = backend.name
+                visionLoaded = withVision
                 return e
             } catch (t: Throwable) {
                 // Free whatever a half-initialised GPU engine holds before trying the CPU.
@@ -85,6 +101,31 @@ class LiteRtLmEngine(
         try {
             val tracker = DeltaTracker()
             conversation.sendMessageAsync(Message.user(last)).collect { m ->
+                val delta = tracker.next(m.toString())
+                if (delta.isNotEmpty()) emit(delta)
+            }
+        } finally {
+            runCatching { conversation.close() }
+        }
+    }.flowOn(Dispatchers.IO)
+
+    override fun canSee(): Boolean = visionLoaded != false
+
+    override fun streamWithImage(messages: List<ChatMessage>, jpeg: ByteArray, config: GenerationConfig): Flow<String> = flow {
+        val e = ensureLoaded()
+        if (visionLoaded != true) error("Bu model bu telefonda görüntüyle çalışamadı")
+        val system = messages.firstOrNull { it.role == Role.SYSTEM }?.content
+        val question = messages.lastOrNull { it.role == Role.USER }?.content.orEmpty()
+        val conversation = e.createConversation(
+            ConversationConfig(
+                systemInstruction = system?.let { Contents.of(it) },
+                samplerConfig = SamplerConfig(topK = 40, topP = 0.95, temperature = 0.3),
+                maxOutputToken = config.maxTokens,
+            ),
+        )
+        try {
+            val tracker = DeltaTracker()
+            conversation.sendMessageAsync(Message.user(Contents.of(Content.ImageBytes(jpeg), Content.Text(question)))).collect { m ->
                 val delta = tracker.next(m.toString())
                 if (delta.isNotEmpty()) emit(delta)
             }

@@ -53,3 +53,16 @@ class DesktopDocumentsTest {
         assertTrue("okunamadı" in f.message)
     }
 }
+
+class DesktopVisionTest {
+    @kotlin.test.Test
+    fun largePicturesAreShrunkToJpeg() {
+        val img = java.awt.image.BufferedImage(4000, 2000, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        val bytes = DesktopVision.jpeg(img)
+        kotlin.test.assertEquals(0xFF.toByte(), bytes[0])
+        kotlin.test.assertEquals(0xD8.toByte(), bytes[1], "JPEG")
+        val back = javax.imageio.ImageIO.read(bytes.inputStream())
+        kotlin.test.assertEquals(1600, back.width)
+        kotlin.test.assertEquals(800, back.height)
+    }
+}

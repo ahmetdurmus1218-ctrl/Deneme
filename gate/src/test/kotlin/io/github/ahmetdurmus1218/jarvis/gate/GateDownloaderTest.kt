@@ -168,6 +168,8 @@ class GateDownloaderTest {
         Pins.pinner.check("mirror.download.kiwix.org", listOf(isrg))
         Pins.pinner.check("release-assets.githubusercontent.com", listOf(isrg))
         Pins.pinner.check("github.com", listOf(usertrust))
+        Pins.pinner.check("storage.googleapis.com", listOf(root("GTS Root R1")))
+        assertFailsWith<SSLPeerUnverifiedException> { Pins.pinner.check("storage.googleapis.com", listOf(amazon)) }
         assertFailsWith<SSLPeerUnverifiedException> { Pins.pinner.check("huggingface.co", listOf(isrg)) }
         assertFailsWith<SSLPeerUnverifiedException> { Pins.pinner.check("github.com", listOf(amazon)) }
     }

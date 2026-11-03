@@ -7,7 +7,10 @@ import android.os.ParcelFileDescriptor
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import io.github.ahmetdurmus1218.jarvis.android.AndroidModelStorage
+import io.github.ahmetdurmus1218.jarvis.android.AndroidCamera
 import io.github.ahmetdurmus1218.jarvis.android.AndroidZim
+import io.github.ahmetdurmus1218.jarvis.core.vision.Gesture
+import io.github.ahmetdurmus1218.jarvis.core.vision.GestureClassifier
 import io.github.ahmetdurmus1218.jarvis.core.knowledge.Wikipedia
 import io.github.ahmetdurmus1218.jarvis.android.WhisperSpeechInput
 import io.github.ahmetdurmus1218.jarvis.android.WhisperTranscriber
@@ -46,6 +49,7 @@ class Probes : Instrumentation() {
             when (val probe = args.getString("probe") ?: "whisper") {
                 "whisper" -> whisper(out)
                 "wiki" -> wiki(out)
+                "tracking" -> tracking(out)
                 else -> error("unknown probe $probe")
             }
         } catch (t: Throwable) {
@@ -120,6 +124,44 @@ class Probes : Instrumentation() {
         hits.any { it.title == "Greenhouse gas emissions" } &&
             titleHit?.title?.contains("global warming", ignoreCase = true) == true &&
             article != null && "greenhouse" in article.text.lowercase() && "<" !in article.text.take(500)
+    }
+
+    /**
+     * MediaPipe on the device with the tracking models the app installed through Kapı: real hand
+     * photos (MediaPipe's own gesture test images, pushed to /data/local/tmp) must be classified as
+     * the right gesture by Jarvis's core classifier, and the portrait must show exactly one face.
+     */
+    private fun tracking(out: Bundle): Boolean {
+        val dir = args.getString("dir") ?: error("-e dir <path> missing")
+        val app = targetContext
+        val storage = AndroidModelStorage(app) { null }
+        val reg = ModelRegistry.bundled
+        fun path(id: String) = reg.lock.items.first { it.id == id }.takeIf { storage.isInstalled(it) }?.let(storage::pathOf)
+            ?: error("$id is not installed in the app")
+        val trackers = AndroidCamera.Trackers.create(app, path(AndroidCamera.HAND_MODEL), path(AndroidCamera.FACE_MODEL))
+            ?: error("tracking models failed to load")
+        fun image(name: String): android.graphics.Bitmap {
+            val bytes = ParcelFileDescriptor.AutoCloseInputStream(uiAutomation.executeShellCommand("cat $dir/$name")).use { it.readBytes() }
+            return android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: error("cannot decode $name")
+        }
+        val expected = mapOf(
+            "thumb_up.jpg" to Gesture.THUMBS_UP, "pointing_up.jpg" to Gesture.POINTING,
+            "victory.jpg" to Gesture.VICTORY, "fist.jpg" to Gesture.FIST,
+        )
+        var ts = 1L
+        var ok = true
+        trackers.use { t ->
+            for ((name, want) in expected) {
+                val hands = t.hands(image(name), ts++)
+                val got = hands.firstOrNull()?.let(GestureClassifier::classify)
+                out.putString(name, "${hands.size} el → ${got ?: "-"}")
+                if (got != want) ok = false
+            }
+            val faces = t.faces(image("portrait.jpg"), ts++)
+            out.putString("portrait.jpg", "${faces.size} yüz")
+            if (faces.size != 1) ok = false
+        }
+        return ok
     }
 
     /** Minimal RIFF reader: finds the "data" chunk of a 16-bit mono 16 kHz WAV. */

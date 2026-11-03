@@ -57,6 +57,11 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
         val uri = act.pickDocument() ?: return io.github.ahmetdurmus1218.jarvis.ui.DocumentPick.Cancelled
         return AndroidDocuments.read(app, uri)
     }
+    override val camera = AndroidCamera(
+        app, models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled,
+        ensurePermission = { activity?.ensurePermission(android.Manifest.permission.CAMERA) ?: false },
+        lifecycleOwner = { activity },
+    )
     override val zim = AndroidZim { AndroidZim.installedZim(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled) }
     private val micPermission: suspend () -> Boolean = { activity?.ensurePermission(android.Manifest.permission.RECORD_AUDIO) ?: false }
     /** Whisper (Jarvis's own, hash-verified model) when installed, else the phone's on-device recognizer. */

@@ -35,6 +35,8 @@ import io.github.ahmetdurmus1218.jarvis.core.memory.MemoryStore
 import io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry
 import io.github.ahmetdurmus1218.jarvis.core.time.NowProvider
 import io.github.ahmetdurmus1218.jarvis.ui.screens.ApprovalScreen
+import io.github.ahmetdurmus1218.jarvis.ui.screens.CameraScreen
+import io.github.ahmetdurmus1218.jarvis.ui.screens.VisionActions
 import io.github.ahmetdurmus1218.jarvis.ui.screens.SpeechModelOffer
 import io.github.ahmetdurmus1218.jarvis.ui.screens.ChatScreen
 import io.github.ahmetdurmus1218.jarvis.ui.screens.MemoryScreen
@@ -105,13 +107,21 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         val netEvents by graph.netLog.events.collectAsState()
         var tab by remember { mutableStateOf(Tab.CHAT) }
         var wizard by remember { mutableStateOf(!settings.wizardDone) }
+        var cameraOpen by remember { mutableStateOf(false) }
 
         LaunchedEffect(settings.memoryEnabled) { graph.memory.setEnabled(settings.memoryEnabled) }
         LaunchedEffect(Unit) { graph.bridge.downloader.refresh() }
 
         // Edge-to-edge on Android: keep everything clear of the status bar, navigation bar and keyboard.
         Box(Modifier.fillMaxSize().background(JarvisColors.Background).windowInsetsPadding(WindowInsets.safeDrawing)) {
-            if (wizard) {
+            val camera = graph.bridge.camera
+            if (cameraOpen && camera != null) {
+                CameraScreen(
+                    camera, controller, graph.installer,
+                    trackingItems = graph.registry.forPlatform(graph.bridge.platform).filter { it.group == camera.trackingGroup },
+                    onClose = { cameraOpen = false },
+                )
+            } else if (wizard) {
                 WizardScreen(graph.bridge, graph.registry, graph.installer, controller) {
                     graph.settings.update { it.copy(wizardDone = true) }
                     wizard = false
@@ -144,7 +154,14 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                             .takeIf { it.isNotEmpty() }?.let { SpeechModelOffer(it, graph.installer) }
                                     }
                                 }
-                                ChatScreen(controller, graph.engineLabel, stt != null, offer)
+                                val vision = VisionActions(
+                                    openCamera = camera?.let { { cameraOpen = true } },
+                                    screenshot = { graph.bridge.screenshotJpeg() },
+                                    pickImage = { graph.bridge.pickImageJpeg() },
+                                    // The PC has no live camera: it shows the screen or an image instead.
+                                    desktop = graph.bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.DESKTOP,
+                                )
+                                ChatScreen(controller, graph.engineLabel, stt != null, offer, vision)
                             }
                             Tab.MODELS -> ModelsScreen(graph.bridge, graph.registry, graph.installer)
                             Tab.MEMORY -> MemoryScreen(graph.memory, graph.settings, graph.documents, graph.bridge)

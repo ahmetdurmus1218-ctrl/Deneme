@@ -197,6 +197,40 @@
       "revision": "3.8.1",
       "origin": "kiwix:release/kiwix-tools/kiwix-tools_win-x86_64-3.8.1.zip",
       "host": "mirror.download.kiwix.org"
+    },
+    {
+      "id": "vision-hand-landmarker",
+      "kind": "vision",
+      "platforms": [
+        "android"
+      ],
+      "title": "El takibi (MediaPipe Hand Landmarker)",
+      "group": "vision-tracking",
+      "license": "apache-2.0",
+      "url": "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+      "fileName": "hand_landmarker.task",
+      "size": 7819105,
+      "sha256": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+      "revision": "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+      "origin": "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+      "host": "storage.googleapis.com"
+    },
+    {
+      "id": "vision-face-detector",
+      "kind": "vision",
+      "platforms": [
+        "android"
+      ],
+      "title": "Yüz bulma (MediaPipe BlazeFace)",
+      "group": "vision-tracking",
+      "license": "apache-2.0",
+      "url": "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
+      "fileName": "blaze_face_short_range.tflite",
+      "size": 229746,
+      "sha256": "b4578f35940bf5a1a655214a1cce5cab13eba73c1297cd78e1a04c2380b0152f",
+      "revision": "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
+      "origin": "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
+      "host": "storage.googleapis.com"
     }
   ]
 }

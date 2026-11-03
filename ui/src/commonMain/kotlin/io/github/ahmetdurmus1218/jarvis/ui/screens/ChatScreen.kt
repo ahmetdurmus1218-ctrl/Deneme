@@ -76,12 +76,30 @@ import io.github.ahmetdurmus1218.jarvis.core.time.NowProvider
 import io.github.ahmetdurmus1218.jarvis.ui.components.accent
 import io.github.ahmetdurmus1218.jarvis.ui.components.hudBackground
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
 
 /** Jarvis's own speech model, offered in the chat when the phone's recognizer cannot do Turkish. */
 class SpeechModelOffer(val items: List<LockedItem>, val installer: ModelInstaller)
 
+/** Ways to show Jarvis something: the live camera (phone) or a screenshot / image file (PC). */
+class VisionActions(
+    val openCamera: (() -> Unit)?,
+    val screenshot: suspend () -> ByteArray?,
+    val pickImage: suspend () -> ByteArray?,
+    val desktop: Boolean,
+)
+
 @Composable
-fun ChatScreen(controller: JarvisController, engineLabel: String, micAvailable: Boolean, speechModel: SpeechModelOffer? = null) {
+fun ChatScreen(
+    controller: JarvisController,
+    engineLabel: String,
+    micAvailable: Boolean,
+    speechModel: SpeechModelOffer? = null,
+    vision: VisionActions? = null,
+) {
     val turns by controller.turns.collectAsState()
     val mode by controller.mode.collectAsState()
     val level by controller.level.collectAsState()
@@ -155,6 +173,7 @@ fun ChatScreen(controller: JarvisController, engineLabel: String, micAvailable: 
                     unfocusedContainerColor = Color.Transparent,
                 ),
             )
+            if (vision != null) VisionButton(vision, input, controller) { input = "" }
             if (mode == CoreMode.SPEAKING) TextButton(onClick = controller::stopSpeaking) { Text("Sus", color = JarvisColors.Amber) }
             Button(
                 onClick = {
@@ -166,6 +185,36 @@ fun ChatScreen(controller: JarvisController, engineLabel: String, micAvailable: 
                 shape = RoundedCornerShape(22.dp),
             ) { Text("Gönder") }
             if (micAvailable) MicButton(mode == CoreMode.LISTENING, level, onTap = controller::toggleListening, onHoldStart = controller::startListening, onHoldEnd = controller::stopListening)
+        }
+    }
+}
+
+/**
+ * 📷: on the phone opens the camera view; on the PC offers the screen or an image file. A question
+ * typed in the input box is used, otherwise "what is this".
+ */
+@Composable
+private fun VisionButton(vision: VisionActions, typed: String, controller: JarvisController, onUsed: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var menu by remember { mutableStateOf(false) }
+    fun ask(defaultQuestion: String, source: suspend () -> ByteArray?) {
+        scope.launch {
+            val jpeg = source()
+            if (jpeg == null) return@launch
+            controller.askAboutImage(typed.ifBlank { defaultQuestion }, jpeg)
+            onUsed()
+        }
+    }
+    Box {
+        TextButton(onClick = { if (vision.openCamera != null && !vision.desktop) vision.openCamera.invoke() else menu = true }) {
+            Text("📷", fontSize = 20.sp)
+        }
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            if (vision.desktop) {
+                DropdownMenuItem(text = { Text("Ekranı göster") }, onClick = { menu = false; ask("Ekranda ne var? Kısaca anlat.", vision.screenshot) })
+            }
+            DropdownMenuItem(text = { Text("Resim seç") }, onClick = { menu = false; ask(QUESTION_WHAT, vision.pickImage) })
+            vision.openCamera?.let { open -> DropdownMenuItem(text = { Text("Kamera") }, onClick = { menu = false; open() }) }
         }
     }
 }

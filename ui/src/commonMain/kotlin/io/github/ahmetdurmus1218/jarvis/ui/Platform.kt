@@ -10,6 +10,15 @@ interface PlatformBridge {
     /** Offline Wikipedia (ZIM) access; null where the platform has none. */
     val zim: io.github.ahmetdurmus1218.jarvis.core.knowledge.ZimBackend? get() = null
 
+    /** Live camera with hand and face tracking (the phone); null where there is none. */
+    val camera: VisionCamera? get() = null
+
+    /** A screenshot of this screen as JPEG (the PC), for "ekranda ne var / ekranı oku". */
+    suspend fun screenshotJpeg(): ByteArray? = null
+
+    /** An image file picked by the user, as JPEG; null if cancelled or unsupported. */
+    suspend fun pickImageJpeg(): ByteArray? = null
+
     /** Opens the file picker and returns the text of a PDF / TXT / MD file (read on the device). */
     suspend fun pickDocument(): DocumentPick = DocumentPick.Failed("Bu cihazda belge ekleme desteklenmiyor")
     val platform: Platform
@@ -146,3 +155,27 @@ sealed interface DocumentPick {
 
 /** Largest document accepted (PDFs of books are fine; this only stops accidents). */
 const val MAX_DOCUMENT_BYTES = 60L * 1024 * 1024
+
+/** What the camera saw in one frame: hands (21 landmarks each) and faces, in 0..1 image coordinates. */
+data class VisionFrame(
+    val hands: List<io.github.ahmetdurmus1218.jarvis.core.vision.Hand>,
+    val faces: List<io.github.ahmetdurmus1218.jarvis.core.vision.FaceBox>,
+    /** Size of the analysed image, to map the 0..1 coordinates onto the preview. */
+    val width: Int,
+    val height: Int,
+)
+
+/** The phone camera: live preview plus on-device hand/face tracking (MediaPipe models from the lock). */
+interface VisionCamera {
+    /** True when the hand and face tracking models are installed and verified. */
+    fun trackingReady(): Boolean
+    /** Lock-file group to download for tracking. */
+    val trackingGroup: String
+
+    /** The live preview; [onFrame] is called from a background thread for every analysed frame. */
+    @androidx.compose.runtime.Composable
+    fun Preview(modifier: androidx.compose.ui.Modifier, frontCamera: Boolean, onFrame: (VisionFrame) -> Unit)
+
+    /** The latest frame as JPEG (what the user sees), for "bu ne?" / "oku". */
+    suspend fun snapshotJpeg(): ByteArray?
+}

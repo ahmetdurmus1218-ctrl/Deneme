@@ -27,6 +27,12 @@ object Pins {
     private const val USERTRUST_ECC = "sha256/ICGRfpgmOUXIWcQ/HXPLQTkFPEFPoDyjvH7ohhQpjzs="
     private const val USERTRUST_RSA = "sha256/x4QzPSC810K5/cMjb05Qm4k3Bw5zBn4lTdO/nEW/Td4="
 
+    // Google Trust Services roots (storage.googleapis.com), from the JDK trust store on 2026-11-03.
+    private const val GTS_ROOT_R1 = "sha256/hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc="
+    private const val GTS_ROOT_R3 = "sha256/QXnt2YHvdHR3tJYmQIr0Paosp6t/nggsEGD4QJZ3Q0g="
+    private const val GTS_ROOT_R4 = "sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c="
+
+    private val GOOGLE = arrayOf(GTS_ROOT_R1, GTS_ROOT_R3, GTS_ROOT_R4)
     private val AMAZON = arrayOf(AMAZON_ROOT_CA_1, AMAZON_ROOT_CA_2, AMAZON_ROOT_CA_3, AMAZON_ROOT_CA_4, AMAZON_RSA_2048_M01)
     private val LETS_ENCRYPT = arrayOf(ISRG_ROOT_X1, ISRG_ROOT_X2, ISRG_ROOT_YR, LE_YR1, LE_YR2)
     private val SECTIGO = arrayOf(SECTIGO_ROOT_E46, SECTIGO_ROOT_R46, SECTIGO_DV_E36, USERTRUST_ECC, USERTRUST_RSA)
@@ -41,5 +47,6 @@ object Pins {
         .add("github.com", *SECTIGO)
         .add("objects.githubusercontent.com", *LETS_ENCRYPT)
         .add("release-assets.githubusercontent.com", *LETS_ENCRYPT)
+        .add("storage.googleapis.com", *GOOGLE)
         .build()
 }

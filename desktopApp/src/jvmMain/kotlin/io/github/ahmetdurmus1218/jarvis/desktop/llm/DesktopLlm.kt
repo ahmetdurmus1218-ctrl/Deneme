@@ -23,10 +23,12 @@ class DesktopLlm(private val storage: ModelStorage, private val binDir: File) : 
         val choice = models.firstOrNull { it.id == chosenId }
             ?: models.firstOrNull { it.id == PREFERRED }
             ?: models.first()
+        // The vision projector that belongs to this model, if the user installed it.
+        val mmproj = VISION[choice.id]?.let { id -> items.firstOrNull { it.id == id && storage.isInstalled(it) } }?.let(storage::pathOf)
         val current = cached
-        if (current?.model?.id != choice.id || current.serverZipName != server.fileName) {
+        if (current?.model?.id != choice.id || current.serverZipName != server.fileName || current.mmprojPath != mmproj) {
             current?.close()
-            cached = LlamaServerEngine(choice, storage.pathOf(choice), File(storage.pathOf(server)), binDir)
+            cached = LlamaServerEngine(choice, storage.pathOf(choice), File(storage.pathOf(server)), binDir, mmproj)
         }
         return cached
     }
@@ -39,5 +41,11 @@ class DesktopLlm(private val storage: ModelStorage, private val binDir: File) : 
 
     companion object {
         const val PREFERRED = "llm-qwen35-9b-q4km"
+
+        /** GGUF model → its vision projector in the lock file. */
+        val VISION = mapOf(
+            "llm-qwen35-9b-q4km" to "vision-qwen35-mmproj",
+            "llm-gemma4-e4b-gguf" to "vision-gemma4-e4b-mmproj",
+        )
     }
 }

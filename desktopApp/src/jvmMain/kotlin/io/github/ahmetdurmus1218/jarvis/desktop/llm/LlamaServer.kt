@@ -4,6 +4,7 @@ import io.github.ahmetdurmus1218.jarvis.core.llm.ChatMessage
 import io.github.ahmetdurmus1218.jarvis.core.llm.GenerationConfig
 import io.github.ahmetdurmus1218.jarvis.core.llm.LlmEngine
 import io.github.ahmetdurmus1218.jarvis.core.llm.Role
+import io.github.ahmetdurmus1218.jarvis.core.llm.VisionLlm
 import io.github.ahmetdurmus1218.jarvis.core.models.LockedItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -53,11 +54,40 @@ class LlamaServerClient(private val baseUrl: String, private val http: HttpClien
         put("chat_template_kwargs", buildJsonObject { put("enable_thinking", config.thinking) })
     }.toString()
 
-    fun stream(messages: List<ChatMessage>, config: GenerationConfig): Flow<String> = flow {
+    /** Like [requestBody], with [jpeg] attached to the last user message (OpenAI image_url, base64 data URL). */
+    fun requestBodyWithImage(messages: List<ChatMessage>, jpeg: ByteArray, config: GenerationConfig): String {
+        val base = kotlinx.serialization.json.Json.parseToJsonElement(requestBody(messages, config)).jsonObject
+        val msgs = base["messages"]!!.jsonArray
+        val lastUser = msgs.indexOfLast { it.jsonObject["role"]?.jsonPrimitive?.contentOrNull == "user" }
+        val dataUrl = "data:image/jpeg;base64," + java.util.Base64.getEncoder().encodeToString(jpeg)
+        val newMsgs = buildJsonArray {
+            msgs.forEachIndexed { i, m ->
+                if (i != lastUser) {
+                    add(m)
+                } else {
+                    add(buildJsonObject {
+                        put("role", "user")
+                        put("content", buildJsonArray {
+                            add(buildJsonObject { put("type", "text"); put("text", m.jsonObject["content"]!!) })
+                            add(buildJsonObject { put("type", "image_url"); put("image_url", buildJsonObject { put("url", dataUrl) }) })
+                        })
+                    })
+                }
+            }
+        }
+        return JsonObject(base + ("messages" to newMsgs) + ("chat_template_kwargs" to buildJsonObject { put("enable_thinking", false) })).toString()
+    }
+
+    fun stream(messages: List<ChatMessage>, config: GenerationConfig): Flow<String> = streamBody(requestBody(messages, config))
+
+    fun streamWithImage(messages: List<ChatMessage>, jpeg: ByteArray, config: GenerationConfig): Flow<String> =
+        streamBody(requestBodyWithImage(messages, jpeg, config))
+
+    private fun streamBody(body: String): Flow<String> = flow {
         val req = HttpRequest.newBuilder(URI.create("$baseUrl/v1/chat/completions"))
             .header("Content-Type", "application/json")
             .timeout(Duration.ofMinutes(10))
-            .POST(HttpRequest.BodyPublishers.ofString(requestBody(messages, config)))
+            .POST(HttpRequest.BodyPublishers.ofString(body))
             .build()
         val resp = http.send(req, HttpResponse.BodyHandlers.ofLines())
         if (resp.statusCode() != 200) {
@@ -103,7 +133,9 @@ class LlamaServerEngine(
     private val modelPath: String,
     private val serverZip: File,
     private val binDir: File,
-) : LlmEngine, AutoCloseable {
+    /** The model's vision projector (mmproj GGUF), when installed: enables "ekranda ne var / bu resim". */
+    val mmprojPath: String? = null,
+) : LlmEngine, VisionLlm, AutoCloseable {
     override val id: String = model.title.substringBefore(" (") + " · llama.cpp"
     val serverZipName: String get() = serverZip.name
     private val lock = Mutex()
@@ -135,6 +167,7 @@ class LlamaServerEngine(
             exe.absolutePath, "-m", modelPath,
             "--host", "127.0.0.1", "--port", port.toString(),
             "-ngl", "99", "-c", "8192", "--jinja",
+            *(mmprojPath?.let { arrayOf("--mmproj", it) } ?: emptyArray()),
         ).directory(exe.parentFile).redirectErrorStream(true).redirectOutput(File(binDir, "llama-server.log")).start()
         process = p
         val c = LlamaServerClient("http://127.0.0.1:$port")
@@ -153,6 +186,12 @@ class LlamaServerEngine(
 
     override fun stream(messages: List<ChatMessage>, config: GenerationConfig): Flow<String> = flow {
         emitAll(ensureStarted().stream(messages, config))
+    }.flowOn(Dispatchers.IO)
+
+    override fun canSee(): Boolean = mmprojPath != null
+
+    override fun streamWithImage(messages: List<ChatMessage>, jpeg: ByteArray, config: GenerationConfig): Flow<String> = flow {
+        emitAll(ensureStarted().streamWithImage(messages, jpeg, config))
     }.flowOn(Dispatchers.IO)
 
     override fun close() {

@@ -4,104 +4,237 @@
     {
       "id": "llm-gemma4-e4b-litertlm",
       "kind": "llm",
-      "platforms": ["android"],
+      "platforms": [
+        "android"
+      ],
       "title": "Gemma 4 E4B (LiteRT-LM)",
       "group": "llm-android-e4b",
       "minRamGb": 12,
       "license": "apache-2.0",
-      "source": {"type": "hf", "repo": "litert-community/gemma-4-E4B-it-litert-lm", "file": "gemma-4-E4B-it.litertlm"}
+      "source": {
+        "type": "hf",
+        "repo": "litert-community/gemma-4-E4B-it-litert-lm",
+        "file": "gemma-4-E4B-it.litertlm"
+      }
     },
     {
       "id": "llm-gemma4-e2b-litertlm",
       "kind": "llm",
-      "platforms": ["android"],
+      "platforms": [
+        "android"
+      ],
       "title": "Gemma 4 E2B (LiteRT-LM)",
       "group": "llm-android-e2b",
       "minRamGb": 6,
       "license": "apache-2.0",
-      "source": {"type": "hf", "repo": "litert-community/gemma-4-E2B-it-litert-lm", "file": "gemma-4-E2B-it.litertlm"}
+      "source": {
+        "type": "hf",
+        "repo": "litert-community/gemma-4-E2B-it-litert-lm",
+        "file": "gemma-4-E2B-it.litertlm"
+      }
     },
     {
       "id": "llm-qwen35-9b-q4km",
       "kind": "llm",
-      "platforms": ["desktop"],
+      "platforms": [
+        "desktop"
+      ],
       "title": "Qwen 3.5 9B Q4_K_M (GGUF)",
       "group": "llm-desktop-qwen",
       "minVramGb": 8,
       "license": "apache-2.0",
-      "source": {"type": "hf", "repo": "unsloth/Qwen3.5-9B-GGUF", "file": "Qwen3.5-9B-Q4_K_M.gguf"}
+      "source": {
+        "type": "hf",
+        "repo": "unsloth/Qwen3.5-9B-GGUF",
+        "file": "Qwen3.5-9B-Q4_K_M.gguf"
+      }
     },
     {
       "id": "llm-gemma4-e4b-gguf",
       "kind": "llm",
-      "platforms": ["desktop"],
+      "platforms": [
+        "desktop"
+      ],
       "title": "Gemma 4 E4B Q4_0 (GGUF)",
       "group": "llm-desktop-gemma",
       "license": "apache-2.0",
-      "source": {"type": "hf", "repo": "ggml-org/gemma-4-E4B-it-GGUF", "file": "gemma-4-E4B-it-Q4_0.gguf"}
+      "source": {
+        "type": "hf",
+        "repo": "ggml-org/gemma-4-E4B-it-GGUF",
+        "file": "gemma-4-E4B-it-Q4_0.gguf"
+      }
     },
     {
       "id": "stt-whisper-small-encoder",
       "kind": "stt",
-      "platforms": ["android", "desktop"],
+      "platforms": [
+        "android",
+        "desktop"
+      ],
       "title": "Whisper small (encoder, int8)",
       "group": "stt-whisper-small",
       "license": "mit",
-      "source": {"type": "hf", "repo": "csukuangfj/sherpa-onnx-whisper-small", "file": "small-encoder.int8.onnx"}
+      "source": {
+        "type": "hf",
+        "repo": "csukuangfj/sherpa-onnx-whisper-small",
+        "file": "small-encoder.int8.onnx"
+      }
     },
     {
       "id": "stt-whisper-small-decoder",
       "kind": "stt",
-      "platforms": ["android", "desktop"],
+      "platforms": [
+        "android",
+        "desktop"
+      ],
       "title": "Whisper small (decoder, int8)",
       "group": "stt-whisper-small",
       "license": "mit",
-      "source": {"type": "hf", "repo": "csukuangfj/sherpa-onnx-whisper-small", "file": "small-decoder.int8.onnx"}
+      "source": {
+        "type": "hf",
+        "repo": "csukuangfj/sherpa-onnx-whisper-small",
+        "file": "small-decoder.int8.onnx"
+      }
     },
     {
       "id": "stt-whisper-small-tokens",
       "kind": "stt",
-      "platforms": ["android", "desktop"],
+      "platforms": [
+        "android",
+        "desktop"
+      ],
       "title": "Whisper small (tokens)",
       "group": "stt-whisper-small",
       "license": "mit",
-      "source": {"type": "hf", "repo": "csukuangfj/sherpa-onnx-whisper-small", "file": "small-tokens.txt"}
+      "source": {
+        "type": "hf",
+        "repo": "csukuangfj/sherpa-onnx-whisper-small",
+        "file": "small-tokens.txt"
+      }
     },
     {
       "id": "tts-piper-tr-dfki-medium",
       "kind": "tts",
-      "platforms": ["android", "desktop"],
+      "platforms": [
+        "android",
+        "desktop"
+      ],
       "title": "Piper Türkçe ses (tr_TR-dfki-medium, sherpa-onnx paketi)",
       "group": "tts-piper-tr",
       "license": "see docs/DECISIONS.md",
-      "source": {"type": "github", "repo": "k2-fsa/sherpa-onnx", "tag": "tts-models", "asset": "vits-piper-tr_TR-dfki-medium.tar.bz2"}
+      "source": {
+        "type": "github",
+        "repo": "k2-fsa/sherpa-onnx",
+        "tag": "tts-models",
+        "asset": "vits-piper-tr_TR-dfki-medium.tar.bz2"
+      }
     },
     {
       "id": "wiki-tr-nopic",
       "kind": "zim",
-      "platforms": ["android", "desktop"],
+      "platforms": [
+        "android",
+        "desktop"
+      ],
       "title": "Türkçe Wikipedia (resimsiz)",
       "group": "wiki-tr",
       "license": "CC BY-SA 4.0",
-      "source": {"type": "kiwix", "dir": "zim/wikipedia/", "prefix": "wikipedia_tr_all_nopic_"}
+      "source": {
+        "type": "kiwix",
+        "dir": "zim/wikipedia/",
+        "prefix": "wikipedia_tr_all_nopic_"
+      }
     },
     {
       "id": "bin-llama-server-vulkan",
       "kind": "binary",
-      "platforms": ["desktop"],
+      "platforms": [
+        "desktop"
+      ],
       "title": "llama.cpp llama-server (Windows, Vulkan)",
       "group": "bin-llama",
       "license": "mit",
-      "source": {"type": "github", "repo": "ggml-org/llama.cpp", "tag": "latest", "assetRegex": "^llama-b\\d+-bin-win-vulkan-x64\\.zip$"}
+      "source": {
+        "type": "github",
+        "repo": "ggml-org/llama.cpp",
+        "tag": "latest",
+        "assetRegex": "^llama-b\\d+-bin-win-vulkan-x64\\.zip$"
+      }
     },
     {
       "id": "bin-kiwix-tools",
       "kind": "binary",
-      "platforms": ["desktop"],
+      "platforms": [
+        "desktop"
+      ],
       "title": "kiwix-tools (kiwix-serve, Windows x86_64)",
       "group": "bin-kiwix",
       "license": "gpl-3.0",
-      "source": {"type": "kiwix-release", "dir": "release/kiwix-tools/", "regex": "^kiwix-tools_win-x86_64-(\\d+\\.\\d+\\.\\d+)\\.zip$"}
+      "source": {
+        "type": "kiwix-release",
+        "dir": "release/kiwix-tools/",
+        "regex": "^kiwix-tools_win-x86_64-(\\d+\\.\\d+\\.\\d+)\\.zip$"
+      }
+    },
+    {
+      "id": "vision-hand-landmarker",
+      "kind": "vision",
+      "platforms": [
+        "android"
+      ],
+      "title": "El takibi (MediaPipe Hand Landmarker)",
+      "group": "vision-tracking",
+      "license": "apache-2.0",
+      "source": {
+        "type": "url",
+        "url": "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task"
+      }
+    },
+    {
+      "id": "vision-face-detector",
+      "kind": "vision",
+      "platforms": [
+        "android"
+      ],
+      "title": "Yüz bulma (MediaPipe BlazeFace)",
+      "group": "vision-tracking",
+      "license": "apache-2.0",
+      "source": {
+        "type": "url",
+        "url": "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite"
+      }
+    },
+    {
+      "id": "vision-qwen35-mmproj",
+      "kind": "mmproj",
+      "platforms": [
+        "desktop"
+      ],
+      "title": "Qwen 3.5 9B görme eklentisi (mmproj)",
+      "group": "vision-desktop-qwen",
+      "license": "apache-2.0",
+      "optional": true,
+      "source": {
+        "type": "hf",
+        "repo": "unsloth/Qwen3.5-9B-GGUF",
+        "fileRegex": "(?i)^mmproj.*(?<!b)f16\\.gguf$"
+      }
+    },
+    {
+      "id": "vision-gemma4-e4b-mmproj",
+      "kind": "mmproj",
+      "platforms": [
+        "desktop"
+      ],
+      "title": "Gemma 4 E4B görme eklentisi (mmproj)",
+      "group": "vision-desktop-gemma",
+      "license": "gemma",
+      "optional": true,
+      "source": {
+        "type": "hf",
+        "repo": "ggml-org/gemma-4-E4B-it-GGUF",
+        "fileRegex": "(?i)^mmproj.*\\.gguf$"
+      }
     }
   ]
 }

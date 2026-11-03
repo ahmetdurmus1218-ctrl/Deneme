@@ -18,6 +18,8 @@ litertlm = "0.19.0"
 libkiwix = "2.7.0"
 pdfbox-android = "2.0.27.0"
 pdfbox = "3.0.8"
+camerax = "1.6.2"
+mediapipe-tasks = "1.2.1"
 # GitHub release asset of k2-fsa/sherpa-onnx (not on Maven); SHA-256 pinned in androidApp/build.gradle.kts
 sherpa-onnx = "2.0.1"
 android-compileSdk = "37"
@@ -45,6 +47,11 @@ litertlm-android = { module = "com.google.ai.edge.litertlm:litertlm-android", ve
 kiwix-libkiwix = { module = "org.kiwix:libkiwix", version.ref = "libkiwix" }
 pdfbox-android = { module = "com.tom-roush:pdfbox-android", version.ref = "pdfbox-android" }
 pdfbox-desktop = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
+camerax-core = { module = "androidx.camera:camera-core", version.ref = "camerax" }
+camerax-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
+camerax-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
+camerax-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
+mediapipe-tasks-vision = { module = "com.google.mediapipe:tasks-vision", version.ref = "mediapipe-tasks" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 
 [plugins]

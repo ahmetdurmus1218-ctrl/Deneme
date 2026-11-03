@@ -16,6 +16,20 @@ class EngineSelector(
     override val id: String get() = current.id
 
     override fun stream(messages: List<ChatMessage>, config: GenerationConfig): Flow<String> = current.stream(messages, config)
+
+    /** The current model if it can see images right now (vision part installed and loaded). */
+    val vision: VisionLlm? get() = (current as? VisionLlm)?.takeIf { it.canSee() }
+}
+
+/**
+ * A model that also takes an image (Gemma 4 through LiteRT-LM on the phone; a GGUF model with its
+ * vision projector through llama-server on the PC). The image never leaves the device.
+ */
+interface VisionLlm {
+    /** True when the vision part is available (e.g. the projector file is installed). */
+    fun canSee(): Boolean
+    /** [messages] ends with the user's question; [jpeg] is the picture it is about. */
+    fun streamWithImage(messages: List<ChatMessage>, jpeg: ByteArray, config: GenerationConfig): Flow<String>
 }
 
 /**

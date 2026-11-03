@@ -18,6 +18,7 @@ import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -73,12 +74,22 @@ def version_key(v):
 
 
 def resolve_hf(src):
-    repo, file = src["repo"], src["file"]
+    repo = src["repo"]
     info = get_json(f"https://huggingface.co/api/models/{repo}?blobs=true")
     rev = info["sha"]
-    sib = next((s for s in info.get("siblings", []) if s["rfilename"] == file), None)
+    siblings = info.get("siblings", [])
+    if "fileRegex" in src:
+        # e.g. the vision projector of a GGUF repo, whose exact name differs between repos
+        rx = re.compile(src["fileRegex"])
+        matches = sorted(s["rfilename"] for s in siblings if rx.search(s["rfilename"]))
+        if not matches:
+            raise LookupError(f"{repo}: no file matches {src['fileRegex']}")
+        file = matches[0]
+    else:
+        file = src["file"]
+    sib = next((s for s in siblings if s["rfilename"] == file), None)
     if sib is None:
-        raise SystemExit(f"{repo}: file {file} not found")
+        raise LookupError(f"{repo}: file {file} not found")
     url = f"https://huggingface.co/{repo}/resolve/{rev}/{urllib.parse.quote(file)}"
     lfs = sib.get("lfs") or {}
     if lfs.get("sha256"):
@@ -87,6 +98,14 @@ def resolve_hf(src):
         sha, size = sha256_of_url(url)
     return {"url": url, "fileName": file.split("/")[-1], "size": size, "sha256": sha,
             "revision": rev, "origin": f"hf:{repo}@{rev}/{file}"}
+
+
+def resolve_url(src):
+    """A fixed, versioned URL (e.g. Google's MediaPipe models): downloaded once to hash it."""
+    url = src["url"]
+    sha, size = sha256_of_url(url)
+    return {"url": url, "fileName": url.rsplit("/", 1)[-1], "size": size, "sha256": sha,
+            "revision": src.get("revision", url), "origin": url}
 
 
 def release_assets(repo, rel):
@@ -171,7 +190,7 @@ def resolve_kiwix_release(src):
             "revision": rx.search(name).group(1), "origin": f"kiwix:{src['dir']}{name}"}
 
 
-RESOLVERS = {"hf": resolve_hf, "github": resolve_github, "kiwix": resolve_kiwix_zim, "kiwix-release": resolve_kiwix_release}
+RESOLVERS = {"hf": resolve_hf, "github": resolve_github, "kiwix": resolve_kiwix_zim, "kiwix-release": resolve_kiwix_release, "url": resolve_url}
 
 
 def main():
@@ -183,8 +202,14 @@ def main():
     items = []
     for entry in select["items"]:
         src = entry["source"]
-        resolved = RESOLVERS[src["type"]](src)
-        item = {k: v for k, v in entry.items() if k != "source"}
+        try:
+            resolved = RESOLVERS[src["type"]](src)
+        except (LookupError, urllib.error.HTTPError) as e:
+            if entry.get("optional"):
+                print(f"skipped optional {entry['id']}: {e}", file=sys.stderr)
+                continue
+            raise SystemExit(f"{entry['id']}: {e}")
+        item = {k: v for k, v in entry.items() if k not in ("source", "optional")}
         item.update(resolved)
         item["host"] = urllib.parse.urlparse(item["url"]).hostname
         items.append(item)
