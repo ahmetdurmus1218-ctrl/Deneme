@@ -111,7 +111,13 @@ fun ModelsScreen(bridge: PlatformBridge, registry: ModelRegistry, installer: Mod
 }
 
 @Composable
-fun MemoryScreen(memory: MemoryStore, settings: SettingsStore, documents: DocumentIndex, bridge: PlatformBridge) {
+fun MemoryScreen(
+    memory: MemoryStore,
+    settings: SettingsStore,
+    documents: DocumentIndex,
+    bridge: PlatformBridge,
+    learning: io.github.ahmetdurmus1218.jarvis.core.learning.Learning? = null,
+) {
     val scope = rememberCoroutineScope()
     var docs by remember { mutableStateOf(documents.list()) }
     var docMsg by remember { mutableStateOf<String?>(null) }
@@ -124,7 +130,7 @@ fun MemoryScreen(memory: MemoryStore, settings: SettingsStore, documents: Docume
         enabled = memory.enabled()
     }
     ScreenColumn("Hafıza") {
-        Text("Rick'in sizin hakkınızda hatırladıkları. Bu sürümde hafıza yalnızca uygulama açıkken tutulur; şifreli kalıcı hafıza v0.4'te gelecek.", color = JarvisColors.TextDim, fontSize = 12.sp)
+        Text("Rick'in sizin hakkınızda hatırladıkları. Cihazda şifreli tutulur; istediğinizi silebilir ya da hafızayı kapatabilirsiniz.", color = JarvisColors.TextDim, fontSize = 12.sp)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Hafıza açık", modifier = Modifier.weight(1f))
             Switch(checked = enabled, onCheckedChange = { v ->
@@ -146,6 +152,8 @@ fun MemoryScreen(memory: MemoryStore, settings: SettingsStore, documents: Docume
             }
         }
         if (facts.isNotEmpty()) OutlinedButton(onClick = { scope.launch { memory.clear(); refresh++ } }) { Text("Tümünü sil") }
+
+        learning?.let { LearningSection(it, settings) }
 
         Text("Belgelerim", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
         Text(

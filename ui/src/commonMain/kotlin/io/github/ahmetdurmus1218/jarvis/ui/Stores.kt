@@ -42,6 +42,8 @@ data class Settings(
     val fontScale: Float = 1f,
     /** Calmer animations. */
     val reduceMotion: Boolean = false,
+    /** Learning from corrections / likes and reading while idle (all on the device). */
+    val selfLearning: Boolean = true,
 )
 
 private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }

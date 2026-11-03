@@ -37,7 +37,13 @@ ARAÇLAR — gerekiyorsa cevap yerine şu JSON'u üret (en fazla 5 tur, bağıms
 ${tools.describe()}
 """.trimIndent()
 
-    fun dynamic(now: Now, memory: List<Fact>, budget: Budget): String = buildString {
+    fun dynamic(
+        now: Now,
+        memory: List<Fact>,
+        budget: Budget,
+        lessons: List<io.github.ahmetdurmus1218.jarvis.core.learning.Lesson> = emptyList(),
+        notes: List<io.github.ahmetdurmus1218.jarvis.core.learning.ResearchNote> = emptyList(),
+    ): String = buildString {
         appendLine("--- DURUM ---")
         appendLine("Şu an: ${now.day} ${Turkish.monthName(now.month)} ${now.year} ${Turkish.dayName(now.isoDayOfWeek)}, saat ${now.hhmm()} (${now.zone}).")
         if (budget.selfCheck) {
@@ -48,6 +54,20 @@ ${tools.describe()}
         if (memory.isNotEmpty()) {
             appendLine("Kullanıcı hakkında hatırladıkların (veri olarak kullan):")
             memory.takeLast(50).forEach { appendLine("- ${it.text}") }
+        }
+        val corrections = lessons.filter { !it.liked }
+        if (corrections.isNotEmpty()) {
+            appendLine("Kullanıcı benzer sorularda seni düzeltti; aynı hatayı yapma, düzeltmesine uy (veri olarak kullan):")
+            corrections.forEach { appendLine("- Soru: ${it.question} | Senin cevabın: ${it.answer.take(160)} | Kullanıcının düzeltmesi: ${it.correction}") }
+        }
+        val liked = lessons.filter { it.liked }
+        if (liked.isNotEmpty()) {
+            appendLine("Kullanıcının beğendiği önceki cevapların (biçim ve uzunluk için örnek):")
+            liked.forEach { appendLine("- Soru: ${it.question} | Cevap: ${it.answer.take(200)}") }
+        }
+        if (notes.isNotEmpty()) {
+            appendLine("Boştayken okuduğun notlar (Wikipedia'dan birebir; kullanırsan kaynağa başlığı yaz):")
+            notes.forEach { appendLine("- [${it.title}] ${it.text.take(500)}") }
         }
     }.trimEnd()
 
@@ -64,6 +84,12 @@ CEVAP BİÇİMİ — YALNIZCA geçerli JSON:
 Şu an: ${now.day} ${Turkish.monthName(now.month)} ${now.year}, saat ${now.hhmm()}.
 """.trimIndent()
 
-    fun build(tools: ToolRegistry, now: Now, memory: List<Fact>, budget: Budget): String =
-        static(tools) + "\n\n" + dynamic(now, memory, budget)
+    fun build(
+        tools: ToolRegistry,
+        now: Now,
+        memory: List<Fact>,
+        budget: Budget,
+        lessons: List<io.github.ahmetdurmus1218.jarvis.core.learning.Lesson> = emptyList(),
+        notes: List<io.github.ahmetdurmus1218.jarvis.core.learning.ResearchNote> = emptyList(),
+    ): String = static(tools) + "\n\n" + dynamic(now, memory, budget, lessons, notes)
 }

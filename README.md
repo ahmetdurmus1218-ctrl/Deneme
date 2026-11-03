@@ -73,6 +73,16 @@ eller serbest konuşabilirsiniz. Susarsanız ya da "sus" derseniz durur.
 
 Rick'in dosyaları: `%LOCALAPPDATA%\Rick` (Gezgin'in adres çubuğuna yazıp Enter'a basarak açabilirsiniz).
 
+## 3b. Rick kendini nasıl geliştirir?
+
+- Yanlış cevaptan sonra **"Hayır, doğrusu …"** deyin ya da cevabın altındaki **👎**'ye basıp doğrusunu söyleyin;
+  Rick öğrenir ve benzer sorularda dikkate alır. **👍** beğendiğiniz cevabı örnek olarak saklar.
+- Rick birkaç dakika boşta kalınca ilgi alanlarınızı internetsiz Wikipedia'dan okuyup **kaynaklı not** alır
+  (Wikipedia paketi kurulu olmalı). Brifingde ne okuduğunu söyler.
+- Hafıza ekranı → **Kendini geliştirme**: öğrendikleri ve okudukları listelenir; silebilir ya da kapatabilirsiniz.
+- Modelin kendisi değişmez (yerel model eğitimi henüz güvenilir değil); gelişen, Rick'in sizden ve kaynaklardan
+  öğrendikleridir. Hiçbir şey internete gitmez.
+
 ## 4. Modelleri tekrar indirmemek
 
 Rick bir dosyayı indirmeden önce **bu cihazda zaten var mı** diye bakar. Varsa ve SHA-256 özeti kilit listesiyle

@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -109,6 +110,78 @@ class JarvisControllerTest {
         return Triple(JarvisController(scope, bridge, assistant, memory, SettingsStore(bridge.files)), bridge, tts)
     }
 
+    private class MemText : io.github.ahmetdurmus1218.jarvis.core.knowledge.TextStore {
+        val m = mutableMapOf<String, String>()
+        override fun read(name: String) = m[name]
+        override fun write(name: String, text: String) { m[name] = text }
+    }
+
+    private fun learningSetup(
+        scope: CoroutineScope,
+        research: (suspend (List<String>) -> io.github.ahmetdurmus1218.jarvis.core.learning.ResearchNote?)? = null,
+    ): Pair<JarvisController, io.github.ahmetdurmus1218.jarvis.core.learning.Learning> {
+        val bridge = Bridge(Tts(), null)
+        val memory = InMemoryMemoryStore()
+        val learning = io.github.ahmetdurmus1218.jarvis.core.learning.Learning(MemText())
+        val assistant = Assistant(MockLlmEngine(tokenDelayMs = 0), DefaultTools.create(memory, now), memory, now, learning = { learning })
+        return JarvisController(scope, bridge, assistant, memory, SettingsStore(bridge.files), learning = learning, research = research) to learning
+    }
+
+    @Test
+    fun aCorrectionIsLearnedInsteadOfAskedAsANewQuestion() = runTest {
+        val scope = controllerScope()
+        val (c, learning) = learningSetup(scope)
+        c.send("En sevdiğim renk ne?")
+        advanceUntilIdle()
+        c.send("Hayır, doğrusu lacivert")
+        advanceUntilIdle()
+        assertEquals(2, c.turns.value.size)
+        assertTrue("öğrendim" in c.turns.value.last().scenes.single().sahne.ses)
+        assertEquals("Lacivert", learning.lessons().single().correction)
+        assertEquals(-1, c.turns.value.first().feedback)
+        // Next time the same question is answered from what was taught, even without a model.
+        c.send("en sevdiğim renk ne")
+        advanceUntilIdle()
+        assertEquals("Bana öğrettiğiniz gibi: Lacivert", c.turns.value.last().scenes.single().sahne.ses)
+        scope.cancel()
+    }
+
+    @Test
+    fun thumbsDownMakesTheNextMessageTheRightAnswer() = runTest {
+        val scope = controllerScope()
+        val (c, learning) = learningSetup(scope)
+        c.send("Kızımın okulu hangisi?")
+        advanceUntilIdle()
+        c.feedback(c.turns.value.last().id, good = false)
+        c.send("Atatürk İlkokulu")
+        advanceUntilIdle()
+        assertEquals("Atatürk İlkokulu", learning.lessons().single().correction)
+        // 👍 keeps a liked example.
+        c.send("saat kaç")
+        advanceUntilIdle()
+        c.feedback(c.turns.value.last().id, good = true)
+        assertTrue(learning.lessons().any { it.liked && it.question == "saat kaç" })
+        assertEquals(1, c.turns.value.last().feedback)
+        scope.cancel()
+    }
+
+    @Test
+    fun idleReadingStartsOnlyAfterAQuietWhile() = runTest {
+        val scope = controllerScope()
+        var steps = 0
+        val (c, _) = learningSetup(scope) { steps++; io.github.ahmetdurmus1218.jarvis.core.learning.ResearchNote(1, "Manisa", "Manisa", "Manisa", "Manisa bir şehirdir.") }
+        advanceTimeBy(JarvisController.IDLE_CHECK_MS * 2 + 1)
+        assertEquals(0, steps, "not yet: Rick was just used")
+        advanceTimeBy(JarvisController.IDLE_CHECK_MS * 2)
+        assertTrue(steps >= 1)
+        assertEquals("📖 Boştayken okudum: Manisa", c.partialTranscript.value)
+        c.settings.update { it.copy(selfLearning = false) }
+        val before = steps
+        advanceTimeBy(JarvisController.IDLE_CHECK_MS * 5)
+        assertEquals(before, steps, "switched off: no reading")
+        scope.cancel()
+    }
+
     @Test
     fun conversationModeListensAgainUntilSilence() = runTest {
         val scope = controllerScope()
@@ -180,7 +253,7 @@ class JarvisControllerTest {
     fun platformErrorReplacesTheCannedAnswer() = runTest {
         val scope = controllerScope()
         val (c, _, tts) = setup(scope = scope)
-        c.send("Uçak modunu aç")
+        c.send("Spotifyı aç")
         advanceUntilIdle()
         val text = c.turns.value.single().scenes.single().sahne.ses
         assertTrue(text.contains("bulamadım"), text)

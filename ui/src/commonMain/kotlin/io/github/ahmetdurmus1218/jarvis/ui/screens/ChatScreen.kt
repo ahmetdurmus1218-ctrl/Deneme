@@ -149,6 +149,7 @@ fun ChatScreen(
                     last = turns.lastOrNull(),
                     subtitle = subtitle,
                     onCoreTap = if (micAvailable) controller::toggleListening else null,
+                    onFeedback = controller::feedback,
                 )
             }
         }
@@ -361,7 +362,15 @@ private fun HudChip(text: String, active: Boolean, onClick: () -> Unit) {
  * said, Rick's words as they are spoken (typewriter), and the answer's scene cards.
  */
 @Composable
-private fun Stage(mode: CoreMode, level: Float, engineLabel: String, last: Turn?, subtitle: String, onCoreTap: (() -> Unit)?) {
+private fun Stage(
+    mode: CoreMode,
+    level: Float,
+    engineLabel: String,
+    last: Turn?,
+    subtitle: String,
+    onCoreTap: (() -> Unit)?,
+    onFeedback: ((Long, Boolean) -> Unit)? = null,
+) {
     val scroll = rememberScrollState()
     // Keep the newest answer in view (the keyboard or a small screen can push it below the fold).
     LaunchedEffect(last?.id, last?.scenes?.size, last?.done) {
@@ -411,6 +420,9 @@ private fun Stage(mode: CoreMode, level: Float, engineLabel: String, last: Turn?
             }
             SourceChips(last.kaynaklar)
             last.error?.let { Text("Hata: $it", color = JarvisColors.Red, fontWeight = FontWeight.SemiBold) }
+            if (onFeedback != null && last.done && last.error == null && last.scenes.any { it.sahne.ses.isNotBlank() }) {
+                FeedbackRow(last.feedback) { good -> onFeedback(last.id, good) }
+            }
         }
         Spacer(Modifier.height(8.dp))
     }
@@ -576,5 +588,20 @@ private fun TurnView(turn: Turn) {
         SourceChips(turn.kaynaklar)
         if (turn.interrupted) Text("yarıda kesildi", color = JarvisColors.TextDim, fontSize = 11.sp)
         turn.error?.let { Text("Hata: $it", color = JarvisColors.Red, fontWeight = FontWeight.SemiBold) }
+    }
+}
+
+/** 👍 keeps the answer as a good example; 👎 asks for the right answer, which Rick then learns. */
+@Composable
+private fun FeedbackRow(given: Int, onGive: (Boolean) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        when (given) {
+            1 -> Text("👍 Beğenildi", color = JarvisColors.TextDim, fontSize = 12.sp)
+            -1 -> Text("👎 Doğrusunu söyleyin, öğreneyim", color = JarvisColors.TextDim, fontSize = 12.sp)
+            else -> {
+                TextButton(onClick = { onGive(true) }) { Text("👍", fontSize = 16.sp) }
+                TextButton(onClick = { onGive(false) }) { Text("👎", fontSize = 16.sp) }
+            }
+        }
     }
 }

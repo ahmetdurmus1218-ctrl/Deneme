@@ -32,6 +32,8 @@ object Briefing {
         val home: HomeState?,
         val facts: Int,
         val userName: String = "",
+        /** Titles Rick read by itself while idle since the last day (research notebook). */
+        val readTitles: List<String> = emptyList(),
     )
 
     fun scenes(i: Input): List<Sahne> {
@@ -74,6 +76,12 @@ object Briefing {
             out += Sahne((if (lights == 0) "Evde ışıklar kapalı." else "Evde $lights ışık açık.") + coffee)
         }
         if (i.facts > 0) out += Sahne("Hafızamda sizinle ilgili ${i.facts} bilgi var.")
+        if (i.readTitles.isNotEmpty()) {
+            out += Sahne(
+                "Boştayken ${i.readTitles.size} konu okudum; sorarsanız kaynağıyla anlatırım.",
+                Gorsel(GorselTip.LISTE, baslik = "Okuduklarım", ogeler = i.readTitles.take(5)),
+            )
+        }
         out += Sahne("Hepsi bu kadar. İyi bir gün dilerim.")
         return out
     }

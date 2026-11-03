@@ -34,6 +34,8 @@ data class Turn(
     val assistantText: String? = null,
     /** A newer question arrived before this one finished. */
     val interrupted: Boolean = false,
+    /** The user's verdict: 1 = 👍, -1 = 👎, 0 = none. */
+    val feedback: Int = 0,
 )
 
 enum class CoreMode { IDLE, LISTENING, THINKING, SPEAKING }
@@ -47,6 +49,10 @@ class JarvisController(
     val settings: SettingsStore,
     /** The real local model for background fact extraction; null = patterns only. */
     private val factModel: () -> io.github.ahmetdurmus1218.jarvis.core.llm.LlmEngine? = { null },
+    /** Lessons from corrections and likes (null: self-improvement not available). */
+    private val learning: io.github.ahmetdurmus1218.jarvis.core.learning.Learning? = null,
+    /** One idle research step given the recent questions; null = no idle reading. */
+    private val research: (suspend (List<String>) -> io.github.ahmetdurmus1218.jarvis.core.learning.ResearchNote?)? = null,
 ) {
     private val _appCommands = kotlinx.coroutines.flow.MutableSharedFlow<QuickCommand>(extraBufferCapacity = 8)
     /** Commands for the app itself (hand control, planets), handled by the screens. */
@@ -85,7 +91,26 @@ class JarvisController(
     private val speechQueue = Channel<String>(Channel.UNLIMITED)
     private var queued = 0
 
+    /** Last time the user did something; idle reading starts only after a quiet while. */
+    private var lastActivity = 0L
+    private var idleChecks = 0
+    /** After 👎: the next message is the right answer for this turn. */
+    private var correctionFor: Long? = null
+
     init {
+        research?.let { step ->
+            scope.launch {
+                while (true) {
+                    delay(IDLE_CHECK_MS)
+                    idleChecks++
+                    // Only when nothing happens: not listening, thinking or speaking, and quiet for a while.
+                    if (_mode.value != CoreMode.IDLE || !settings.state.value.selfLearning) continue
+                    if (idleChecks * IDLE_CHECK_MS - lastActivity < IDLE_BEFORE_RESEARCH_MS) continue
+                    val note = runCatching { step(_turns.value.takeLast(10).map { it.user }) }.getOrNull() ?: continue
+                    if (_mode.value == CoreMode.IDLE && _partial.value.isBlank()) _partial.value = "📖 Boştayken okudum: ${note.title}"
+                }
+            }
+        }
         scope.launch {
             bridge.reminders.collect { text ->
                 _partial.value = "⏰ $text"
@@ -184,9 +209,59 @@ class JarvisController(
         }
     }
 
+    /** The user's verdict on an answer: 👍 keeps it as a good example, 👎 asks for the right answer. */
+    fun feedback(turnId: Long, good: Boolean) {
+        val turn = _turns.value.firstOrNull { it.id == turnId } ?: return
+        noteActivity()
+        updateTurn(turnId) { it.copy(feedback = if (good) 1 else -1) }
+        if (good) {
+            correctionFor = null
+            learning?.like(turn.user, answerText(turn))
+            _partial.value = "👍 Not ettim; benzer sorularda böyle cevaplayacağım."
+        } else {
+            correctionFor = turnId
+            _partial.value = "👎 Doğrusu ne? Yazın ya da söyleyin, öğreneyim."
+        }
+    }
+
+    private fun answerText(t: Turn): String =
+        (t.scenes.map { it.sahne.ses }.filter { it.isNotBlank() } + listOfNotNull(t.detay)).joinToString(" ").trim()
+
+    private fun noteActivity() {
+        lastActivity = idleChecks * IDLE_CHECK_MS
+    }
+
+    /**
+     * "Hayır, doğrusu …" (or any message right after 👎) teaches the previous answer's correction
+     * instead of starting a new question. Returns true when handled.
+     */
+    private fun learnCorrection(text: String): Boolean {
+        val l = learning ?: return false
+        if (!settings.state.value.selfLearning) return false
+        val pending = correctionFor
+        correctionFor = null
+        val said = io.github.ahmetdurmus1218.jarvis.core.learning.CorrectionDetector.parse(text) ?: if (pending != null) text else return false
+        val target = _turns.value.lastOrNull { it.id == pending } ?: _turns.value.lastOrNull { it.done && it.error == null && it.scenes.isNotEmpty() }
+            ?: return false
+        l.correct(target.user, answerText(target), said)
+        val id = nextId++
+        val reply = io.github.ahmetdurmus1218.jarvis.core.scene.VerifiedScene(
+            io.github.ahmetdurmus1218.jarvis.core.scene.Sahne(
+                "Teşekkürler, öğrendim. Bundan sonra \"${target.user.take(60)}\" gibi sorularda bunu dikkate alacağım.",
+                io.github.ahmetdurmus1218.jarvis.core.scene.Gorsel(io.github.ahmetdurmus1218.jarvis.core.scene.GorselTip.ALINTI, metin = said, kaynak = "Sizin düzeltmeniz"),
+            ),
+        )
+        updateTurn(target.id) { it.copy(feedback = -1) }
+        _turns.value = _turns.value + Turn(id, text, scenes = listOf(reply), done = true)
+        say(reply.sahne.ses)
+        return true
+    }
+
     fun send(text: String) {
         val clean = text.trim()
         if (clean.isEmpty()) return
+        noteActivity()
+        if (learnCorrection(clean)) return
         stopSpeaking()
         askJob?.cancel()
         currentTurnId?.let { prev -> updateTurn(prev) { if (it.done) it else it.copy(done = true, interrupted = true) } }
@@ -247,6 +322,7 @@ class JarvisController(
     // ---- push-to-talk ----
 
     fun startListening() {
+        noteActivity()
         val stt = bridge.speechInput ?: return
         if (!stt.isAvailable()) {
             _partial.value = if (stt.ownModelGroup != null) {
@@ -320,6 +396,10 @@ class JarvisController(
     }
 
     companion object {
+        /** How often the idle loop looks, and how long Rick must be left alone before reading. */
+        const val IDLE_CHECK_MS = 60_000L
+        const val IDLE_BEFORE_RESEARCH_MS = 3 * 60_000L
+
         /** Pause between Rick finishing and listening again, so its own voice is not recorded. */
         const val CONTINUE_DELAY_MS = 350L
     }

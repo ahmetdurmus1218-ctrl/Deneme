@@ -98,6 +98,24 @@ class AppGraph(
     val library = io.github.ahmetdurmus1218.jarvis.core.library.Library(textStore) { NowProvider.System.now().epochMillis }
     /** The user's to-do list ("not al: …", "yapılacaklarım neler"). */
     val todos = io.github.ahmetdurmus1218.jarvis.core.todo.TodoList(textStore) { NowProvider.System.now().epochMillis }
+    /** Self-improvement: lessons from corrections / likes and the idle research notebook (sealed). */
+    val learning = io.github.ahmetdurmus1218.jarvis.core.learning.Learning(textStore) { NowProvider.System.now().epochMillis }
+    /** The offline Wikipedia, when its package is installed. */
+    val wiki: Wikipedia? = bridge.zim?.let { Wikipedia(it) }
+    private val researcher = wiki?.let { io.github.ahmetdurmus1218.jarvis.core.learning.Researcher(it, learning) }
+
+    /**
+     * One idle research step: the first new topic among the user's interests (memory, books, recent
+     * questions) is looked up in the offline Wikipedia and its opening kept with the title.
+     */
+    suspend fun researchOnce(recentQuestions: List<String>): io.github.ahmetdurmus1218.jarvis.core.learning.ResearchNote? {
+        val r = researcher ?: return null
+        if (!settings.state.value.selfLearning || wiki?.isReady() != true) return null
+        val facts = if (memory.enabled()) memory.list().map { it.text } else emptyList()
+        val topic = r.topics(facts, library.books().map { it.title }, recentQuestions).firstOrNull() ?: return null
+        return r.research(topic)
+    }
+
     /** The simulated home (lights, coffee machines) behind the home voice commands and the Ev panel. */
     val home = io.github.ahmetdurmus1218.jarvis.core.home.SmartHome()
     /** The user's own documents (PDF/TXT/MD), searched with BM25 by belge_ara. */
@@ -111,7 +129,7 @@ class AppGraph(
         engine,
         DefaultTools.create(
             memory,
-            wiki = bridge.zim?.let { Wikipedia(it) },
+            wiki = wiki,
             documents = documents,
             library = library,
             // Device actions for the model (alarm, timer, opening apps) on both platforms.
@@ -131,8 +149,10 @@ class AppGraph(
                 home = home.state(now.epochMillis),
                 facts = memory.list().size,
                 userName = settings.state.value.userName,
+                readTitles = learning.notesSince(now.epochMillis - 24 * 3_600_000L).map { it.title },
             )
         },
+        learning = { learning.takeIf { settings.state.value.selfLearning } },
     )
     val installer = ModelInstaller(bridge, registry, settings, netLog)
     val engineLabel: String get() = engine.id.let { if (it == "mock") "temel komutlar · dil modeli kurulu değil" else it }
@@ -185,7 +205,14 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
     val themeSettings by graph.settings.state.collectAsState()
     JarvisTheme(themeSettings.theme, themeSettings.fontScale, themeSettings.reduceMotion) {
         val scope = rememberCoroutineScope()
-        val controller = remember { JarvisController(scope, graph.bridge, graph.assistant, graph.memory, graph.settings) { graph.engine.current.takeIf { it.id != "mock" } } }
+        val controller = remember {
+            JarvisController(
+                scope, graph.bridge, graph.assistant, graph.memory, graph.settings,
+                factModel = { graph.engine.current.takeIf { it.id != "mock" } },
+                learning = graph.learning,
+                research = { recent -> graph.researchOnce(recent) },
+            )
+        }
         val settings by graph.settings.state.collectAsState()
         val approval by graph.installer.approval.collectAsState()
         val netEvents by graph.netLog.events.collectAsState()
@@ -319,7 +346,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                 if (settings.hudMark == 2) Mark2(graph, settings.city, chat) else chat()
                             }
                             Tab.MODELS -> ModelsScreen(graph.bridge, graph.registry, graph.installer)
-                            Tab.MEMORY -> MemoryScreen(graph.memory, graph.settings, graph.documents, graph.bridge)
+                            Tab.MEMORY -> MemoryScreen(graph.memory, graph.settings, graph.documents, graph.bridge, graph.learning)
                             Tab.NETLOG -> NetworkLogScreen(netEvents, formatTime)
                             Tab.SETTINGS -> SettingsScreen(graph.bridge, graph.settings, graph.registry, graph.installer) { wizard = true }
                         }

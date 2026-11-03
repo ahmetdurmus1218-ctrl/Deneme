@@ -64,6 +64,8 @@ class Assistant(
     private val todos: io.github.ahmetdurmus1218.jarvis.core.todo.TodoList? = null,
     /** The offline daily briefing's facts (null: no briefing). */
     private val briefing: (suspend () -> io.github.ahmetdurmus1218.jarvis.core.briefing.Briefing.Input)? = null,
+    /** Lessons from the user's corrections / likes and the idle research notebook (null: off). */
+    private val learning: (() -> io.github.ahmetdurmus1218.jarvis.core.learning.Learning?)? = null,
 ) {
     companion object {
         const val MAX_TOOL_ROUNDS = 5
@@ -116,10 +118,24 @@ class Assistant(
             is Route.Quick -> error("unreachable")
         }
         val facts = if (memory.enabled()) memory.list() else emptyList()
-        val messages = mutableListOf(ChatMessage(Role.SYSTEM, SystemPrompt.build(tools, now.now(), facts, budget)))
+        val learned = learning?.invoke()
+        // Without a language model, a question the user already corrected is answered from that correction.
+        if (engine.id == "mock") {
+            learned?.exactCorrection(userText)?.let { l ->
+                val scene = VerifiedScene(Sahne("Bana öğrettiğiniz gibi: ${l.correction}", Gorsel(GorselTip.BASLIK, baslik = "Sizden öğrendim")))
+                emit(AssistantEvent.SceneReady(0, scene))
+                val kaynak = listOf(Kaynak("Sizin düzeltmeniz", "arac", "öğrendiklerim"))
+                emit(AssistantEvent.Completed(VerifiedReply(listOf(scene), null, kaynak), SceneJson.encodeToString(Reply.serializer(), Reply(listOf(scene.sahne)))))
+                return@flow
+            }
+        }
+        val lessons = learned?.relevantLessons(userText).orEmpty()
+        val notes = learned?.relevantNotes(userText).orEmpty()
+        val messages = mutableListOf(ChatMessage(Role.SYSTEM, SystemPrompt.build(tools, now.now(), facts, budget, lessons, notes)))
         messages += history.filter { it.role != Role.SYSTEM }
         messages += ChatMessage(Role.USER, userText)
-        val evidence = mutableListOf<String>()
+        // The user's own corrections and the verbatim research notes may be quoted (section 5.4).
+        val evidence = (lessons.mapNotNull { it.correction } + notes.map { "${it.title} ${it.text}" }).toMutableList()
         val turn = TurnState(messages, evidence)
         val config = GenerationConfig(maxTokens = budget.maxTokens, thinking = budget.thinking)
 

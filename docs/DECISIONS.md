@@ -266,3 +266,22 @@ model / deneme modu" demez: hazır komutlar, cihaz komutları ve kaynaklı Wikip
 "Rick'in beynini kur" düğmesi çıkar. Sihirbazdaki "Şimdilik atla (deneme modu)" → "Sonra kur". Bütün
 aşamalar tamamlandığı için sürüm 1.0.0 oldu.
 
+## D37 — Kendini geliştirme: model ağırlıkları değil, Rick'e verilenler gelişir
+Kullanıcı "kendi kendine araştırarak, veri verdikçe gelişen" bir sistem istedi. Araştırmada (Kasım 2026)
+yerel ince ayarın (LoRA) llama.cpp'ye henüz birleşmediği, yalnızca CPU ve küçük (≤1B) modellerle
+denendiği, Vulkan eğitiminin yalnızca bir çatalda olduğu, telefonda eğitimin araştırma prototiplerinde
+kaldığı görüldü; ayrıca ince ayar bilgiyi güvenilir öğretmez, uydurmayı artırabilir. Bu yüzden gelişme
+bilgi tarafında, tamamen cihazda yapılır:
+- **Düzeltmelerden öğrenme:** "Hayır, doğrusu …" / "yanlış, …" ya da cevabın altındaki 👎'den sonraki
+  mesaj, önceki sorunun düzeltmesi olarak saklanır (yeni soru diye modele gitmez). 👍 beğenilen cevabı
+  örnek olarak saklar. Benzer sorularda (ortak kelime ≥2) bunlar sistem prompt'unun değişen kısmına
+  "veri olarak" girer; düzeltme metni doğrulama kanıtına eklenir (kullanıcının kendi sözü). Dil modeli
+  yokken aynı soru düzeltmeden cevaplanır.
+- **Boşta araştırma defteri:** Rick 3 dakika kullanılmayınca (dinlemiyor, düşünmüyor, konuşmuyorken),
+  dakikada en fazla bir kez, kullanıcının ilgi alanlarından (son soruları, kitaplığındaki kitaplar,
+  hafızasındaki özel adlar) sıradaki konuyu internetsiz Wikipedia'da arar ve makalenin başını **birebir**
+  başlığıyla not eder; özet ya da yorum yazmaz. Notlar benzer sorularda prompt'a ve kanıta girer,
+  günlük brifingde "Boştayken okuduklarım" olarak listelenir. Okunan konu tekrar okunmaz.
+- Hepsi şifreli dosyada (en fazla 200 ders, 300 not), Hafıza ekranında görülür, tek tek ya da toptan
+  silinir; Hafıza → "Kendini geliştirme" anahtarıyla kapatılır. İnternet kullanılmaz.
+

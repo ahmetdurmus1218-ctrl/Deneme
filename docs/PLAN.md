@@ -106,6 +106,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] İndirmeden önce cihazda arama (PC: eski klasör, İndirilenler, HF/LM Studio/Ollama, eklenen klasörler; telefon: seçilen klasör), SHA-256 ile (D34).
 - [x] Modeli beklemeden cihaz komutları: fener, ses, müzik, ayar panelleri, pil, arama/mesaj hazırlama, yol tarifi; PC'de ses/medya tuşları, ayar sayfaları, Başlat menüsünden program açma, alarm ve zamanlayıcı (D35).
 - [x] "Deneme modu" kaldırıldı; dil modeli yoksa sohbette "Rick'in beynini kur" (D36).
+- [x] Kendini geliştirme: düzeltmelerden ve 👍/👎'den öğrenme, boştayken internetsiz Wikipedia'dan kaynaklı not defteri, brifingde "okuduklarım", Hafıza ekranında liste ve anahtar (D37).
 - [ ] `v1.0.0` yayımlanacak.
 
 ## Kaldığım yer
