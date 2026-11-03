@@ -59,7 +59,7 @@ class WikipediaTest {
     fun questionsBecomeQueries() {
         assertEquals("Atatürk", WikiQuery.clean("Atatürk kimdir?"))
         assertEquals("Türkiye başkenti", WikiQuery.clean("Türkiye'nin başkenti neresidir?"))
-        assertEquals("Everest yüksekliği", WikiQuery.clean("Jarvis, Everest'in yüksekliği nedir lütfen"))
+        assertEquals("Everest yüksekliği", WikiQuery.clean("Rick, Everest'in yüksekliği nedir lütfen"))
         assertEquals("zaman yolculuğu", WikiQuery.clean("zaman yolculuğu hakkında bilgi ver"))
         assertEquals("kim", WikiQuery.clean("kim"), "never empty")
     }

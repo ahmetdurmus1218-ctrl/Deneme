@@ -25,13 +25,6 @@ import javax.swing.JOptionPane
 import javax.swing.SwingUtilities
 import kotlin.coroutines.resume
 
-/** %LOCALAPPDATA%\Jarvis on Windows, ~/.local/share/Jarvis elsewhere. */
-fun dataDir(): File {
-    val local = System.getenv("LOCALAPPDATA")
-    val base = if (!local.isNullOrBlank()) File(local) else File(System.getProperty("user.home"), ".local/share")
-    return File(base, "Jarvis").apply { mkdirs() }
-}
-
 class DesktopFiles(private val dir: File) : AppFiles {
     init { dir.mkdirs() }
     override fun read(name: String): String? = File(dir, name).takeIf { it.isFile }?.readText()
@@ -45,78 +38,6 @@ class DesktopFiles(private val dir: File) : AppFiles {
         }
     }
     override fun append(name: String, line: String) = File(dir, name).appendText(line + "\n")
-}
-
-class DesktopModelStorage(private val dir: File, private val partialDir: File) : ModelStorage {
-    private val unverifiedDir = File(dir, "dogrulanmamis")
-
-    init { dir.mkdirs() }
-
-    private fun file(item: LockedItem) = File(dir, item.fileName)
-    private fun marker(item: LockedItem) = File(dir, item.fileName + ".verified")
-
-    override fun isInstalled(item: LockedItem): Boolean {
-        val f = file(item)
-        val m = marker(item)
-        return f.isFile && f.length() == item.size && m.isFile && m.readText().trim().equals(item.sha256, ignoreCase = true)
-    }
-
-    override fun pathOf(item: LockedItem): String = file(item).absolutePath
-
-    override fun commit(item: LockedItem, tempPath: String) {
-        val src = File(tempPath)
-        val dst = file(item)
-        dst.delete()
-        if (!src.renameTo(dst)) {
-            src.copyTo(dst, overwrite = true)
-            src.delete()
-        }
-        marker(item).writeText(item.sha256)
-    }
-
-    override fun delete(item: LockedItem) {
-        file(item).delete()
-        marker(item).delete()
-    }
-
-    override fun deleteTemp(tempPath: String) {
-        File(tempPath).delete()
-    }
-
-    override fun importedUnverifiedFiles(): List<String> = unverifiedDir.listFiles()?.map { it.name }.orEmpty().sorted()
-
-    override fun keepUnverified(tempPath: String, fileName: String) {
-        unverifiedDir.mkdirs()
-        val dst = File(unverifiedDir, fileName.replace(Regex("[^A-Za-z0-9._-]"), "_"))
-        val src = File(tempPath)
-        if (!src.renameTo(dst)) {
-            src.copyTo(dst, overwrite = true)
-            src.delete()
-        }
-    }
-
-    override suspend fun pickAndImport(): ImportOutcome {
-        val chosen: File = suspendCancellableCoroutine { cont ->
-            SwingUtilities.invokeLater {
-                val dialog = FileDialog(null as Frame?, "Model dosyası seçin", FileDialog.LOAD)
-                dialog.isVisible = true
-                val f = dialog.files.firstOrNull()
-                if (cont.isActive) cont.resume(f ?: File(""))
-            }
-        }
-        if (chosen.path.isEmpty()) return ImportOutcome.Cancelled
-        return withContext(Dispatchers.IO) {
-            try {
-                partialDir.mkdirs()
-                val tmp = File(partialDir, "import-" + System.nanoTime())
-                chosen.copyTo(tmp, overwrite = true)
-                val (sha, size) = DesktopKapi.sha256(tmp)
-                ImportOutcome.Imported(tmp.absolutePath, chosen.name, sha, size)
-            } catch (e: Exception) {
-                ImportOutcome.Failed(e.message ?: "İçe aktarma başarısız")
-            }
-        }
-    }
 }
 
 /**
@@ -163,22 +84,22 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
     override val models: ModelStorage = DesktopModelStorage(File(root, "models"), partial)
     /** The installed launcher (jpackage sets this); null when run from Gradle or in tests. */
     private val appExe: File? = System.getProperty("jpackage.app-path")?.let(::File)?.takeIf { it.isFile }
-    private val kapiExe: File? = appExe?.let { File(it.parentFile, "jarvis-kapi.exe") }?.takeIf { it.isFile }
+    private val kapiExe: File? = appExe?.let { File(it.parentFile, "rick-kapi.exe") }?.takeIf { it.isFile }
     private val gateDir = File(root, "gate")
     /** Windows firewall automation, only for the installed app (it needs the two launchers' paths). */
     val windowsFirewall: io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall? =
         if (io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall.isWindows && kapiExe != null) io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall() else null
-    private val kapiRule get() = io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall.Rule("jarvis-kapi.exe", kapiExe!!)
+    private val kapiRule get() = io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall.Rule("rick-kapi.exe", kapiExe!!)
 
-    /** Every program Jarvis runs: the app itself, the download launcher and the unpacked servers. */
+    /** Every program Rick runs: the app itself, the download launcher and the unpacked servers. */
     fun firewallRules(): List<io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall.Rule> {
         val app = appExe ?: return emptyList()
         val kapi = kapiExe ?: return emptyList()
         val bins = File(root, "bin").walkTopDown().filter { it.isFile && it.name.endsWith(".exe", ignoreCase = true) }
             .map { io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall.Rule("bin " + it.relativeTo(File(root, "bin")).path.replace('\\', '/'), it) }
         return listOf(
-            io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall.Rule("Jarvis.exe", app),
-            io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall.Rule("jarvis-kapi.exe", kapi),
+            io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall.Rule("Rick.exe", app),
+            io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall.Rule("rick-kapi.exe", kapi),
         ) + bins
     }
 
@@ -201,7 +122,7 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
                 val state = fw.state()
                 val rules = firewallRules()
                 val on = rules.count { state[fw.displayName(it)] == true }
-                return if (on == rules.size) "Açık: Jarvis ve kullandığı ${rules.size} programın internete çıkışı engelli." else "Eksik: ${rules.size} kuraldan $on tanesi etkin."
+                return if (on == rules.size) "Açık: Rick ve kullandığı ${rules.size} programın internete çıkışı engelli." else "Eksik: ${rules.size} kuraldan $on tanesi etkin."
             }
             override fun installed(): Boolean = fw.isInstalled(firewallRules())
             override suspend fun install(): Boolean = fw.install(firewallRules())
@@ -226,7 +147,7 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
     override val zim = io.github.ahmetdurmus1218.jarvis.desktop.knowledge.KiwixServe.forInstalled(
         models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, File(root, "bin"),
     )
-    /** Jarvis's own Whisper; until its files are installed, the chat offers the download. */
+    /** Rick's own Whisper; until its files are installed, the chat offers the download. */
     override val speechInput: SpeechInput = io.github.ahmetdurmus1218.jarvis.desktop.stt.DesktopWhisperSpeechInput(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled)
     override val micStream = io.github.ahmetdurmus1218.jarvis.desktop.stt.DesktopMicStream()
     override val cipher = DesktopCipher(File(root, "app/key.dpapi"))
@@ -250,7 +171,7 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
         )
     }
 
-    /** v0.1: a native confirmation dialog. v0.5: UAC-elevated firewall rule for jarvis-kapi. */
+    /** v0.1: a native confirmation dialog. v0.5: UAC-elevated firewall rule for rick-kapi. */
     override val approver = object : Approver {
         override suspend fun confirm(title: String, subtitle: String): ApprovalResult {
             // With the firewall in place the approval IS the UAC prompt that opens the kapi gate.

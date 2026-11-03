@@ -25,7 +25,7 @@ import kotlin.test.assertTrue
 
 /**
  * Piper on the PC: archive handling always; with the real voice (JARVIS_PIPER_ARCHIVE) and Whisper
- * (JARVIS_WHISPER_DIR) installed, Jarvis speaks a sentence into a recorder and Whisper must hear it.
+ * (JARVIS_WHISPER_DIR) installed, Rick speaks a sentence into a recorder and Whisper must hear it.
  */
 class DesktopPiperTest {
     private fun tarBz2(file: File, entries: Map<String, String>) {
@@ -115,7 +115,7 @@ class DesktopPiperTest {
         var rate = 0
         val tts = DesktopPiperSpeech(OneFile(copy), ModelRegistry.bundled, null) { r -> rate = r; rec }
         val t0 = System.nanoTime()
-        tts.speak("Merhaba efendim, Jarvis hazır. Saat on dört otuz beş.", 1f)
+        tts.speak("Merhaba efendim, Rick hazır. Saat on dört otuz beş.", 1f)
         println("Piper: ${rec.samples.size} samples at $rate Hz in ${(System.nanoTime() - t0) / 1_000_000} ms; engine: ${tts.engineName}")
         assertTrue(rec.drained)
         assertTrue(rec.samples.size > rate * 2, "at least two seconds of speech")

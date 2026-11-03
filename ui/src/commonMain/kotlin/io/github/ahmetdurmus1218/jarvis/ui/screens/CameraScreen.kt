@@ -80,7 +80,7 @@ private val TIPS = listOf(4, 8, 12, 16, 20)
 const val QUESTION_WHAT = "Bu ne? Gördüğünü kısaca anlat."
 const val QUESTION_READ = "Buradaki yazıyı oku."
 const val QUESTION_FORTUNE = "Bu bir Türk kahvesi fincanı. Telvede gerçekten gördüğün şekillerden esprili, kısa bir kahve falı yorumla; bunun bilim olmadığını bir kez söyle."
-const val THUMB_COFFEE = "Jarvis, bana bol köpüklü bir Türk kahvesi yap"
+const val THUMB_COFFEE = "Rick, bana bol köpüklü bir Türk kahvesi yap"
 const val GESTURE_LEGEND = "✋ ateş · 🤏 gezegen · ✊→✋ patlat · ☝️ iz · ☝️☝️ şimşek · basılı tut: 👍 dinle ✌️ bu ne? ✊ sus"
 
 /**
@@ -129,7 +129,7 @@ fun CameraScreen(
         }
     }
 
-    // "Jarvis, Mars yap" / "el kontrolünü kapat"
+    // "Rick, Mars yap" / "el kontrolünü kapat"
     LaunchedEffect(Unit) {
         controller.appCommands.collect { c ->
             when (c) {
@@ -229,7 +229,7 @@ fun CameraScreen(
         ) {
             TextButton(onClick = onClose) { Text("← GERİ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace) }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("J.A.R.V.I.S · EL KONTROLÜ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, fontSize = 13.sp)
+                Text("R.I.C.K · EL KONTROLÜ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, fontSize = 13.sp)
                 val g = frame?.hands?.firstOrNull()?.let(GestureClassifier::classify) ?: Gesture.NONE
                 Text(
                     if (demo) "DEMO · $demoTitle · $fps FPS"
@@ -327,7 +327,7 @@ private fun EffectsPanel(e: EffectSettings, name: String, onChange: (EffectSetti
         row("✊→✋ Patlatma", e.burst) { onChange(e.copy(burst = it)) }
         row("☝️☝️ Şimşek", e.lightning) { onChange(e.copy(lightning = it)) }
         row("☝️ Işık izi", e.trail) { onChange(e.copy(trail = it)) }
-        row("👍 ✌️ ✊ Jarvis kontrolleri", e.controls) { onChange(e.copy(controls = it)) }
+        row("👍 ✌️ ✊ Rick kontrolleri", e.controls) { onChange(e.copy(controls = it)) }
         row("👍 basılı: Türk kahvesi yap (kapalıysa: dinle)", e.thumbCoffee) { onChange(e.copy(thumbCoffee = it)) }
         row("Yüz kilidi", e.faceLock) { onChange(e.copy(faceLock = it)) }
         Text("Gezegen", color = JarvisColors.TextDim, fontSize = 12.sp)

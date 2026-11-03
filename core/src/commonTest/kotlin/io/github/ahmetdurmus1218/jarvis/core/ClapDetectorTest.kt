@@ -76,7 +76,7 @@ class ClapDetectorTest {
 
     @Test
     fun wakePhraseAndGreeting() {
-        assertTrue(WakePhrase.matches("Uyan Jarvis"))
+        assertTrue(WakePhrase.matches("Uyan Rick"))
         assertTrue(WakePhrase.matches("uyan cervis!"))
         assertFalse(WakePhrase.matches("hava nasıl"))
         assertEquals("Günaydın efendim.", WakePhrase.greeting(8))

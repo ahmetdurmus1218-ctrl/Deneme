@@ -125,7 +125,7 @@ class ClapDetector(
     }
 }
 
-/** "uyan Jarvis" (and Whisper spellings) after the claps. */
+/** "uyan Rick" (and Whisper spellings) after the claps. */
 object WakePhrase {
     private val RE = Regex("\\b(?:uyan|uyanin|kalk|gunaydin)\\b")
     fun matches(text: String): Boolean = RE.containsMatchIn(io.github.ahmetdurmus1218.jarvis.core.text.Turkish.normalize(text))

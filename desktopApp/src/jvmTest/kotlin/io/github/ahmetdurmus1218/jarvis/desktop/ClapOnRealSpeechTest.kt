@@ -6,7 +6,7 @@ import java.nio.ByteOrder
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/** A real Turkish recording (speech with pauses) must never wake Jarvis like a double clap. */
+/** A real Turkish recording (speech with pauses) must never wake Rick like a double clap. */
 class ClapOnRealSpeechTest {
     @Test
     fun speechIsNotAClap() {

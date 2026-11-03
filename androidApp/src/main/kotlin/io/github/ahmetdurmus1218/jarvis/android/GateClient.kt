@@ -52,7 +52,7 @@ class GateClient(private val context: Context, private val storage: AndroidModel
             if (pm.checkSignatures(context.packageName, GateProtocol.GATE_PACKAGE) != PackageManager.SIGNATURE_MATCH) {
                 DownloadState.Unavailable
             } else {
-                DownloadState.Ready("Jarvis Kapı ${info.versionName}")
+                DownloadState.Ready("Rick Kapı ${info.versionName}")
             }
         } catch (_: PackageManager.NameNotFoundException) {
             DownloadState.Unavailable

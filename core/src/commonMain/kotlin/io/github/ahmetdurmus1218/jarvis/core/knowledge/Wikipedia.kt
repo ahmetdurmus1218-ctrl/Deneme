@@ -68,7 +68,7 @@ object WikiQuery {
         "kim", "kimdir", "kimdi", "ne", "nedir", "neydi", "nerede", "neredir", "nerededir", "neresi", "neresidir",
         "kac", "kactir", "kacti", "nasil", "nasildir", "hangi", "hangisi", "hangisidir",
         "hakkinda", "bilgi", "ver", "verir", "misin", "musun", "mi", "mu", "anlat", "anlatir",
-        "bana", "soyle", "soyler", "lutfen", "acikla", "aciklar", "jarvis", "biraz", "kisaca", "detayli",
+        "bana", "soyle", "soyler", "lutfen", "acikla", "aciklar", "jarvis", "rick", "rik", "biraz", "kisaca", "detayli",
         "ilgili", "midir", "mudur",
         "who", "what", "is", "are", "the", "a", "an", "of", "when", "where", "how", "tell", "me", "about",
     )

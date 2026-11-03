@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Jarvis Kapı</string>
-    <string name="gate_permission_label">Jarvis Kapı erişimi</string>
-    <string name="gate_permission_description">Jarvis\'in, onayınızla dosya indirmek için Jarvis Kapı uygulamasını kullanmasına izin verir.</string>
+    <string name="app_name">Rick Kapı</string>
+    <string name="gate_permission_label">Rick Kapı erişimi</string>
+    <string name="gate_permission_description">Rick\'in, onayınızla dosya indirmek için Rick Kapı uygulamasını kullanmasına izin verir.</string>
 </resources>

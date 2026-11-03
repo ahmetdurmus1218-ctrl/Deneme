@@ -1,5 +1,6 @@
 package io.github.ahmetdurmus1218.jarvis.core.router
 
+import io.github.ahmetdurmus1218.jarvis.core.AssistantName
 import io.github.ahmetdurmus1218.jarvis.core.text.Turkish
 import io.github.ahmetdurmus1218.jarvis.core.text.TurkishNumbers
 import io.github.ahmetdurmus1218.jarvis.core.tools.Calculator
@@ -57,8 +58,8 @@ object QuickCommandRouter {
 
     private const val VOWELS = "aeiou"
 
-    /** "Jarvis" as Turkish speech recognition often writes it (Whisper: "Cervis", "Carvis"…), normalized. */
-    private const val WAKE = "(?:jarvis|jarviz|jervis|cervis|cerviz|carvis|carviz)"
+    /** "Rick" as Turkish speech recognition often writes it (Whisper: "Cervis", "Carvis"…), normalized. */
+    private const val WAKE = AssistantName.WAKE
 
     /** Removes the wake word and politeness words around a command. */
     internal fun clean(normalized: String): String = normalized

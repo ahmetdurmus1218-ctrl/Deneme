@@ -17,12 +17,12 @@ import kotlin.test.assertTrue
 class SmartHomeTest {
     @Test
     fun turkishCommandsAreUnderstood() {
-        assertEquals(HomeAction.SetLight(Room.SALON, on = true), HomeCommands.parse("Jarvis, salonun ışığını aç"))
+        assertEquals(HomeAction.SetLight(Room.SALON, on = true), HomeCommands.parse("Rick, salonun ışığını aç"))
         assertEquals(HomeAction.SetLight(Room.SALON, on = false), HomeCommands.parse("salon ışığını kapat"))
         assertEquals(HomeAction.SetLight(Room.STUDY, on = null, brightness = 30, tone = Tone.COLD), HomeCommands.parse("çalışma odasını yüzde otuz yap, soğuk beyaz"))
         assertEquals(HomeAction.AllLights(false), HomeCommands.parse("tüm ışıkları kapat"))
         assertEquals(HomeAction.MakeFilterCoffee(2), HomeCommands.parse("filtre kahveyi iki fincan demle"))
-        assertEquals(HomeAction.MakeTurkishCoffee(Foam.LOTS, Sugar.MEDIUM), HomeCommands.parse("Jarvis, bana bol köpüklü bir Türk kahvesi yap"))
+        assertEquals(HomeAction.MakeTurkishCoffee(Foam.LOTS, Sugar.MEDIUM), HomeCommands.parse("Rick, bana bol köpüklü bir Türk kahvesi yap"))
         assertEquals(HomeAction.MakeTurkishCoffee(Foam.SOME, Sugar.NONE), HomeCommands.parse("sade bir türk kahvesi yapar mısın"))
         assertEquals(HomeAction.CoffeeStatus, HomeCommands.parse("kahvem hazır mı?"))
         assertEquals(null, HomeCommands.parse("kahvenin tarihi nedir?"))

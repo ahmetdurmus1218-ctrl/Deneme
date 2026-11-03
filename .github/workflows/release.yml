@@ -1,5 +1,5 @@
 name: release
-# Tag vX.Y.Z → jarvis.apk + jarvis-kapi.apk (same key) + Jarvis-Setup-X.Y.Z.msi + SHA256SUMS.txt
+# Tag vX.Y.Z → rick.apk + rick-kapi.apk (same key) + Rick-Setup-X.Y.Z.msi + SHA256SUMS.txt
 # Also runs when .github/release-request (one line: the tag, e.g. v0.1.0) changes on a branch:
 # then the release and its tag are created on that commit.
 on:
@@ -69,8 +69,8 @@ jobs:
       - name: Rename
         run: |
           mkdir -p dist
-          cp androidApp/build/outputs/apk/release/androidApp-arm64-v8a-release.apk dist/jarvis.apk
-          cp gate/build/outputs/apk/release/gate-release.apk dist/jarvis-kapi.apk
+          cp androidApp/build/outputs/apk/release/androidApp-arm64-v8a-release.apk dist/rick.apk
+          cp gate/build/outputs/apk/release/gate-release.apk dist/rick-kapi.apk
       - uses: actions/upload-artifact@v4
         with:
           name: android
@@ -95,7 +95,7 @@ jobs:
           V="${TAG#v}"
           ./gradlew --no-daemon -Pjarvis.version="$V" :desktopApp:jvmTest :desktopApp:packageMsi
           mkdir -p dist
-          cp desktopApp/build/compose/binaries/main/msi/*.msi "dist/Jarvis-Setup-${V%%-*}.msi"
+          cp desktopApp/build/compose/binaries/main/msi/*.msi "dist/Rick-Setup-${V%%-*}.msi"
       - name: jpackage logs
         if: failure()
         shell: bash
@@ -131,7 +131,7 @@ jobs:
               echo "> ⚠️ **Bu sürüm test anahtarıyla imzalı.** APK'lar depodaki herkese açık \`ci-test.keystore\` ile imzalandı. Kendi anahtarınızı eklemek için README'deki \"İmza anahtarı\" bölümüne bakın."
               echo
             fi
-            if [ -f "docs/changelog/v$V.md" ]; then cat "docs/changelog/v$V.md"; else echo "Jarvis $V"; fi
+            if [ -f "docs/changelog/v$V.md" ]; then cat "docs/changelog/v$V.md"; else echo "Rick $V"; fi
             echo
             echo "### SHA-256"
             echo '```'
@@ -147,7 +147,7 @@ jobs:
           # creates the tag and starts this workflow): then only attach the files and the notes.
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
-            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "Jarvis ${TAG}" --notes-file notes.md
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "Rick ${TAG}" --notes-file notes.md
           else
-            gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Jarvis ${TAG}" --notes-file notes.md
+            gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Rick ${TAG}" --notes-file notes.md
           fi

@@ -31,7 +31,7 @@ import java.time.Duration
 /**
  * Offline Wikipedia on the PC through kiwix-serve (hash-verified kiwix-tools), started as a child
  * process on 127.0.0.1 with the installed ZIM. Search and articles come over its local HTTP API;
- * the process is stopped when Jarvis closes or the ZIM changes.
+ * the process is stopped when Rick closes or the ZIM changes.
  */
 class KiwixServe(
     private val zimPath: () -> String?,

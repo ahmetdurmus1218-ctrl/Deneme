@@ -1,5 +1,6 @@
 package io.github.ahmetdurmus1218.jarvis.core.library
 
+import io.github.ahmetdurmus1218.jarvis.core.AssistantName
 import io.github.ahmetdurmus1218.jarvis.core.knowledge.TextStore
 import io.github.ahmetdurmus1218.jarvis.core.text.Turkish
 import kotlinx.serialization.Serializable
@@ -11,7 +12,7 @@ import kotlinx.serialization.json.JsonPrimitive
 @Serializable
 enum class BookStatus(val label: String) { TO_READ("okunacak"), READING("okunuyor"), DONE("bitti") }
 
-/** Jarvis's notebook for a book; written once by the local model, never invented quotes. */
+/** Rick's notebook for a book; written once by the local model, never invented quotes. */
 @Serializable
 data class Notebook(
     val summary: String = "",
@@ -113,7 +114,7 @@ sealed interface LibraryAction {
  */
 object LibraryCommands {
     private const val T = "(.+?)(['’][a-zçğıöşü]{1,4})?"
-    private const val J = "^(?:jarvis[, ]+)?"
+    private const val J = "^(?:${AssistantName.WAKE}[, ]+)?"
     private val ADD = Regex("${J}kitapl[ıi][gğ][ıi]ma $T (?:ekle|kaydet)\\.?$", RegexOption.IGNORE_CASE)
     private val NOTE = Regex("$J$T not (?:ekle|al)[:,]? (.+)$", RegexOption.IGNORE_CASE)
     private val QUOTE = Regex("$J$T al[ıi]nt[ıi] ekle[:,]? (.+)$", RegexOption.IGNORE_CASE)
@@ -197,7 +198,7 @@ class KitaplikTool(private val lib: Library?) : io.github.ahmetdurmus1218.jarvis
     override suspend fun run(input: JsonObject) = io.github.ahmetdurmus1218.jarvis.core.tools.ToolOutput(lib?.describe() ?: "Kitaplık yok.")
 }
 
-/** Jarvis's notebook for a book, written by the local model; it must not invent a book it does not know. */
+/** Rick's notebook for a book, written by the local model; it must not invent a book it does not know. */
 object BookNotebook {
     const val SYSTEM = "Sen bir kitap defteri yazarısın. Kitabı gerçekten biliyorsan doldur; bilmiyorsan yalnızca {\"bilinmiyor\":true} yaz. Kitaptan alıntı yazma. Yalnızca JSON döndür."
 

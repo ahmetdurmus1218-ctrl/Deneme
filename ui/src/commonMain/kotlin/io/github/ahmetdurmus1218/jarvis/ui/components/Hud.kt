@@ -40,7 +40,7 @@ fun CoreMode.accent(): Color = when (this) {
 }
 
 /**
- * The living core of Jarvis. Layers, outside in: a slowly turning tick ring, counter-rotating
+ * The living core of Rick. Layers, outside in: a slowly turning tick ring, counter-rotating
  * segment arcs, a scanner arc (fast while thinking), 72 bars that react to the voice (the
  * microphone while listening, a speech-like envelope while speaking, a travelling wave while
  * thinking, a soft shimmer when idle), the breathing inner orb, and orbiting particles.
@@ -173,7 +173,7 @@ fun HudCore(mode: CoreMode, level: Float, modifier: Modifier = Modifier, size: D
     }
 }
 
-/** A speech-like loudness curve (syllables and phrases) for the bars while Jarvis talks. */
+/** A speech-like loudness curve (syllables and phrases) for the bars while Rick talks. */
 private fun speechEnvelope(t: Float): Float {
     val syllables = abs(sin(t * 9.0f))
     val phrase = 0.6f + 0.4f * sin(t * 2.3f)

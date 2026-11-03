@@ -15,7 +15,7 @@ import java.io.File
 import kotlin.system.exitProcess
 
 /**
- * Entry point of the separate `jarvis-kapi.exe` launcher: the only Jarvis program the firewall ever
+ * Entry point of the separate `rick-kapi.exe` launcher: the only Rick program the firewall ever
  * lets out. It accepts a lock-file item id (never a URL), downloads that item with all the gate
  * rules (allowlists, pinning, size limit, resume) into the partial folder and reports on stdout:
  *   P <bytes> <total>            progress
@@ -28,7 +28,7 @@ fun main(args: Array<String>) {
     val id = arg("--item")
     val partial = arg("--partial")
     if (id == null || partial == null) {
-        println("FAIL 0 kullanım: jarvis-kapi --item <kilit-id> --partial <klasör>")
+        println("FAIL 0 kullanım: rick-kapi --item <kilit-id> --partial <klasör>")
         exitProcess(2)
     }
     val item = ModelRegistry.bundled.lock.items.firstOrNull { it.id == id }
@@ -46,8 +46,8 @@ fun main(args: Array<String>) {
 }
 
 /**
- * Jarvis's side on an installed PC: each download runs in jarvis-kapi.exe (its own firewall rule),
- * progress comes back over stdout, and Jarvis computes the SHA-256 again itself afterwards.
+ * Rick's side on an installed PC: each download runs in rick-kapi.exe (its own firewall rule),
+ * progress comes back over stdout, and Rick computes the SHA-256 again itself afterwards.
  */
 class KapiProcessDownloader(
     private val kapiExe: File,
@@ -55,12 +55,12 @@ class KapiProcessDownloader(
     /** Called once a download session (one approval) has ended. */
     private val onSessionEnd: suspend (installedPaths: List<String>) -> Unit = {},
 ) : Downloader {
-    private val _state = MutableStateFlow<DownloadState>(DownloadState.Ready("jarvis-kapi.exe (ayrı süreç, güvenlik duvarı kapısı)"))
+    private val _state = MutableStateFlow<DownloadState>(DownloadState.Ready("rick-kapi.exe (ayrı süreç, güvenlik duvarı kapısı)"))
     override val state: StateFlow<DownloadState> = _state
     @Volatile private var current: Process? = null
 
     override fun refresh() {
-        _state.value = if (kapiExe.isFile) DownloadState.Ready("jarvis-kapi.exe (ayrı süreç, güvenlik duvarı kapısı)") else DownloadState.Unavailable
+        _state.value = if (kapiExe.isFile) DownloadState.Ready("rick-kapi.exe (ayrı süreç, güvenlik duvarı kapısı)") else DownloadState.Unavailable
     }
 
     override fun cancel() { current?.destroy() }
@@ -69,11 +69,11 @@ class KapiProcessDownloader(
         val p = try {
             ProcessBuilder(kapiExe.absolutePath, "--item", item.id, "--partial", partialDir.absolutePath).redirectErrorStream(true).start()
         } catch (e: Exception) {
-            return@withContext DownloadOutcome.Failed("jarvis-kapi başlatılamadı: ${e.message}")
+            return@withContext DownloadOutcome.Failed("rick-kapi başlatılamadı: ${e.message}")
         }
         current = p
         p.outputStream.close()
-        var result: DownloadOutcome = DownloadOutcome.Failed("jarvis-kapi sonuç vermedi")
+        var result: DownloadOutcome = DownloadOutcome.Failed("rick-kapi sonuç vermedi")
         p.inputStream.bufferedReader().useLines { lines ->
             for (line in lines) result = parseLine(line, onProgress) ?: result
         }
@@ -83,7 +83,7 @@ class KapiProcessDownloader(
         val r = result
         if (r is DownloadOutcome.Done) {
             val f = File(r.path)
-            if (!f.isFile || f.parentFile.canonicalPath != partialDir.canonicalPath) return@withContext DownloadOutcome.Failed("jarvis-kapi beklenmeyen bir yere yazdı")
+            if (!f.isFile || f.parentFile.canonicalPath != partialDir.canonicalPath) return@withContext DownloadOutcome.Failed("rick-kapi beklenmeyen bir yere yazdı")
             val (sha, size) = DesktopKapi.sha256(f)
             return@withContext DownloadOutcome.Done(f.absolutePath, size, sha, r.host)
         }

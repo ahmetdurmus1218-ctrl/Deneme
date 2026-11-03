@@ -8,14 +8,14 @@ import java.util.Base64
 import java.util.concurrent.TimeUnit
 
 /**
- * Jarvis's outbound firewall on Windows (section 4): block rules for Jarvis.exe, jarvis-kapi.exe,
+ * Rick's outbound firewall on Windows (section 4): block rules for Rick.exe, rick-kapi.exe,
  * llama-server.exe and kiwix-serve.exe, made once with the user's UAC approval. For a download the
  * kapi rule alone is switched off — again only with a UAC approval — and switched back on when the
  * download session ends or after at most [GATE_MINUTES] minutes, whichever comes first. The
  * elevated helper that holds the gate open also blocks newly unpacked programs before it closes.
  */
 class WindowsFirewall(
-    val prefix: String = "Jarvis",
+    val prefix: String = "Rick",
     private val shell: (String) -> ShellResult = ::powershell,
 ) {
     data class Rule(val name: String, val program: File)
@@ -54,6 +54,8 @@ class WindowsFirewall(
 
     fun installScript(rules: List<Rule>): String = buildString {
         appendLine("\$ErrorActionPreference = 'Stop'")
+        // Rules of the version before the rename point at programs that no longer exist: drop them.
+        appendLine("Get-NetFirewallRule -DisplayName ${q("$LEGACY_PREFIX - *")} -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue")
         for (r in rules) appendLine(blockLines(dq(displayName(r)), dq(path(r.program))))
     }
 
@@ -135,7 +137,7 @@ class WindowsFirewall(
 
     /**
      * Runs [script] elevated through UAC; [wait] = until it ends (its exit code is returned). When
-     * Jarvis already runs as administrator there is nothing to elevate and no prompt is shown.
+     * Rick already runs as administrator there is nothing to elevate and no prompt is shown.
      */
     private fun elevated(script: String, wait: Boolean): ShellResult {
         val encoded = Base64.getEncoder().encodeToString(script.toByteArray(Charsets.UTF_16LE))
@@ -152,6 +154,9 @@ class WindowsFirewall(
     }
 
     companion object {
+        /** Rule names of versions before the assistant was renamed. */
+        const val LEGACY_PREFIX = "Jarvis"
+
         const val GATE_MINUTES = 10
 
         fun powershell(command: String): ShellResult {

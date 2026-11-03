@@ -42,8 +42,8 @@ class MockLlmEngine(private val tokenDelayMs: Long = 12, private val chunkSize: 
         val text = last.content
         val n = Turkish.normalize(text)
         return when {
-            Regex("^(merhaba|selam|gunaydin|iyi aksamlar|hey jarvis)").containsMatchIn(n) ->
-                reply(Sahne("Merhaba efendim, Jarvis hazır.", Gorsel(GorselTip.BASLIK, baslik = "Merhaba")))
+            Regex("^(merhaba|selam|gunaydin|iyi aksamlar|hey (?:rick|rik|jarvis))").containsMatchIn(n) ->
+                reply(Sahne("Merhaba efendim, Rick hazır.", Gorsel(GorselTip.BASLIK, baslik = "Merhaba")))
             Regex("^(nasilsin|naber)").containsMatchIn(n) ->
                 reply(Sahne("Teşekkür ederim efendim, sistemlerim çalışıyor."))
             Regex("\\b(tesekkur|sagol|eyvallah)").containsMatchIn(n) ->

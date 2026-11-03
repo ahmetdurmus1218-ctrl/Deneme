@@ -155,7 +155,7 @@ class HandEffects(seed: Int = 7, var settings: EffectSettings = EffectSettings()
     }
     private val tracks = ArrayList<Track>()
 
-    /** "Jarvis, Mars yap": the planet in hand (or the newest one) scatters and re-forms; else the next pinch brings it. */
+    /** "Rick, Mars yap": the planet in hand (or the newest one) scatters and re-forms; else the next pinch brings it. */
     fun requestPlanet(kind: PlanetKind) {
         val p = planets.firstOrNull { it.heldBy != null } ?: planets.lastOrNull()
         if (p == null) {

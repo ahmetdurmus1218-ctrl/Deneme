@@ -5,7 +5,7 @@ import io.github.ahmetdurmus1218.jarvis.core.models.Platform
 
 /**
  * The rules every download must pass (section 3.2), shared by the Android gate and the desktop
- * "jarvis-kapi". This file only checks strings; it contains no networking code.
+ * "rick-kapi". This file only checks strings; it contains no networking code.
  */
 object DownloadPolicy {
 

@@ -31,11 +31,11 @@ import javax.net.ssl.X509ExtendedTrustManager
 import java.net.Socket
 
 /**
- * Desktop counterpart of the Android gate ("jarvis-kapi"). Same rules: locked items only, HTTPS and
+ * Desktop counterpart of the Android gate ("rick-kapi"). Same rules: locked items only, HTTPS and
  * host allowlist on every redirect hop, certificate pinning, extension allowlist, exact size limit,
  * resumable Range requests, SHA-256 at the end.
  *
- * v0.1 runs it in-process; v0.5 moves it into the separate `jarvis-kapi` launcher that is the only
+ * v0.1 runs it in-process; v0.5 moves it into the separate `rick-kapi` launcher that is the only
  * executable allowed through the Windows firewall (see docs/DECISIONS.md).
  */
 class DesktopKapi(
@@ -44,7 +44,7 @@ class DesktopKapi(
     /** Checked for the first URL and every redirect hop. Tests replace it to talk to a local server. */
     private val urlCheck: (String) -> DownloadPolicy.Verdict = ::productionUrlCheck,
 ) : Downloader {
-    private val _state = MutableStateFlow<DownloadState>(DownloadState.Ready("jarvis-kapi (yerleşik)"))
+    private val _state = MutableStateFlow<DownloadState>(DownloadState.Ready("rick-kapi (yerleşik)"))
     override val state: StateFlow<DownloadState> = _state
     private val cancelled = AtomicBoolean(false)
 

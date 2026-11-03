@@ -22,7 +22,7 @@ interface PlatformBridge {
     /** Battery level in percent, or null when the device does not say (a desktop PC). */
     fun batteryPercent(): Int? = null
 
-    /** Memory used by Jarvis in MB (Mark 2's session panel), null if unknown. */
+    /** Memory used by Rick in MB (Mark 2's session panel), null if unknown. */
     fun memoryUsedMb(): Long? = null
 
     /** Keeps the screen from turning off (sleep mode waits for claps). */
@@ -67,7 +67,7 @@ interface AppFiles {
     fun append(name: String, line: String)
 }
 
-/** Jarvis's outbound block rules in the Windows firewall. */
+/** Rick's outbound block rules in the Windows firewall. */
 interface FirewallControl {
     fun status(): String
     fun installed(): Boolean
@@ -103,7 +103,7 @@ interface SpeechInput {
     enum class LanguagePack { READY, DOWNLOADABLE, UNSUPPORTED, UNKNOWN }
 
     /**
-     * Lock-file group of Jarvis's own speech model (Whisper) when it could be used but is not installed
+     * Lock-file group of Rick's own speech model (Whisper) when it could be used but is not installed
      * yet; the chat screen then offers a one-tap download. Null when installed or not applicable.
      */
     val ownModelGroup: String? get() = null
@@ -121,6 +121,15 @@ interface SpeechOutput {
     /** Speaks [text] and suspends until finished (or stopped). */
     suspend fun speak(text: String, rate: Float)
     fun stop()
+
+    /**
+     * Why nothing can be heard right now (for example: no Turkish voice works offline on this phone),
+     * or null when speaking works. The chat shows it instead of staying silent without a word.
+     */
+    val silentReason: String? get() = null
+
+    /** Lock-file group of the assistant's own voice (Piper) while it is not installed; null otherwise. */
+    val ownModelGroup: String? get() = null
 }
 
 enum class ApprovalMethod(val label: String) {
@@ -152,7 +161,7 @@ sealed interface DownloadOutcome {
     data class Failed(val message: String, val bytes: Long = 0) : DownloadOutcome
 }
 
-/** The only path to the internet: the "Kapı" APK on Android, the jarvis-kapi launcher on desktop. */
+/** The only path to the internet: the "Kapı" APK on Android, the rick-kapi launcher on desktop. */
 interface Downloader {
     val state: StateFlow<DownloadState>
     fun refresh()
@@ -181,6 +190,17 @@ interface ModelStorage {
     fun keepUnverified(tempPath: String, fileName: String)
     /** Opens the system file picker and copies the chosen file into a temp location while hashing it. */
     suspend fun pickAndImport(): ImportOutcome
+
+    /**
+     * Looks for [items] already on this device — an older installation, the Downloads folder, other
+     * programs' model folders, folders the user picked — by file name and size. A candidate is
+     * taken over only if its SHA-256 matches the lock ([onCandidate] fires before that check).
+     * Nothing is downloaded. Returns the ids now installed.
+     */
+    suspend fun adoptExisting(items: List<LockedItem>, onCandidate: (LockedItem) -> Unit = {}): Set<String> = emptySet()
+
+    /** Lets the user add a folder to search (remembered); false when cancelled or not supported. */
+    suspend fun pickSearchFolder(): Boolean = false
 }
 
 sealed interface DocumentPick {

@@ -27,15 +27,15 @@ class FirewallTest {
 
     @Test
     fun scriptsQuotePathsSafely() {
-        val fw = WindowsFirewall("Jarvis") { WindowsFirewall.ShellResult(0, "") }
-        val s = fw.installScript(listOf(WindowsFirewall.Rule("x", File("C:\\Users\\O'Brien\\Jarvis.exe"))))
-        assertTrue("O'Brien\\Jarvis.exe\"" in s, s) // on Linux the Windows path is relative, so only its end is checked
-        assertTrue("dir=out action=block" in s && "\"name=Jarvis - x\"" in s, s)
+        val fw = WindowsFirewall("Rick") { WindowsFirewall.ShellResult(0, "") }
+        val s = fw.installScript(listOf(WindowsFirewall.Rule("x", File("C:\\Users\\O'Brien\\Rick.exe"))))
+        assertTrue("O'Brien\\Rick.exe\"" in s, s) // on Linux the Windows path is relative, so only its end is checked
+        assertTrue("dir=out action=block" in s && "\"name=Rick - x\"" in s, s)
     }
 
     /**
      * The real thing on a Windows runner (JARVIS_FIREWALL_TEST=1): a copy of curl is blocked by a rule
-     * made exactly as Jarvis makes them, the kapi gate lets it out, closing the gate blocks it again
+     * made exactly as Rick makes them, the kapi gate lets it out, closing the gate blocks it again
      * (and also blocks a newly added program), and the time limit closes a forgotten gate by itself.
      */
     @Test

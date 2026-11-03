@@ -2,7 +2,7 @@ package io.github.ahmetdurmus1218.jarvis.core.vision
 
 /**
  * The face HUD lock: the largest (closest) face is "locked" after a short amber LOCKING phase; every
- * other face is marked unidentified. This is face DETECTION, not recognition: Jarvis does not know
+ * other face is marked unidentified. This is face DETECTION, not recognition: Rick does not know
  * who it is, keeps no biometric data, and the label is just the name from the settings.
  */
 class FaceLock(private val lockMs: Long = 900, private val greetEveryMs: Long = 60_000, private val lostMs: Long = 1_500) {
@@ -16,7 +16,7 @@ class FaceLock(private val lockMs: Long = 900, private val greetEveryMs: Long = 
     private var lastGreet = Long.MIN_VALUE / 2
 
     /**
-     * Updates with this frame's faces. Returns the labels to draw and whether Jarvis should greet now
+     * Updates with this frame's faces. Returns the labels to draw and whether Rick should greet now
      * (once when the lock closes, at most once per [greetEveryMs], and never while it is busy).
      */
     fun update(now: Long, faces: List<FaceBox>, name: String, busy: Boolean): Pair<List<Label>, Boolean> {

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Fails if the Jarvis "Kale" APK requests any network permission, and checks that the gate APK
+# Fails if the Rick "Kale" APK requests any network permission, and checks that the gate APK
 # is the only one that does. Reads the permissions from the final APKs with aapt2, so it also
 # catches permissions merged in from libraries.
 #
-# Usage: tools/check-no-internet.sh <jarvis.apk> [<jarvis-kapi.apk>]
+# Usage: tools/check-no-internet.sh <rick.apk> [<rick-kapi.apk>]
 set -euo pipefail
 
-KALE_APK="${1:?usage: $0 <jarvis.apk> [<jarvis-kapi.apk>]}"
+KALE_APK="${1:?usage: $0 <rick.apk> [<rick-kapi.apk>]}"
 GATE_APK="${2:-}"
 
 AAPT2="${AAPT2:-}"

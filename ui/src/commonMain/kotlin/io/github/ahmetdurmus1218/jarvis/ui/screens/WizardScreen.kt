@@ -16,6 +16,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,7 +38,7 @@ import io.github.ahmetdurmus1218.jarvis.ui.PlatformBridge
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisColors
 import kotlinx.coroutines.launch
 
-const val TEST_SENTENCE = "Merhaba efendim, Jarvis hazır."
+const val TEST_SENTENCE = "Merhaba efendim, Rick hazır."
 
 private enum class Step { CHECK, BUNDLE, DOWNLOAD, TEST, DONE }
 
@@ -77,6 +78,14 @@ fun WizardScreen(
             }
             Step.BUNDLE -> {
                 Text("2/4 · Önerilen paket", color = JarvisColors.TextDim)
+                // Files already on this device (an update, a copy in Downloads) are taken over, not downloaded again.
+                var searched by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    val n = installer.findLocal(bundle)
+                    if (n > 0) importMsg = foundText(n)
+                    searched = true
+                }
+                if (!searched) Text("Bu cihazda daha önce indirilmiş dosyalar aranıyor…", color = JarvisColors.Cyan)
                 if (bundle.isEmpty()) {
                     Text("Kilit dosyasında bu platform için model yok.", color = JarvisColors.Amber)
                 }
@@ -86,14 +95,14 @@ fun WizardScreen(
                 if (total > device.freeStorageBytes) Text("Boş alan yetersiz görünüyor.", color = JarvisColors.Red)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
-                        enabled = gate is DownloadState.Ready && bundle.isNotEmpty(),
+                        enabled = (gate is DownloadState.Ready || total == 0L) && bundle.isNotEmpty(),
                         onClick = {
                             step = Step.DOWNLOAD
                             installer.installInBackground(bundle, "İlk kurulum: dil modeli, ses tanıma, ses sentezi ve çevrimdışı Wikipedia.") {
                                 downloadOk = it
                             }
                         },
-                    ) { Text("Tek onayla indir") }
+                    ) { Text(if (total == 0L && bundle.isNotEmpty()) "Hepsi kurulu · devam" else "Tek onayla indir") }
                     OutlinedButton(onClick = {
                         scope.launch {
                             importMsg = when (val r = installer.importFromFile()) {
@@ -105,6 +114,9 @@ fun WizardScreen(
                         }
                     }) { Text("Dosyadan yükle") }
                 }
+                OutlinedButton(onClick = {
+                    scope.launch { importMsg = foundText(installer.findLocal(bundle, askFolder = true)) }
+                }) { Text("📂 Klasörde bul (indirmeden)") }
                 importMsg?.let { Text(it, color = JarvisColors.Amber) }
                 if (gate is DownloadState.Unavailable) Text(installer.gateMissingText(), color = JarvisColors.Amber)
                 TextButton(onClick = { step = Step.TEST }) { Text("İndirmeden devam et") }

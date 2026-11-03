@@ -123,7 +123,7 @@ class SpeakerSink(rate: Int) : AudioSink {
 }
 
 /**
- * Jarvis's own Turkish voice on the PC (the same Piper files as the phone). The next sentence is
+ * Rick's own Turkish voice on the PC (the same Piper files as the phone). The next sentence is
  * synthesized while the current one plays. Until the voice is installed, [fallback] speaks.
  */
 class DesktopPiperSpeech(
@@ -145,11 +145,20 @@ class DesktopPiperSpeech(
 
     override val engineName: String
         get() = when {
-            synth != null -> "Piper tr_TR-dfki-medium (Jarvis'in kendi sesi, bilgisayarda)"
+            synth != null -> "Piper tr_TR-dfki-medium (Rick'in kendi sesi, bilgisayarda)"
             failed != null -> "Piper açılamadı ($failed)" + (fallback?.let { " · " + it.engineName } ?: "")
             installed() -> "Piper (hazırlanıyor)"
             else -> fallback?.engineName ?: "Ses yok: Modeller ekranından Piper Türkçe sesi indirin"
         }
+
+    override val silentReason: String?
+        get() = when {
+            synth != null || (installed() && failed == null) -> null
+            fallback != null -> fallback.silentReason
+            else -> "Bilgisayarda Türkçe ses yok."
+        }
+
+    override val ownModelGroup: String? get() = if (installed()) null else "tts-piper-tr"
 
     fun warmUp() {
         if (synth == null && failed == null && installed()) scope.launch { load() }

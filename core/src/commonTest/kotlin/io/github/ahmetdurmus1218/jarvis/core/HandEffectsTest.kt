@@ -234,7 +234,7 @@ class FaceLockTest {
         t = 5_100
         while (t <= 8_000) { if (lock.update(t, listOf(big), "ahmet", false).second) greets++; t += 100 }
         assertEquals(1, greets)
-        // After a minute it may greet again, but never while Jarvis is busy.
+        // After a minute it may greet again, but never while Rick is busy.
         lock.update(70_000, emptyList(), "", false)
         t = 70_100
         while (t <= 72_000) { if (lock.update(t, listOf(big), "", busy = true).second) greets++; t += 100 }

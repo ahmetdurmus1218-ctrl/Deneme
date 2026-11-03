@@ -45,9 +45,9 @@ class AssistantTest {
 
     @Test
     fun mockConversationStreamsScenes() = runTest {
-        val events = assistant().ask("Merhaba Jarvis").toList()
+        val events = assistant().ask("Merhaba Rick").toList()
         val scenes = events.filterIsInstance<AssistantEvent.SceneReady>()
-        assertEquals("Merhaba efendim, Jarvis hazır.", scenes.first().scene.sahne.ses)
+        assertEquals("Merhaba efendim, Rick hazır.", scenes.first().scene.sahne.ses)
         assertIs<AssistantEvent.Completed>(events.last())
     }
 
@@ -140,7 +140,7 @@ class AssistantTest {
         }
         memory.add("Adım Ahmet")
         assistant(engine).ask("Bana bir şey söyle").toList()
-        assertTrue(system.startsWith("Sen Jarvis'sin"))
+        assertTrue(system.startsWith("Sen Rick'sin"))
         assertTrue(system.indexOf("--- DURUM ---") > system.indexOf("ARAÇLAR"))
         assertTrue(system.trimEnd().endsWith("- Adım Ahmet"))
         assertTrue(system.contains("2 Kasım 2026 Pazartesi, saat 14:05"))

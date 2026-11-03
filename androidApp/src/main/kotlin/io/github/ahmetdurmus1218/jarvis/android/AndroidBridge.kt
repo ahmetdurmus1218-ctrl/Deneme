@@ -50,7 +50,7 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
     override val platform = Platform.ANDROID
     override val appVersion: String = runCatching { app.packageManager.getPackageInfo(app.packageName, 0).versionName }.getOrNull() ?: "?"
     override val files: AppFiles = AndroidFiles(app)
-    override val models = AndroidModelStorage(app) { activity?.pickDocument() }
+    override val models = AndroidModelStorage(app, folderPicker = { activity?.pickFolder() }) { activity?.pickDocument() }
     override val downloader = GateClient(app, models)
     override suspend fun pickDocument(): io.github.ahmetdurmus1218.jarvis.ui.DocumentPick {
         val act = activity ?: return io.github.ahmetdurmus1218.jarvis.ui.DocumentPick.Failed("Uygulama ön planda değil")
@@ -64,7 +64,7 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
     )
     override val zim = AndroidZim { AndroidZim.installedZim(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled) }
     private val micPermission: suspend () -> Boolean = { activity?.ensurePermission(android.Manifest.permission.RECORD_AUDIO) ?: false }
-    /** Whisper (Jarvis's own, hash-verified model) when installed, else the phone's on-device recognizer. */
+    /** Whisper (Rick's own, hash-verified model) when installed, else the phone's on-device recognizer. */
     override val speechInput = PreferWhisperSpeechInput(
         WhisperSpeechInput(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, micPermission),
         AndroidSpeechInput(app, ensureMicPermission = micPermission, launch = { block -> activity?.launchOnUi(block) }),
@@ -152,14 +152,14 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
             Intent(AlarmClock.ACTION_SET_ALARM)
                 .putExtra(AlarmClock.EXTRA_HOUR, command.hour)
                 .putExtra(AlarmClock.EXTRA_MINUTES, command.minute)
-                .putExtra(AlarmClock.EXTRA_MESSAGE, "Jarvis")
+                .putExtra(AlarmClock.EXTRA_MESSAGE, "Rick")
                 .putExtra(AlarmClock.EXTRA_SKIP_UI, true),
             "Saat uygulaması bulunamadı",
         )
         is QuickCommand.StartTimer -> start(
             Intent(AlarmClock.ACTION_SET_TIMER)
                 .putExtra(AlarmClock.EXTRA_LENGTH, command.seconds)
-                .putExtra(AlarmClock.EXTRA_MESSAGE, "Jarvis")
+                .putExtra(AlarmClock.EXTRA_MESSAGE, "Rick")
                 .putExtra(AlarmClock.EXTRA_SKIP_UI, true),
             "Zamanlayıcı uygulaması bulunamadı",
         )

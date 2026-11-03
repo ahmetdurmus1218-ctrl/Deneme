@@ -144,7 +144,40 @@ class ModelInstaller(
     fun installInBackground(items: List<LockedItem>, reason: String, onDone: (Boolean) -> Unit = {}): Job =
         scope.launch { onDone(install(items, reason)) }
 
+    /**
+     * "Bul": takes over files that are already on this device (an older installation, the Downloads
+     * folder, a folder the user picks with [askFolder]) once their SHA-256 matched the lock. No
+     * approval is needed because nothing leaves the device. Returns how many were taken over.
+     */
+    suspend fun findLocal(items: List<LockedItem>, askFolder: Boolean = false): Int = installLock.withLock {
+        _busy.value = true
+        try {
+            if (askFolder && !bridge.models.pickSearchFolder()) return@withLock -1
+            adoptLocal(items.distinctBy { it.id }.filterNot { bridge.models.isInstalled(it) })
+        } finally {
+            _busy.value = false
+        }
+    }
+
+    private suspend fun adoptLocal(items: List<LockedItem>): Int {
+        if (items.isEmpty()) return 0
+        val checking = mutableSetOf<String>()
+        val adopted = runCatching {
+            bridge.models.adoptExisting(items) { item -> checking += item.id; setStatus(item.id, ItemStatus.Verifying) }
+        }.getOrDefault(emptySet())
+        for (item in items) {
+            when {
+                item.id in adopted -> setStatus(item.id, ItemStatus.Done)
+                item.id in checking -> _status.value = _status.value - item.id // found a file, but not the right one
+            }
+        }
+        if (adopted.isNotEmpty()) _installedVersion.value++
+        return adopted.size
+    }
+
     private suspend fun installLocked(items: List<LockedItem>, reason: String): Boolean {
+        // Already on this device (an update, a copy in Downloads)? Then it is not downloaded again.
+        adoptLocal(items.distinctBy { it.id }.filterNot { bridge.models.isInstalled(it) })
         val pending = items.distinctBy { it.id }.filterNot { bridge.models.isInstalled(it) }
         if (pending.isEmpty()) return true
         if (settings.state.value.fullOffline) {
@@ -290,7 +323,7 @@ class ModelInstaller(
             action = "Android'in Türkçe cihaz içi ses tanıma paketi indirilecek",
             hosts = listOf("Android sistemi (Google ses servisleri)"),
             totalBytes = null,
-            reason = "Mikrofonla konuşabilmek için telefonun kendi Türkçe ses tanıma paketi gerekiyor. İndirmeyi Jarvis değil Android sistemi yapar; Jarvis hiçbir ses ya da metin göndermez. Paket kurulduktan sonra ses tanıma tamamen internetsiz çalışır.",
+            reason = "Mikrofonla konuşabilmek için telefonun kendi Türkçe ses tanıma paketi gerekiyor. İndirmeyi Rick değil Android sistemi yapar; Rick hiçbir ses ya da metin göndermez. Paket kurulduktan sonra ses tanıma tamamen internetsiz çalışır.",
             lines = emptyList(),
         )
         val method = requestApproval(req)
@@ -315,7 +348,7 @@ class ModelInstaller(
 
     fun gateMissingText(): String = when (bridge.platform) {
         io.github.ahmetdurmus1218.jarvis.core.models.Platform.ANDROID ->
-            "Kapı yüklü değil. İndirmek için jarvis-kapi.apk kurun ya da dosyaları PC'den kopyalayıp 'Dosyadan yükle'yi kullanın."
+            "Kapı yüklü değil. İndirmek için rick-kapi.apk kurun ya da dosyaları PC'den kopyalayıp 'Dosyadan yükle'yi kullanın."
         io.github.ahmetdurmus1218.jarvis.core.models.Platform.DESKTOP -> "İndirme bileşeni kullanılamıyor."
     }
 

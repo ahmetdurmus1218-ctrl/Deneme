@@ -1,5 +1,6 @@
 package io.github.ahmetdurmus1218.jarvis.ui
 
+import io.github.ahmetdurmus1218.jarvis.core.AssistantName
 import io.github.ahmetdurmus1218.jarvis.core.assistant.Assistant
 import io.github.ahmetdurmus1218.jarvis.core.assistant.AssistantEvent
 import io.github.ahmetdurmus1218.jarvis.core.llm.ChatMessage
@@ -68,6 +69,16 @@ class JarvisController(
     /** Microphone level 0..1 for the HUD animation. */
     val level: StateFlow<Float> = _level.asStateFlow()
 
+    private val _voiceMissing = MutableStateFlow<String?>(null)
+    /** Set when an answer could not be heard (no offline Turkish voice): the chat says why and offers the voice. */
+    val voiceMissing: StateFlow<String?> = _voiceMissing.asStateFlow()
+
+    /** Call after the voice was installed. */
+    fun voiceInstalled() {
+        _voiceMissing.value = null
+        _partial.value = ""
+    }
+
     private var nextId = 1L
     private var askJob: Job? = null
     private var currentTurnId: Long? = null
@@ -82,6 +93,12 @@ class JarvisController(
                     _mode.value = CoreMode.SPEAKING
                     _subtitle.value = text
                     runCatching { tts.speak(text, settings.state.value.speechRate) }
+                    tts.silentReason?.let { why ->
+                        if (_voiceMissing.value == null) {
+                            _voiceMissing.value = why
+                            _partial.value = "🔇 $why Sesli cevap için aşağıdaki düğmeyle ${AssistantName.SHORT}'in kendi Türkçe sesini indirin (internetsiz çalışır)."
+                        }
+                    }
                 }
                 queued--
                 if (queued <= 0) {
@@ -227,7 +244,7 @@ class JarvisController(
         val stt = bridge.speechInput ?: return
         if (!stt.isAvailable()) {
             _partial.value = if (stt.ownModelGroup != null) {
-                "Jarvis'in kendi Türkçe ses tanıması (Whisper) henüz kurulu değil. Aşağıdaki düğmeyle bir kez indirin; sonra tamamen internetsiz çalışır."
+                "Rick'in kendi Türkçe ses tanıması (Whisper) henüz kurulu değil. Aşağıdaki düğmeyle bir kez indirin; sonra tamamen internetsiz çalışır."
             } else {
                 "Bu cihazda ses tanıma yok. Yazarak kullanabilirsiniz."
             }
@@ -297,7 +314,7 @@ class JarvisController(
     }
 
     companion object {
-        /** Pause between Jarvis finishing and listening again, so its own voice is not recorded. */
+        /** Pause between Rick finishing and listening again, so its own voice is not recorded. */
         const val CONTINUE_DELAY_MS = 350L
     }
 }

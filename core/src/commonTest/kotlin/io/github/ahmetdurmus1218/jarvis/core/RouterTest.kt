@@ -25,7 +25,7 @@ class RouterTest {
     @Test
     fun timeAndDate() {
         assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("Saat kaç?"))
-        assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("Jarvis şimdi saat kaç"))
+        assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("Rick şimdi saat kaç"))
         assertEquals(QuickCommand.DateToday, QuickCommandRouter.route("Bugün ayın kaçı?"))
         assertEquals(QuickCommand.DateToday, QuickCommandRouter.route("bugün günlerden ne"))
     }
@@ -93,13 +93,13 @@ class RouterTest {
     @Test
     fun handControlCommands() {
 
-        assertEquals(QuickCommand.ShowPlanet(io.github.ahmetdurmus1218.jarvis.core.vision.PlanetKind.MARS), QuickCommandRouter.route("Jarvis, Mars yap"))
+        assertEquals(QuickCommand.ShowPlanet(io.github.ahmetdurmus1218.jarvis.core.vision.PlanetKind.MARS), QuickCommandRouter.route("Rick, Mars yap"))
         assertEquals(QuickCommand.ShowPlanet(io.github.ahmetdurmus1218.jarvis.core.vision.PlanetKind.JUPITER), QuickCommandRouter.route("Jüpiter'e çevir"))
         assertEquals(QuickCommand.ShowPlanet(io.github.ahmetdurmus1218.jarvis.core.vision.PlanetKind.MOON), QuickCommandRouter.route("Aya çevir"))
         assertEquals(QuickCommand.ShowPlanet(io.github.ahmetdurmus1218.jarvis.core.vision.PlanetKind.SATURN), QuickCommandRouter.route("bir Satürn yap"))
-        assertEquals(QuickCommand.HandControl(true), QuickCommandRouter.route("Jarvis, el kontrolünü aç"))
+        assertEquals(QuickCommand.HandControl(true), QuickCommandRouter.route("Rick, el kontrolünü aç"))
         assertEquals(QuickCommand.HandControl(false), QuickCommandRouter.route("el kontrolünü kapat"))
         assertEquals(null, QuickCommandRouter.route("Mars'ta hayat var mı?"))
-        assertEquals(QuickCommand.Sleep, QuickCommandRouter.route("Jarvis, uyku moduna geç"))
+        assertEquals(QuickCommand.Sleep, QuickCommandRouter.route("Rick, uyku moduna geç"))
     }
 }

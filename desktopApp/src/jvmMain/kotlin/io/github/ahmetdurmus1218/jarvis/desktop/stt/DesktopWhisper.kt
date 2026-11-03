@@ -82,7 +82,7 @@ class DesktopWhisperSpeechInput(
     private val registry: ModelRegistry,
     private val openLine: () -> MicLine = ::openMicrophone,
 ) : SpeechInput {
-    override val engineName = "Whisper small (Jarvis'in kendi ses tanıması, bilgisayarda)"
+    override val engineName = "Whisper small (Rick'in kendi ses tanıması, bilgisayarda)"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
     @Volatile private var stopRequested = false

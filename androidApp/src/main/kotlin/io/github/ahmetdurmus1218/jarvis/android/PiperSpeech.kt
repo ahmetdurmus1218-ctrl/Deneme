@@ -72,7 +72,7 @@ object PiperArchive {
 }
 
 /**
- * Jarvis's own Turkish voice: Piper (tr_TR-dfki-medium) through sherpa-onnx, phonemes from
+ * Rick's own Turkish voice: Piper (tr_TR-dfki-medium) through sherpa-onnx, phonemes from
  * [TurkishPhonemizer]. The next sentence is synthesized while the current one plays. Until the
  * voice is installed (or if it fails to load) the phone's offline Turkish voice speaks instead.
  */
@@ -94,10 +94,19 @@ class PiperSpeechOutput(
 
     override val engineName: String
         get() = when {
-            tts != null -> "Piper tr_TR-dfki-medium (Jarvis'in kendi sesi, cihaz içi)"
+            tts != null -> "Piper tr_TR-dfki-medium (Rick'in kendi sesi, cihaz içi)"
             installed() && !failed -> "Piper (hazırlanıyor) · şimdilik: " + fallback.engineName
             else -> fallback.engineName
         }
+
+    override val silentReason: String?
+        get() = when {
+            tts != null -> null
+            installed() && !failed -> null // still loading: speak() waits for it
+            else -> fallback.silentReason
+        }
+
+    override val ownModelGroup: String? get() = if (installed()) null else GROUP
 
     /** Loads the voice in the background so the first answer does not wait for unpacking. */
     fun warmUp() {
@@ -137,7 +146,9 @@ class PiperSpeechOutput(
     }
 
     override suspend fun speak(text: String, rate: Float) {
-        val engine = if (installed()) tts ?: run { warmUp(); null } else null
+        // Installed but still unpacking (first answer after start): wait for it rather than fall back to
+        // a system voice that many phones do not have offline, which would leave the answer silent.
+        val engine = if (installed()) load() else null
         if (engine == null) return fallback.speak(text, rate)
         val rows = TurkishPhonemizer.codepoints(text)
         if (rows.isEmpty()) return
@@ -192,5 +203,6 @@ class PiperSpeechOutput(
     companion object {
         private const val TAG = "JarvisPiper"
         const val VOICE = "tts-piper-tr-dfki-medium"
+        const val GROUP = "tts-piper-tr"
     }
 }

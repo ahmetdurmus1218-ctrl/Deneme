@@ -11,7 +11,7 @@ import javax.crypto.spec.GCMParameterSpec
 
 /**
  * AES-256-GCM with a key created inside the Android Keystore (hardware-backed where the phone has
- * it): the key cannot be read or exported, not even by Jarvis. Record = 12-byte IV + ciphertext.
+ * it): the key cannot be read or exported, not even by Rick. Record = 12-byte IV + ciphertext.
  */
 class KeystoreCipher : FileCipher {
     override val label = "AES-256-GCM · Android Keystore"

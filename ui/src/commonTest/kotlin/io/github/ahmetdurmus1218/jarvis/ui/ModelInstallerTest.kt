@@ -50,7 +50,13 @@ class ModelInstallerTest {
         }
     }
 
-    private class FakeBridge(private val returnSha: String, private val approve: Boolean = true, private val failFirst: Int = 0) : PlatformBridge {
+    private class FakeBridge(
+        private val returnSha: String,
+        private val approve: Boolean = true,
+        private val failFirst: Int = 0,
+        /** Ids "already on the device" (found by the local search, hash-checked). */
+        private val onDevice: Set<String> = emptySet(),
+    ) : PlatformBridge {
         val stt = FakeStt()
         val committed = mutableListOf<String>()
         val deletedTemp = mutableListOf<String>()
@@ -85,6 +91,11 @@ class ModelInstallerTest {
             override fun importedUnverifiedFiles() = emptyList<String>()
             override fun keepUnverified(tempPath: String, fileName: String) {}
             override suspend fun pickAndImport(): ImportOutcome = ImportOutcome.Cancelled
+            override suspend fun adoptExisting(items: List<LockedItem>, onCandidate: (LockedItem) -> Unit): Set<String> {
+                val found = items.filter { it.id in onDevice }
+                found.forEach { onCandidate(it); committed += it.id }
+                return found.map { it.id }.toSet()
+            }
         }
         override suspend fun execute(command: QuickCommand): String? = null
     }
@@ -105,6 +116,28 @@ class ModelInstallerTest {
         assertEquals(listOf("m"), bridge.committed)
         assertIs<ItemStatus.Done>(inst.status.value["m"])
         assertEquals("tamam", log.events.value.single().result)
+    }
+
+    @Test
+    fun aFileAlreadyOnTheDeviceIsTakenOverWithoutApprovalOrDownload() = runTest {
+        val bridge = FakeBridge(good, approve = false, onDevice = setOf("m"))
+        val (inst, log) = installer(bridge)
+        // No approval is answered: none may be asked, because nothing is downloaded.
+        assertTrue(inst.install(listOf(item), "test"))
+        assertEquals(0, bridge.downloads)
+        assertEquals(listOf("m"), bridge.committed)
+        assertIs<ItemStatus.Done>(inst.status.value["m"])
+        assertTrue(log.events.value.isEmpty(), "no network event")
+        assertEquals(1, inst.installedVersion.value)
+    }
+
+    @Test
+    fun findLocalReportsHowManyWereFound() = runTest {
+        val (none) = installer(FakeBridge(good))
+        assertEquals(0, none.findLocal(listOf(item)))
+        val (some) = installer(FakeBridge(good, onDevice = setOf("m")))
+        assertEquals(1, some.findLocal(listOf(item)))
+        assertEquals(0, some.findLocal(listOf(item)), "already installed: nothing left to find")
     }
 
     @Test

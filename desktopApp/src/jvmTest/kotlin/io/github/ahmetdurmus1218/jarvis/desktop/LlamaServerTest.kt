@@ -53,7 +53,7 @@ class LlamaServerTest {
     fun requestCarriesRolesLimitsAndThinkingSwitch() {
         val body = LlamaServerClient("http://127.0.0.1:1").requestBody(
             listOf(
-                ChatMessage(Role.SYSTEM, "Sen Jarvis'sin."),
+                ChatMessage(Role.SYSTEM, "Sen Rick'sin."),
                 ChatMessage(Role.USER, "Merhaba"),
                 ChatMessage(Role.ASSISTANT, "Buyurun"),
                 ChatMessage(Role.TOOL, "araç çıktısı"),
@@ -70,13 +70,13 @@ class LlamaServerTest {
     @Test
     fun imageQuestionsCarryThePictureAsADataUrl() {
         val body = LlamaServerClient("http://127.0.0.1:1").requestBodyWithImage(
-            listOf(ChatMessage(Role.SYSTEM, "Sen Jarvis'sin."), ChatMessage(Role.USER, "Ekranda ne var?")),
+            listOf(ChatMessage(Role.SYSTEM, "Sen Rick'sin."), ChatMessage(Role.USER, "Ekranda ne var?")),
             byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte()),
             GenerationConfig(maxTokens = 600, thinking = true),
         )
         val obj = Json.parseToJsonElement(body).jsonObject
         val msgs = obj["messages"]!!.jsonArray
-        assertEquals("Sen Jarvis'sin.", msgs[0].jsonObject["content"]!!.jsonPrimitive.content)
+        assertEquals("Sen Rick'sin.", msgs[0].jsonObject["content"]!!.jsonPrimitive.content)
         val parts = msgs[1].jsonObject["content"]!!.jsonArray.map { it.jsonObject }
         assertEquals("text", parts[0]["type"]!!.jsonPrimitive.content)
         assertEquals("Ekranda ne var?", parts[0]["text"]!!.jsonPrimitive.content)

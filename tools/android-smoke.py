@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """End-to-end smoke test on an Android emulator (run by CI).
 
-1. Installs jarvis.apk (Kale) and jarvis-kapi.apk (Kapı).
+1. Installs rick.apk (Kale) and rick-kapi.apk (Kapı).
 2. Checks permissions as the OS granted them: Kale has NO internet permission, Kale holds the
    signature-level GATE permission, Kapı has INTERNET.
 3. Launches Kale, skips the wizard, runs a quick command ("saat kac") and checks the answer.
@@ -82,7 +82,7 @@ def tap(n):
 def dismiss_system_anr(root):
     """A freshly booted emulator sometimes shows "<System app> isn't responding" (not our app)."""
     texts = screen_texts(root)
-    if any(t.endswith("isn't responding") and not t.startswith("Jarvis") for t in texts):
+    if any(t.endswith("isn't responding") and not t.startswith("Rick") for t in texts):
         wait = find(text_is("Wait"), root)
         if wait is not None:
             print("dismissing system ANR dialog:", [t for t in texts if "responding" in t])
@@ -301,7 +301,7 @@ def main():
 
     step("gate detected")
     tap(wait_for(tab("Modeller"), "Models tab"))
-    wait_for(text_has("İndirme yolu: Jarvis Kapı"), "gate status")
+    wait_for(text_has("İndirme yolu: Rick Kapı"), "gate status")
     shot("03-kale-modeller")
     check_no_crash()
 
@@ -352,7 +352,7 @@ def main():
         adb("shell", "am", "start", "-W", "-n", f"{KALE}/.android.MainActivity")
         tap(wait_for(tab("Sohbet"), "chat tab"))
         tap(wait_for(text_is("🎤"), "mic button"))
-        offer = wait_for(lambda n: label(n).startswith("Jarvis'in ses tanımasını indir"), "Whisper offer in the chat", timeout=30)
+        offer = wait_for(lambda n: label(n).startswith("Rick'in ses tanımasını indir"), "Whisper offer in the chat", timeout=30)
         shot("09-kale-whisper-teklif")
         tap(offer)
         wait_for(text_is("İnternet erişimi onayı"), "approval screen")
@@ -372,7 +372,7 @@ def main():
                     print("progress:", busy[0])
                 seen_progress = True
             elif seen_progress:
-                if any(t.startswith("Jarvis'in ses tanımasını indir") for t in texts):
+                if any(t.startswith("Rick'in ses tanımasını indir") for t in texts):
                     raise SystemExit("Whisper download failed: " + " | ".join(texts))
                 break
             time.sleep(3)
@@ -400,7 +400,7 @@ def main():
         if "INSTRUMENTATION_RESULT: result=PASS" not in out:
             raise SystemExit("Whisper probe failed")
 
-        step("Piper voice ON the device: Jarvis says a sentence, Whisper on the phone must hear it")
+        step("Piper voice ON the device: Rick says a sentence, Whisper on the phone must hear it")
         out = adb("shell", "am", "instrument", "-w", "-e", "probe", "piper", PROBES, check=False)
         print(out)
         if "INSTRUMENTATION_RESULT: result=PASS" not in out:
@@ -425,7 +425,7 @@ def main():
                 tap(allow)
                 break
             time.sleep(1)
-        wait_for(text_is("J.A.R.V.I.S · EL KONTROLÜ"), "camera screen")
+        wait_for(text_is("R.I.C.K · EL KONTROLÜ"), "camera screen")
         time.sleep(3)
         shot("12a-kale-kamera-acik")
         check_no_crash()
@@ -450,7 +450,7 @@ def main():
         tap(wait_for(text_is("← GERİ"), "back"))
         check_no_crash()
 
-        step("hand/face tracking ON the device: real photos → MediaPipe → Jarvis's gesture classifier")
+        step("hand/face tracking ON the device: real photos → MediaPipe → Rick's gesture classifier")
         for name, sha in TRACKING_PHOTOS.items():
             adb("push", fetch_pinned(f"https://storage.googleapis.com/mediapipe-assets/{name}", sha, name), f"/data/local/tmp/{name}")
         out = adb("shell", "am", "instrument", "-w", "-e", "probe", "tracking", "-e", "dir", "/data/local/tmp", PROBES, check=False)

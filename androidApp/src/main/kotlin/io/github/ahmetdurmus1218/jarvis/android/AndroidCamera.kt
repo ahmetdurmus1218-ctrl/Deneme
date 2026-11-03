@@ -47,7 +47,7 @@ import java.util.concurrent.Executors
 import androidx.camera.core.Preview as CameraPreview
 
 /**
- * The phone camera as Jarvis's eyes: CameraX preview + per-frame analysis, hands and faces tracked
+ * The phone camera as Rick's eyes: CameraX preview + per-frame analysis, hands and faces tracked
  * on the device with MediaPipe (models from the lock file, hash-verified, loaded from the app's own
  * storage). Frames are never stored or sent anywhere; only the latest one is kept for "bu ne?".
  */
@@ -74,7 +74,7 @@ class AndroidCamera(
         LaunchedEffect(Unit) { granted = ensurePermission() }
         if (granted != true) {
             Box(modifier, contentAlignment = Alignment.Center) {
-                if (granted == false) Text("Kamera izni gerekli. Telefon Ayarları → Uygulamalar → Jarvis → İzinler → Kamera.")
+                if (granted == false) Text("Kamera izni gerekli. Telefon Ayarları → Uygulamalar → Rick → İzinler → Kamera.")
             }
             return
         }

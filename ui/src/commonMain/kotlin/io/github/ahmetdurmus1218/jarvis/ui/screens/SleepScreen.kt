@@ -45,7 +45,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Sleep: an almost black screen with a breathing dot. Two claps (or the user's own rhythm), then
- * "uyan Jarvis" within a few seconds, wake it; so does a double tap. The microphone only listens
+ * "uyan Rick" within a few seconds, wake it; so does a double tap. The microphone only listens
  * for claps here, on the device; nothing is recorded or kept.
  */
 @Composable
@@ -70,7 +70,7 @@ fun SleepScreen(bridge: PlatformBridge, settings: Settings, onWake: () -> Unit) 
             claps.await()
             mic.stop()
             if (settings.wakeMode == WAKE_CLAP_ONLY) { onWake(); return@LaunchedEffect }
-            // Claps heard: now "uyan Jarvis" within a few seconds.
+            // Claps heard: now "uyan Rick" within a few seconds.
             phase = Phase.PHRASE
             val stt = bridge.speechInput
             if (stt == null || !stt.isAvailable()) { onWake(); return@LaunchedEffect }
@@ -111,7 +111,7 @@ fun SleepScreen(bridge: PlatformBridge, settings: Settings, onWake: () -> Unit) 
         }
         Column(Modifier.align(Alignment.BottomCenter).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
             val hint = when {
-                phase == Phase.PHRASE -> "\"Uyan Jarvis\" deyin"
+                phase == Phase.PHRASE -> "\"Uyan Rick\" deyin"
                 micOk == false -> "Uyandırmak için ekrana iki kez dokunun."
                 settings.clapRhythm != null -> "Ritminizi çalın · ya da iki kez dokunun"
                 else -> "İki kez alkışlayın · ya da iki kez dokunun"
@@ -129,7 +129,7 @@ const val WAKE_CLAP_ONLY = "alkis"
 private const val PHRASE_WINDOW_MS = 9_000L
 
 /**
- * Waking up: the rings draw one by one, real system checks appear, panels come back, and Jarvis
+ * Waking up: the rings draw one by one, real system checks appear, panels come back, and Rick
  * greets by the time of day.
  */
 @Composable
@@ -156,7 +156,7 @@ fun WakeSequence(checks: List<Pair<String, String>>, greeting: String, onGreet: 
             drawCircle(Brush.radialGradient(listOf(Color.White, JarvisColors.Cyan, Color.Transparent), center = c, radius = 60.dp.toPx() * ring), radius = 60.dp.toPx() * ring.coerceAtLeast(0.01f), center = c)
         }
         Column(Modifier.align(Alignment.BottomStart).padding(24.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("J.A.R.V.I.S · SİSTEM KONTROLÜ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontSize = 12.sp, letterSpacing = 2.sp)
+            Text("R.I.C.K · SİSTEM KONTROLÜ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontSize = 12.sp, letterSpacing = 2.sp)
             checks.take(shown).forEach { (k, v) ->
                 Text("▸ $k: $v", color = JarvisColors.Text, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
             }

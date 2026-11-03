@@ -28,7 +28,7 @@ class TodoBriefingTest {
         val files = Files()
         val list = TodoList(files)
         fun say(t: String) = TodoCommands.parse(t, list)?.let { TodoCommands.apply(list, it) }
-        assertEquals("Listeye ekledim: Süt al.", say("Jarvis, not al: süt al"))
+        assertEquals("Listeye ekledim: Süt al.", say("Rick, not al: süt al"))
         assertEquals("Listeye ekledim: Faturayı öde.", say("yapılacaklara faturayı öde ekle"))
         assertEquals("Listeye ekledim: Annemi ara.", say("Listeme ekle: annemi ara"))
         assertEquals("3 iş var: Süt al, Faturayı öde, Annemi ara.", say("Yapılacaklarım neler?"))
@@ -42,7 +42,7 @@ class TodoBriefingTest {
 
     @Test
     fun briefingFromTheUsersOwnDay() {
-        assertTrue(Briefing.matches("Jarvis, brifing ver"))
+        assertTrue(Briefing.matches("Rick, brifing ver"))
         assertTrue(Briefing.matches("aydınlat beni"))
         assertTrue(!Briefing.matches("brifing nedir?"))
         val now = Now(2026, 11, 3, 9, 15, 2, "Europe/Istanbul", 0)

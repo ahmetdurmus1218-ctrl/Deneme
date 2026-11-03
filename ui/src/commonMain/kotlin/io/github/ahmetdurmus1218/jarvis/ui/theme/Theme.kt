@@ -12,7 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 
-/** One look of the HUD. "accent" plays the role of Jarvis's cyan in every screen. */
+/** One look of the HUD. "accent" plays the role of Rick's cyan in every screen. */
 data class Palette(
     val id: String,
     val label: String,
@@ -35,7 +35,7 @@ data class Palette(
 
 object Themes {
     val JARVIS = Palette(
-        "jarvis", "J.A.R.V.I.S · mavi", Color(0xFF05080D), Color(0xFF0C121B), Color(0xFF131C28),
+        "jarvis", "R.I.C.K · mavi", Color(0xFF05080D), Color(0xFF0C121B), Color(0xFF131C28),
         Color(0xFF38D6FF), Color(0xFF7DF3FF), Color(0xFF1B6F8A), Color(0xFF9D7CFF), Color(0x2216324A), Color(0x5538D6FF),
         Color(0xFFFFB547), Color(0xFFFF5A5F), Color(0xFF4CD99A), Color(0xFFE6F1FA), Color(0xFF8AA0B4),
     )

@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -68,6 +69,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
+import io.github.ahmetdurmus1218.jarvis.core.AssistantName
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -81,10 +84,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
 
-/** Jarvis's own speech model, offered in the chat when the phone's recognizer cannot do Turkish. */
-class SpeechModelOffer(val items: List<LockedItem>, val installer: ModelInstaller)
+/** Rick's own speech model, offered in the chat when the phone's recognizer cannot do Turkish. */
+class SpeechModelOffer(
+    val items: List<LockedItem>,
+    val installer: ModelInstaller,
+    /** What the download is ("Whisper", "Ses"), shown while it runs. */
+    val what: String = "Whisper",
+    val reason: String = "Mikrofon: ${AssistantName.SHORT}'in kendi Türkçe ses tanıması (Whisper small). Kurulduktan sonra ses tanıma tamamen internetsiz çalışır.",
+    val button: String = "${AssistantName.SHORT}'in ses tanımasını indir",
+)
 
-/** Ways to show Jarvis something: the live camera (phone) or a screenshot / image file (PC). */
+/** Ways to show Rick something: the live camera (phone) or a screenshot / image file (PC). */
 class VisionActions(
     val openCamera: (() -> Unit)?,
     val screenshot: suspend () -> ByteArray?,
@@ -99,6 +109,8 @@ fun ChatScreen(
     micAvailable: Boolean,
     speechModel: SpeechModelOffer? = null,
     vision: VisionActions? = null,
+    /** The assistant's own voice (Piper), offered when an answer could not be heard. */
+    voiceModel: SpeechModelOffer? = null,
     /** The ☰ menu: Ev, Kitaplık, Yapılacaklar, Brifing… */
     menu: List<Pair<String, () -> Unit>> = emptyList(),
 ) {
@@ -108,6 +120,7 @@ fun ChatScreen(
     val subtitle by controller.subtitle.collectAsState()
     val partial by controller.partialTranscript.collectAsState()
     val settings by controller.settings.state.collectAsState()
+    val voiceMissing by controller.voiceMissing.collectAsState()
     var input by remember { mutableStateOf("") }
     var showHistory by remember { mutableStateOf(false) }
     val accent by animateColorAsState(mode.accent(), tween(600))
@@ -146,36 +159,85 @@ fun ChatScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp),
             )
         }
-        if (speechModel != null && partial.isNotBlank() && mode != CoreMode.LISTENING) {
+        if (voiceModel != null && voiceMissing != null && mode != CoreMode.LISTENING) {
+            SpeechModelBar(voiceModel) { ok ->
+                if (ok) {
+                    controller.voiceInstalled()
+                    controller.showNotice("Ses hazır. Bundan sonra cevaplar sesli okunur.")
+                }
+            }
+        } else if (speechModel != null && partial.isNotBlank() && mode != CoreMode.LISTENING) {
             SpeechModelBar(speechModel) { ok ->
-                if (ok) controller.showNotice("Ses tanıma hazır. Mikrofona dokunun ve konuşun; susunca Jarvis kendisi durur.")
+                if (ok) controller.showNotice("Ses tanıma hazır. Mikrofona dokunun ve konuşun; susunca ${AssistantName.SHORT} kendisi durur.")
             }
         }
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp)
-                .background(JarvisColors.Glass, RoundedCornerShape(28.dp))
-                .border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(28.dp))
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        InputBar(
+            input = input,
+            onInput = { input = it },
+            accent = accent,
+            mode = mode,
+            level = level,
+            micAvailable = micAvailable,
+            vision = vision,
+            menu = menu,
+            controller = controller,
+            onSend = {
+                controller.send(input)
+                input = ""
+                focus.clearFocus() // closes the phone keyboard so the answer is visible
+            },
+        )
+    }
+}
+
+/**
+ * The text box and its buttons. On a narrow screen, or with the phone's large-text setting, the
+ * buttons go on their own line under the text box: side by side they would squeeze the text box
+ * to nothing (seen on a real phone: the placeholder wrapped letter by letter and the box filled the
+ * screen, hiding the core).
+ */
+@Composable
+private fun InputBar(
+    input: String,
+    onInput: (String) -> Unit,
+    accent: Color,
+    mode: CoreMode,
+    level: Float,
+    micAvailable: Boolean,
+    vision: VisionActions?,
+    menu: List<Pair<String, () -> Unit>>,
+    controller: JarvisController,
+    onSend: () -> Unit,
+) {
+    val fontScale = LocalDensity.current.fontScale
+    BoxWithConstraints(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .background(JarvisColors.Glass, RoundedCornerShape(28.dp))
+            .border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(28.dp))
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+    ) {
+        // Buttons need about 300 dp of text-sized room; the text box at least 160 dp more.
+        val stacked = maxWidth < (460 * fontScale.coerceAtLeast(1f)).dp
+        val field: @Composable (Modifier) -> Unit = { m ->
             OutlinedTextField(
                 value = input,
-                onValueChange = { input = it },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("Jarvis'e yazın…", color = JarvisColors.TextDim) },
+                onValueChange = onInput,
+                modifier = m,
+                placeholder = { Text("${AssistantName.SHORT}'e yazın…", color = JarvisColors.TextDim, maxLines = 1) },
                 singleLine = true,
                 shape = RoundedCornerShape(22.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = accent.copy(alpha = 0.7f),
-                    unfocusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = if (stacked) JarvisColors.GlassBorder else Color.Transparent,
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
                 ),
             )
-            if (vision != null) VisionButton(vision, input, controller) { input = "" }
+        }
+        val buttons: @Composable () -> Unit = {
+            if (vision != null) VisionButton(vision, input, controller) { onInput("") }
             if (menu.isNotEmpty()) {
                 Box {
                     var open by remember { mutableStateOf(false) }
@@ -185,17 +247,21 @@ fun ChatScreen(
                     }
                 }
             }
-            if (mode == CoreMode.SPEAKING) TextButton(onClick = controller::stopSpeaking) { Text("Sus", color = JarvisColors.Amber) }
-            Button(
-                onClick = {
-                    controller.send(input)
-                    input = ""
-                    focus.clearFocus() // closes the phone keyboard so the answer is visible
-                },
-                enabled = input.isNotBlank(),
-                shape = RoundedCornerShape(22.dp),
-            ) { Text("Gönder") }
+            if (mode == CoreMode.SPEAKING) TextButton(onClick = controller::stopSpeaking) { Text("Sus", color = JarvisColors.Amber, maxLines = 1) }
+            if (stacked) Spacer(Modifier.weight(1f))
+            Button(onClick = onSend, enabled = input.isNotBlank(), shape = RoundedCornerShape(22.dp)) { Text("Gönder", maxLines = 1) }
             if (micAvailable) MicButton(mode == CoreMode.LISTENING, level, onTap = controller::toggleListening, onHoldStart = controller::startListening, onHoldEnd = controller::stopListening)
+        }
+        if (stacked) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                field(Modifier.fillMaxWidth())
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) { buttons() }
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                field(Modifier.weight(1f))
+                buttons()
+            }
         }
     }
 }
@@ -245,19 +311,23 @@ private fun StatusBar(
     // Recomposes only when the minute changes, not on every animation frame.
     val minute by remember { derivedStateOf { (tick.value / 20f).toInt() } }
     val clock = remember(minute, mode) { NowProvider.System.now().hhmm() }
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text("J.A.R.V.I.S", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, letterSpacing = 3.sp, fontSize = 15.sp)
-            Text("● ÇEVRİMDIŞI", color = JarvisColors.Green, fontFamily = FontFamily.Monospace, fontSize = 10.sp, letterSpacing = 1.sp, maxLines = 1)
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+        // A phone with large text: short chip labels and no clock (the phone's own bar shows the time).
+        val compact = maxWidth < (520 * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(AssistantName.DOTTED, color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, letterSpacing = 3.sp, fontSize = 15.sp, maxLines = 1, softWrap = false)
+                Text(if (compact) "● OFFLINE" else "● ÇEVRİMDIŞI", color = JarvisColors.Green, fontFamily = FontFamily.Monospace, fontSize = 10.sp, letterSpacing = 1.sp, maxLines = 1)
+            }
+            val talk = if (compact) "SOHBET" else "SOHBET MODU"
+            HudChip(if (conversationMode) "$talk ✓" else talk, conversationMode) { onConversationMode(!conversationMode) }
+            Spacer(Modifier.width(6.dp))
+            HudChip(if (showHistory) "GERİ" else if (compact) "GEÇMİŞ" else "GEÇMİŞ $historyCount", showHistory, onHistory)
+            if (!compact) {
+                Spacer(Modifier.width(10.dp))
+                Text(clock, color = JarvisColors.Text, fontFamily = FontFamily.Monospace, fontSize = 16.sp, maxLines = 1)
+            }
         }
-        HudChip(if (conversationMode) "SOHBET MODU ✓" else "SOHBET MODU", conversationMode) { onConversationMode(!conversationMode) }
-        Spacer(Modifier.width(6.dp))
-        HudChip(if (showHistory) "GERİ" else "GEÇMİŞ $historyCount", showHistory, onHistory)
-        Spacer(Modifier.width(10.dp))
-        Text(clock, color = JarvisColors.Text, fontFamily = FontFamily.Monospace, fontSize = 16.sp)
     }
 }
 
@@ -270,6 +340,8 @@ private fun HudChip(text: String, active: Boolean, onClick: () -> Unit) {
         fontFamily = FontFamily.Monospace,
         fontSize = 10.sp,
         letterSpacing = 1.sp,
+        maxLines = 1,
+        softWrap = false,
         modifier = Modifier
             .border(1.dp, c, RoundedCornerShape(50))
             .clickable(onClick = onClick)
@@ -279,7 +351,7 @@ private fun HudChip(text: String, active: Boolean, onClick: () -> Unit) {
 
 /**
  * The stage: the living core in the middle, its state below, then the latest exchange — what you
- * said, Jarvis's words as they are spoken (typewriter), and the answer's scene cards.
+ * said, Rick's words as they are spoken (typewriter), and the answer's scene cards.
  */
 @Composable
 private fun Stage(mode: CoreMode, level: Float, engineLabel: String, last: Turn?, subtitle: String, onCoreTap: (() -> Unit)?) {
@@ -355,7 +427,7 @@ private fun Greeting() {
     }
 }
 
-/** Jarvis's words appearing as they are spoken. */
+/** Rick's words appearing as they are spoken. */
 @Composable
 private fun Typewriter(text: String, modifier: Modifier = Modifier) {
     var shown by remember(text) { mutableStateOf(0) }
@@ -463,19 +535,15 @@ private fun SpeechModelBar(offer: SpeechModelOffer, onDone: (Boolean) -> Unit) {
     ) {
         when {
             active != null -> Text(
-                "Whisper indiriliyor (${done + 1}/${offer.items.size}): ${formatBytes(active.bytes)} / ${formatBytes(active.total)}",
+                "${offer.what} indiriliyor (${done + 1}/${offer.items.size}): ${formatBytes(active.bytes)} / ${formatBytes(active.total)}",
                 color = JarvisColors.Cyan, fontSize = 13.sp,
             )
-            busy -> Text("Whisper hazırlanıyor…", color = JarvisColors.Cyan, fontSize = 13.sp)
+            busy -> Text("${offer.what} hazırlanıyor…", color = JarvisColors.Cyan, fontSize = 13.sp)
             else -> {
                 failed?.let { Text(it.message, color = JarvisColors.Amber, fontSize = 12.sp) }
                 Button(onClick = {
-                    offer.installer.installInBackground(
-                        offer.items,
-                        "Mikrofon: Jarvis'in kendi Türkçe ses tanıması (Whisper small). Kurulduktan sonra ses tanıma tamamen internetsiz çalışır.",
-                        onDone,
-                    )
-                }) { Text("Jarvis'in ses tanımasını indir (${formatBytes(offer.items.sumOf { it.size })})") }
+                    offer.installer.installInBackground(offer.items, offer.reason, onDone)
+                }) { Text("${offer.button} (${formatBytes(offer.items.sumOf { it.size })})", textAlign = TextAlign.Center) }
             }
         }
     }

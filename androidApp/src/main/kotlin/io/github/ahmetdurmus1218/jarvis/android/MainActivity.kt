@@ -20,9 +20,11 @@ import java.util.Locale
 class MainActivity : FragmentActivity() {
     private val permissionResult = PendingResult<Boolean>()
     private val documentResult = PendingResult<Uri?>()
+    private val folderResult = PendingResult<Uri?>()
 
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { permissionResult.complete(it) }
     private val documentLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { documentResult.complete(it) }
+    private val folderLauncher = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { folderResult.complete(it) }
 
     private val bridge get() = (application as JarvisApplication).bridge
 
@@ -39,7 +41,7 @@ class MainActivity : FragmentActivity() {
         super.onResume()
         bridge.activity = this
         bridge.downloader.refresh()
-        // Large model downloads can take a while; keep the screen on while Jarvis is in front.
+        // Large model downloads can take a while; keep the screen on while Rick is in front.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
@@ -61,6 +63,9 @@ class MainActivity : FragmentActivity() {
     suspend fun pickDocument(): Uri? = documentResult.await { documentLauncher.launch(arrayOf("*/*")) }
 
     suspend fun pickImage(): Uri? = documentResult.await { documentLauncher.launch(arrayOf("image/*")) }
+
+    /** A folder the user grants read access to (for example Download, where model files were copied). */
+    suspend fun pickFolder(): Uri? = folderResult.await { folderLauncher.launch(null) }
 
     fun launchOnUi(block: suspend () -> Unit) {
         lifecycleScope.launch { block() }

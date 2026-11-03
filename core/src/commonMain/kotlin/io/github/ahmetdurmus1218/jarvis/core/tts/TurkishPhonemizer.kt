@@ -103,7 +103,7 @@ object TurkishPhonemizer {
     fun word(raw: String): String {
         // "gâ" keeps its palatal g (rüzgâr → røzɟar); the circumflex itself is otherwise just the vowel.
         val lw = lower(raw).replace("gâ", "ĝa").replace('â', 'a').replace('î', 'i').replace('û', 'u')
-            .replace('q', 'k').replace('w', 'v').replace("x", "ks")
+            .replace('q', 'k').replace('w', 'v').replace("x", "ks").replace("ck", "k")
         // Case endings after an apostrophe ("Ankara'dır") belong to the word but not to its stress.
         val base = lw.substringBefore('\'')
         val w = lw.replace("'", "")

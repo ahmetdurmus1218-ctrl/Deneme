@@ -72,7 +72,7 @@ class AndroidSpeechInput(
         listener.onPartial("Mikrofon açılıyor…")
         if (!ensureMicPermission()) {
             Log.i(TAG, "mic permission denied")
-            listener.onError("Mikrofon izni gerekli. Telefon Ayarları → Uygulamalar → Jarvis → İzinler → Mikrofon.")
+            listener.onError("Mikrofon izni gerekli. Telefon Ayarları → Uygulamalar → Rick → İzinler → Mikrofon.")
             return
         }
         val pack = languagePack()
@@ -229,20 +229,20 @@ class AndroidSpeechInput(
     private fun errorText(code: Int): String = when (code) {
         SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> NOTHING_HEARD
         SpeechRecognizer.ERROR_AUDIO -> "Mikrofon açılamadı (başka bir uygulama kullanıyor olabilir)."
-        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Mikrofon izni gerekli. Telefon Ayarları → Uygulamalar → Jarvis → İzinler → Mikrofon."
+        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Mikrofon izni gerekli. Telefon Ayarları → Uygulamalar → Rick → İzinler → Mikrofon."
         SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Ses tanıma meşgul, bir saniye sonra tekrar deneyin."
         SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED -> "Telefonun cihaz içi ses tanıması Türkçe'yi desteklemiyor. $WHISPER_HINT"
         SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> PACK_MISSING
         SpeechRecognizer.ERROR_SERVER_DISCONNECTED -> "Telefonun ses tanıma servisi Türkçe dinlemeyi başlatamadı. $WHISPER_HINT"
         SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT, SpeechRecognizer.ERROR_SERVER ->
-            "Telefonun ses tanıması internet istedi; Jarvis yalnızca cihaz içi tanıma kullanır. Türkçe ses paketini indirin (Ayarlar)."
+            "Telefonun ses tanıması internet istedi; Rick yalnızca cihaz içi tanıma kullanır. Türkçe ses paketini indirin (Ayarlar)."
         else -> "Ses tanıma hatası (kod $code). $WHISPER_HINT"
     }
 
     private companion object {
         const val TAG = "JarvisMic"
         const val READY_TIMEOUT_MS = 6_000L
-        const val WHISPER_HINT = "Aşağıdaki düğmeyle Jarvis'in kendi ses tanımasını (Whisper, 375 MB) indirin; her telefonda internetsiz çalışır."
+        const val WHISPER_HINT = "Aşağıdaki düğmeyle Rick'in kendi ses tanımasını (Whisper, 375 MB) indirin; her telefonda internetsiz çalışır."
         const val TURKISH_UNSUPPORTED = "Bu telefonun kendi ses tanıması Türkçe'yi internetsiz desteklemiyor. $WHISPER_HINT"
         const val NOT_STARTING = "Telefonun cihaz içi ses tanıma servisi cevap vermedi. $WHISPER_HINT"
         const val NOTHING_HEARD = "Bir şey duyamadım. Mikrofona dokunun ve konuşun; susunca kendisi durur."
@@ -258,6 +258,14 @@ class AndroidSpeechOutput(context: Context) : SpeechOutput {
     override val engineName: String get() = "Android TTS (tr-TR, yalnızca cihaz içi ses)" + if (ready && voice == null) " — Türkçe ses bulunamadı" else ""
     @Volatile private var ready = false
     @Volatile private var voice: Voice? = null
+
+    override val silentReason: String?
+        get() = when {
+            !initDone.isCompleted -> null
+            !ready -> "Telefonun ses motoru açılamadı."
+            voice == null -> "Telefonda internetsiz çalışan bir Türkçe ses yok."
+            else -> null
+        }
     private val pending = ConcurrentHashMap<String, CompletableDeferred<Unit>>()
     private val ids = AtomicLong()
     private val initDone = CompletableDeferred<Boolean>()

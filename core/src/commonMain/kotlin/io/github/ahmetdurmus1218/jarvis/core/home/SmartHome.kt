@@ -66,7 +66,7 @@ class SmartHome(private var state: HomeState = HomeState()) {
         if (f.state == Brew.BREWING && now - f.startedAt >= f.durationMs) state = state.copy(filter = f.copy(state = Brew.READY, keepWarm = true))
     }
 
-    /** Applies [a] and returns what Jarvis says about it. */
+    /** Applies [a] and returns what Rick says about it. */
     fun apply(a: HomeAction, now: Long): String {
         advance(now)
         return when (a) {

@@ -20,6 +20,7 @@ class TurkishPhonemizerTest {
         assertEquals("ˈœndʒɛ", w("önce"))
         assertEquals("ɯʃɯkɫˈar", w("Işıklar"))
         assertEquals("ʒarvˈɪs", w("Jarvis"))
+        assertEquals("rˈɪk", w("Rick"), "ck is read as k")
         assertEquals("aːʊstˈɔs", w("Ağustos"))
         assertEquals("myzijˈɪ", w("müziği"))
         assertEquals("røzɟˈar", w("rüzgâr"))
@@ -37,9 +38,9 @@ class TurkishPhonemizerTest {
 
     @Test
     fun sentencesAndPunctuation() {
-        val s = TurkishPhonemizer.sentences("Merhaba efendim, Jarvis hazır. Nasılsın?")
+        val s = TurkishPhonemizer.sentences("Merhaba efendim, Rick hazır. Nasılsın?")
         assertEquals(2, s.size)
-        assertEquals("mˈɛrhaba efˈændɪm, ʒarvˈɪs hazˈɯr.", s[0])
+        assertEquals("mˈɛrhaba efˈændɪm, rˈɪk hazˈɯr.", s[0])
         assertTrue(s[1].endsWith("?"))
         assertTrue(TurkishPhonemizer.sentences("— … 🙂").isEmpty(), "nothing speakable")
     }

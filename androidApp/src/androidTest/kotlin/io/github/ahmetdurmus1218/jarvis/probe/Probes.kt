@@ -28,7 +28,7 @@ import java.nio.ByteOrder
  *   adb shell am instrument -w -e probe whisper io.github.ahmetdurmus1218.jarvis.test/io.github.ahmetdurmus1218.jarvis.probe.Probes
  *   adb shell am instrument -w -e probe wiki -e zim /data/local/tmp/test.zim io.github.ahmetdurmus1218.jarvis.test/...Probes
  *
- * whisper: a Turkish recording ("Merhaba Jarvis, bugün hava nasıl?", 0.8 s noise before, 2 s after)
+ * whisper: a Turkish recording ("Merhaba Rick, bugün hava nasıl?", 0.8 s noise before, 2 s after)
  *   goes through the SAME capture loop and Whisper decoder the microphone uses, with the model files
  *   the app installed and verified through Kapı.
  * wiki: a real Wikipedia ZIM is opened with the app's AndroidZim (libzim on the device) and searched
@@ -105,7 +105,7 @@ class Probes : Instrumentation() {
     }
 
     /**
-     * Jarvis's own voice ON the device: the Piper archive the app installed through Kapı is unpacked
+     * Rick's own voice ON the device: the Piper archive the app installed through Kapı is unpacked
      * and speaks a sentence (phonemes from the core Turkish phonemizer); Whisper must hear it.
      */
     private fun piper(out: Bundle): Boolean = runBlocking {
@@ -114,7 +114,7 @@ class Probes : Instrumentation() {
         val tts = PiperSpeechOutput(storage, ModelRegistry.bundled, NoSpeech)
         if (!tts.installed()) error("Piper voice is not installed in the app")
         val t0 = System.nanoTime()
-        val (samples, rate) = tts.render("Merhaba efendim, Jarvis hazır. Saat on dört otuz beş.") ?: error("Piper did not load: ${tts.engineName}")
+        val (samples, rate) = tts.render("Merhaba efendim, Rick hazır. Saat on dört otuz beş.") ?: error("Piper did not load: ${tts.engineName}")
         val t1 = System.nanoTime()
         out.putString("tts_ms", ((t1 - t0) / 1_000_000).toString())
         out.putString("audio_ms", (samples.size * 1000L / rate).toString())
@@ -167,7 +167,7 @@ class Probes : Instrumentation() {
     /**
      * MediaPipe on the device with the tracking models the app installed through Kapı: real hand
      * photos (MediaPipe's own gesture test images, pushed to /data/local/tmp) must be classified as
-     * the right gesture by Jarvis's core classifier, and the portrait must show exactly one face.
+     * the right gesture by Rick's core classifier, and the portrait must show exactly one face.
      */
     private fun tracking(out: Bundle): Boolean {
         val dir = args.getString("dir") ?: error("-e dir <path> missing")

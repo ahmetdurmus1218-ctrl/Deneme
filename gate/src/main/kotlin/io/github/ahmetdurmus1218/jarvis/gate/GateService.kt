@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Bound service, protected by the signature permission GATE. Every message is additionally checked
- * to come from the Jarvis package signed with the same key. The service only acts on requests; it
+ * to come from the Rick package signed with the same key. The service only acts on requests; it
  * never initiates network traffic by itself.
  */
 class GateService : Service() {
@@ -51,9 +51,9 @@ class GateService : Service() {
     private val running = AtomicInteger(0)
 
     /**
-     * Long downloads must survive the screen turning off or Jarvis going to the background, so while
+     * Long downloads must survive the screen turning off or Rick going to the background, so while
      * a transfer runs the gate is a foreground service with a visible notification. Allowed because
-     * the (visible) Jarvis app is bound to it; if Android refuses, the download still runs.
+     * the (visible) Rick app is bound to it; if Android refuses, the download still runs.
      */
     private fun enterForeground() {
         if (running.getAndIncrement() > 0) return
@@ -62,7 +62,7 @@ class GateService : Service() {
             nm.createNotificationChannel(NotificationChannel(CHANNEL, "İndirmeler", NotificationManager.IMPORTANCE_LOW))
             val n = Notification.Builder(this, CHANNEL)
                 .setSmallIcon(android.R.drawable.stat_sys_download)
-                .setContentTitle("Jarvis Kapı")
+                .setContentTitle("Rick Kapı")
                 .setContentText("Onayladığınız dosya indiriliyor…")
                 .setOngoing(true)
                 .build()

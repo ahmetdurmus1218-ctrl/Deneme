@@ -46,7 +46,7 @@ import androidx.compose.animation.core.withInfiniteAnimationFrameMillis
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
-/** Short notice shown on every screen when Jarvis changes a device ("SALON IŞIĞI · AÇIK"). */
+/** Short notice shown on every screen when Rick changes a device ("SALON IŞIĞI · AÇIK"). */
 fun HomeAction.notice(): String? = when (this) {
     is HomeAction.SetLight -> "${room.label.uppercase()} IŞIĞI · " + when {
         on == false -> "KAPALI"
@@ -94,7 +94,7 @@ fun HomePanel(home: SmartHome, onClose: () -> Unit) {
                     modifier = Modifier.border(1.dp, JarvisColors.Amber, RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 2.dp))
                 TextButton(onClick = onClose) { Text("KAPAT", color = JarvisColors.TextDim, fontSize = 11.sp) }
             }
-            Text("Cihazlar Jarvis'in içinde canlandırılır; ağa bağlanılmaz. Sesle de olur: \"salonun ışığını aç\", \"bana bol köpüklü bir Türk kahvesi yap\".",
+            Text("Cihazlar Rick'in içinde canlandırılır; ağa bağlanılmaz. Sesle de olur: \"salonun ışığını aç\", \"bana bol köpüklü bir Türk kahvesi yap\".",
                 color = JarvisColors.TextDim, fontSize = 11.sp)
 
             for (room in Room.entries) {

@@ -49,16 +49,19 @@ class VoiceCommandTest {
 
     @Test
     fun wakeWordAndPolitenessAreIgnored() {
-        assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("Hey Jarvis, saat kaç?"))
+        assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("Hey Rick, saat kaç?"))
         assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("saat kaç söyler misin"))
-        assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("Saat kaç Jarvis"))
-        assertEquals(QuickCommand.DateToday, QuickCommandRouter.route("Jarvis bugün ayın kaçı lütfen"))
+        assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("Saat kaç Rick"))
+        assertEquals(QuickCommand.DateToday, QuickCommandRouter.route("Rick bugün ayın kaçı lütfen"))
         assertEquals(QuickCommand.StopSpeaking, QuickCommandRouter.route("Tamam sus artık"))
-        assertEquals(QuickCommand.OpenApp("kamera"), QuickCommandRouter.route("Jarvis kamerayı açar mısın"))
+        assertEquals(QuickCommand.OpenApp("kamera"), QuickCommandRouter.route("Rick kamerayı açar mısın"))
         // Whisper often hears the wake word as "Cervis" / "Carvis".
         assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("Merhaba Cervis, saat kaç?".removePrefix("Merhaba ")))
         assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("Çervis saat kaç"))
         assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("Saat kaç Carvis?"))
+        // The new name as Whisper writes it, and the old name still works.
+        assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("Rik, saat kaç?"))
+        assertEquals(QuickCommand.TimeNow, QuickCommandRouter.route("Hey Jarvis, saat kaç?"))
         // A real word that merely looks similar is not stripped.
         assertEquals(null, QuickCommandRouter.route("servis saat kaçta"))
     }

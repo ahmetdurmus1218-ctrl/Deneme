@@ -1,5 +1,6 @@
 package io.github.ahmetdurmus1218.jarvis.core.todo
 
+import io.github.ahmetdurmus1218.jarvis.core.AssistantName
 import io.github.ahmetdurmus1218.jarvis.core.knowledge.TextStore
 import io.github.ahmetdurmus1218.jarvis.core.text.Turkish
 import kotlinx.serialization.Serializable
@@ -69,7 +70,7 @@ sealed interface TodoAction {
 
 /** Turkish to-do commands, on normalized text. */
 object TodoCommands {
-    private const val J = "^(?:hey )?(?:jarvis|cervis)?[ ,]*"
+    private const val J = "^(?:hey )?(?:${AssistantName.WAKE})?[ ,]*"
     private val ADD1 = Regex("${J}(?:yapilacaklar(?:im)?a|listeme|yapilacaklar listesine) (.+?) (?:ekle|yaz)$")
     private val ADD2 = Regex("${J}(?:yapilacaklar(?:im)?a ekle|listeme ekle|not al|hatirlatma ekle)[: ]+(.+)$")
     private val LIST = Regex("${J}(?:yapilacaklar(?:im)?|yapilacaklar listem|listem(?:de)?|notlarim)(?: neler| ne| nedir| ne var| var mi)?$")

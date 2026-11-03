@@ -201,9 +201,9 @@ class JarvisControllerTest {
             }
         }
         val (c, _, tts) = setup(spy, scope)
-        c.send("Merhaba Jarvis")
+        c.send("Merhaba Rick")
         advanceUntilIdle()
-        assertEquals(listOf("Merhaba efendim, Jarvis hazır."), tts.spoken)
+        assertEquals(listOf("Merhaba efendim, Rick hazır."), tts.spoken)
         val first = c.turns.value.single()
         assertTrue(first.assistantText!!.contains("\"sahneler\""))
         c.send("Bana bir şey anlat")

@@ -1,5 +1,6 @@
 package io.github.ahmetdurmus1218.jarvis.ui
 
+import io.github.ahmetdurmus1218.jarvis.core.AssistantName
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -186,7 +187,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         var tab by remember { mutableStateOf(Tab.CHAT) }
         var wizard by remember { mutableStateOf(!settings.wizardDone) }
         var cameraOpen by remember { mutableStateOf(false) }
-        // "Jarvis, el kontrolünü aç" (closing is handled by the camera screen itself).
+        // "Rick, el kontrolünü aç" (closing is handled by the camera screen itself).
         var homeOpen by remember { mutableStateOf(false) }
         var libraryOpen by remember { mutableStateOf(false) }
         var todoOpen by remember { mutableStateOf(false) }
@@ -267,6 +268,19 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                             .takeIf { it.isNotEmpty() }?.let { SpeechModelOffer(it, graph.installer) }
                                     }
                                 }
+                                val tts = graph.bridge.speechOutput
+                                val voiceOffer = remember(installed, tts) {
+                                    tts?.ownModelGroup?.let { g ->
+                                        graph.registry.forPlatform(graph.bridge.platform).filter { it.group == g }
+                                            .takeIf { it.isNotEmpty() }?.let {
+                                                SpeechModelOffer(
+                                                    it, graph.installer, what = "Ses",
+                                                    reason = "Ses: ${AssistantName.SHORT}'in kendi Türkçe sesi (Piper). Kurulduktan sonra cevaplar internetsiz, sesli okunur.",
+                                                    button = "🔊 ${AssistantName.SHORT}'in sesini indir",
+                                                )
+                                            }
+                                    }
+                                }
                                 val vision = VisionActions(
                                     // The phone opens its camera; the PC opens hand control as a demo.
                                     openCamera = { cameraOpen = true },
@@ -277,9 +291,9 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                 )
                                 val chat: @Composable () -> Unit = {
                                     ChatScreen(
-                                        controller, graph.engineLabel, stt != null, offer, vision,
+                                        controller, graph.engineLabel, stt != null, offer, vision, voiceOffer,
                                         menu = listOf(
-                                            "☀ Günlük brifing" to { controller.send("Jarvis, brifing ver") },
+                                            "☀ Günlük brifing" to { controller.send("Rick, brifing ver") },
                                             "✅ Yapılacaklar" to { todoOpen = true },
                                             "🏠 Ev" to { homeOpen = true },
                                             "📚 Kitaplık" to { libraryOpen = true },

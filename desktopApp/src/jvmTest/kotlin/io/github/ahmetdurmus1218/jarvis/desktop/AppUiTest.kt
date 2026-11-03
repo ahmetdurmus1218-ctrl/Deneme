@@ -75,7 +75,7 @@ class AppUiTest {
             override suspend fun confirm(title: String, subtitle: String) = ApprovalResult.Approved(ApprovalMethod.DIALOG)
         }
         override val downloader = object : Downloader {
-            override val state: StateFlow<DownloadState> = MutableStateFlow(DownloadState.Ready("jarvis-kapi (test)"))
+            override val state: StateFlow<DownloadState> = MutableStateFlow(DownloadState.Ready("rick-kapi (test)"))
             override fun refresh() {}
             override suspend fun download(item: LockedItem, onProgress: (DownloadProgress) -> Unit) = DownloadOutcome.Failed("test")
             override fun cancel() {}
@@ -171,7 +171,7 @@ class AppUiTest {
 
         // 3. Models → approval screen → reject
         rule.onNodeWithText("Modeller").performClick()
-        waitForText("İndirme yolu: jarvis-kapi (test)")
+        waitForText("İndirme yolu: rick-kapi (test)")
         shot("05-modeller")
         click(rule.onAllNodesWithText("İndir")[0])
         waitForText("İnternet erişimi onayı")
@@ -188,7 +188,7 @@ class AppUiTest {
         // 5. Smart home by voice: the coffee machine starts, a notice appears; the Ev panel shows it.
         rule.onNodeWithText("Sohbet").performClick()
         waitForText("Gönder")
-        ask("Jarvis, bana bol köpüklü bir Türk kahvesi yap")
+        ask("Rick, bana bol köpüklü bir Türk kahvesi yap")
         waitForText("Hemen efendim.", substring = true)
         waitForText("TÜRK KAHVESİ · PİŞİYOR", substring = true)
         shot("08a-ev-kahve")
@@ -200,7 +200,7 @@ class AppUiTest {
         click("KAPAT")
 
         // Library by voice, then the panel.
-        ask("Jarvis, kitaplığıma Davranış'ı ekle")
+        ask("Rick, kitaplığıma Davranış'ı ekle")
         waitForText("Tamamdır efendim, Davranış kitaplığınıza eklendi.")
         click("☰")
         click("📚 Kitaplık")
@@ -210,7 +210,7 @@ class AppUiTest {
         click("KAPAT")
 
         // To-do by voice and the offline daily briefing.
-        ask("Jarvis, not al: süt al")
+        ask("Rick, not al: süt al")
         waitForText("Listeye ekledim: Süt al.")
         click("☰")
         click("☀ Günlük brifing")
@@ -229,8 +229,8 @@ class AppUiTest {
 
         // 6. Hand control by voice command: the PC has no tracking camera, so it opens the demo
         // (the effects themselves are drawn in HandControlUiTest with a stepped clock).
-        ask("Jarvis, el kontrolünü aç")
-        waitForText("J.A.R.V.I.S · EL KONTROLÜ")
+        ask("Rick, el kontrolünü aç")
+        waitForText("R.I.C.K · EL KONTROLÜ")
         waitForText("DEMO", substring = true)
         shot("09-el-kontrolu")
         click("⚙")

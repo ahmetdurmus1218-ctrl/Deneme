@@ -24,7 +24,7 @@ class LibraryTest {
         val lib = Library(files)
         fun say(t: String) = LibraryCommands.parse(t, lib)?.let { LibraryCommands.apply(lib, it) }
 
-        assertEquals("Tamamdır efendim, Davranış kitaplığınıza eklendi.", say("Jarvis, kitaplığıma Davranış'ı ekle"))
+        assertEquals("Tamamdır efendim, Davranış kitaplığınıza eklendi.", say("Rick, kitaplığıma Davranış'ı ekle"))
         assertEquals("Davranış zaten kitaplığınızda.", say("kitaplığıma Davranış ekle"))
         assertTrue(say("Mülksüzler'e not ekle: anarşist bir ütopya, ama çok gerçekçi")!!.contains("Mülksüzler"))
         assertEquals(listOf("anarşist bir ütopya, ama çok gerçekçi"), lib.find("Mülksüzler")!!.notes)

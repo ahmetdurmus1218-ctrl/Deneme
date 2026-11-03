@@ -25,11 +25,11 @@ class StatusActivity : Activity() {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, size)
             setPadding(0, pad / 3, 0, pad / 3)
         }
-        root.addView(text("Jarvis Kapı ${BuildInfo.version(this)}", 24f, Color.rgb(255, 181, 71)))
+        root.addView(text("Rick Kapı ${BuildInfo.version(this)}", 24f, Color.rgb(255, 181, 71)))
         root.addView(
             text(
-                "Bu uygulama Jarvis'in internete çıkabilen TEK parçasıdır. Kendi başına hiçbir istek yapmaz; " +
-                    "yalnızca Jarvis'te sizin parmak izi/PIN onayınızdan sonra, kilit dosyasındaki dosyaları indirir.",
+                "Bu uygulama Rick'in internete çıkabilen TEK parçasıdır. Kendi başına hiçbir istek yapmaz; " +
+                    "yalnızca Rick'te sizin parmak izi/PIN onayınızdan sonra, kilit dosyasındaki dosyaları indirir.",
             ),
         )
         root.addView(text("İzinli alan adları", 17f))
@@ -40,7 +40,7 @@ class StatusActivity : Activity() {
         root.addView(text("Son işlemler", 17f))
         val log = GateLog(this).entries()
         root.addView(text(if (log.isEmpty()) "Henüz işlem yok." else log.asReversed().joinToString("\n"), 13f))
-        root.addView(text("Kapı'yı kaldırırsanız Jarvis tamamen çevrimdışı çalışmaya devam eder.", 13f, Color.rgb(138, 160, 180)))
+        root.addView(text("Kapı'yı kaldırırsanız Rick tamamen çevrimdışı çalışmaya devam eder.", 13f, Color.rgb(138, 160, 180)))
         setContentView(ScrollView(this).apply { addView(root) })
         if (android.os.Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED

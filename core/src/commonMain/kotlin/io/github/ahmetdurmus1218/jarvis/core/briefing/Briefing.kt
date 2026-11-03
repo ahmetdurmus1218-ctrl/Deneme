@@ -1,5 +1,6 @@
 package io.github.ahmetdurmus1218.jarvis.core.briefing
 
+import io.github.ahmetdurmus1218.jarvis.core.AssistantName
 import io.github.ahmetdurmus1218.jarvis.core.home.Brew
 import io.github.ahmetdurmus1218.jarvis.core.home.HomeState
 import io.github.ahmetdurmus1218.jarvis.core.library.Book
@@ -14,12 +15,12 @@ import io.github.ahmetdurmus1218.jarvis.core.time.SunTimes
 import io.github.ahmetdurmus1218.jarvis.core.todo.Todo
 
 /**
- * The offline daily briefing ("Jarvis, brifing ver" / "aydınlat beni"): instead of news from the
+ * The offline daily briefing ("Rick, brifing ver" / "aydınlat beni"): instead of news from the
  * internet, a scene-by-scene summary of the user's own day — date, daylight, open to-dos, the book
- * in progress, the home, what Jarvis remembers. Every number comes from the device.
+ * in progress, the home, what Rick remembers. Every number comes from the device.
  */
 object Briefing {
-    private val TRIGGER = Regex("^(?:hey )?(?:jarvis|cervis)?[ ,]*(?:brifing(?: ver)?|bana brifing ver|aydinlat beni|gunun ozeti|gunumu ozetle|bugun ne var|sabah ozeti|gunluk ozet)$")
+    private val TRIGGER = Regex("^(?:hey )?(?:${AssistantName.WAKE})?[ ,]*(?:brifing(?: ver)?|bana brifing ver|aydinlat beni|gunun ozeti|gunumu ozetle|bugun ne var|sabah ozeti|gunluk ozet)$")
 
     fun matches(text: String): Boolean = TRIGGER.matches(Turkish.normalize(text).replace(Regex("[?.!]+$"), "").trim())
 

@@ -1,5 +1,6 @@
 package io.github.ahmetdurmus1218.jarvis.core.memory
 
+import io.github.ahmetdurmus1218.jarvis.core.AssistantName
 import io.github.ahmetdurmus1218.jarvis.core.llm.ChatMessage
 import io.github.ahmetdurmus1218.jarvis.core.llm.GenerationConfig
 import io.github.ahmetdurmus1218.jarvis.core.llm.LlmEngine
@@ -33,7 +34,7 @@ object FactExtractor {
     fun byRules(userText: String): List<String> {
         val raw = userText.trim()
         if (raw.isEmpty() || raw.endsWith("?")) return emptyList()
-        val t = lower(raw).replace(Regex("^(?:hey )?(?:jarvis|cervis)[ ,]*"), "").trimEnd('.', '!')
+        val t = lower(raw).replace(Regex("^(?:hey )?${AssistantName.WAKE}[ ,]*"), "").trimEnd('.', '!')
         val out = mutableListOf<String>()
         REMEMBER.find(t)?.let { return listOf(raw.substringAfter(':', raw.substringAfter(' ')).trim().replaceFirstChar { it.uppercase() }.trimEnd('.') + ".") }
         NAME.find(t)?.let { out += "Kullanıcının adı ${cap(it.groupValues[1])}." }

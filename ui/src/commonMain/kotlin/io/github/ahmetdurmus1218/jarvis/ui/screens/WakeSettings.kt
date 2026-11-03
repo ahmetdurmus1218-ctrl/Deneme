@@ -38,7 +38,7 @@ import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Settings → Uyanış: when Jarvis sleeps, how it wakes, clap calibration and the secret rhythm. */
+/** Settings → Uyanış: when Rick sleeps, how it wakes, clap calibration and the secret rhythm. */
 @Composable
 fun WakeSettings(bridge: PlatformBridge, settings: SettingsStore) {
     val s by settings.state.collectAsState()
@@ -60,7 +60,7 @@ fun WakeSettings(bridge: PlatformBridge, settings: SettingsStore) {
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf(WAKE_CLAP_AND_PHRASE to "Alkış + \"uyan Jarvis\"", WAKE_CLAP_ONLY to "Yalnızca alkış").forEach { (m, label) ->
+            listOf(WAKE_CLAP_AND_PHRASE to "Alkış + \"uyan Rick\"", WAKE_CLAP_ONLY to "Yalnızca alkış").forEach { (m, label) ->
                 OutlinedButton(onClick = { settings.update { it.copy(wakeMode = m) } }) {
                     Text(label, color = if (s.wakeMode == m) JarvisColors.Cyan else JarvisColors.TextDim, fontSize = 12.sp)
                 }
@@ -159,7 +159,7 @@ fun FirewallSettings(bridge: PlatformBridge) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Güvenlik duvarı", fontWeight = FontWeight.SemiBold)
         Text(status, color = if (status.startsWith("Açık")) JarvisColors.Green else JarvisColors.Amber, fontSize = 12.sp)
-        Text("İndirmeler yalnızca jarvis-kapi.exe ile, her seferinde UAC onayıyla ve en fazla 10 dakika açılan bir kapıdan yapılır.", color = JarvisColors.TextDim, fontSize = 12.sp)
+        Text("İndirmeler yalnızca rick-kapi.exe ile, her seferinde UAC onayıyla ve en fazla 10 dakika açılan bir kapıdan yapılır.", color = JarvisColors.TextDim, fontSize = 12.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(enabled = !busy, onClick = { scope.launch { busy = true; fw.install(); status = fw.status(); busy = false } }) { Text("Kuralları kur (UAC)", fontSize = 12.sp) }
             OutlinedButton(enabled = !busy, onClick = { scope.launch { busy = true; fw.remove(); status = fw.status(); busy = false } }) { Text("Kuralları kaldır", fontSize = 12.sp) }

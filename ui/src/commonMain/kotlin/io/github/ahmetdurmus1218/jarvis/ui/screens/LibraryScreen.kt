@@ -41,7 +41,7 @@ import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisColors
 import kotlinx.coroutines.launch
 
 /**
- * Kitaplık: the user's books with status, page, notes, quotes and Jarvis's notebook. Books can be
+ * Kitaplık: the user's books with status, page, notes, quotes and Rick's notebook. Books can be
  * added by name, by voice ("kitaplığıma … ekle") or from a shelf photo read by the vision model.
  */
 @Composable
@@ -137,10 +137,10 @@ private fun BookPage(b: Book, shelf: List<Book>, library: Library, assistant: As
     }
 
     val nb = b.notebook
-    Text("JARVIS'İN KİTAP DEFTERİ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontSize = 11.sp, letterSpacing = 2.sp)
+    Text("RICK'İN KİTAP DEFTERİ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontSize = 11.sp, letterSpacing = 2.sp)
     when {
         nb == null -> Text("Henüz yazılmadı.", color = JarvisColors.TextDim, fontSize = 12.sp)
-        nb.unknown -> Text("Jarvis bu kitabı tanımıyor; sayfa uydurmuyor.", color = JarvisColors.Amber, fontSize = 12.sp)
+        nb.unknown -> Text("Rick bu kitabı tanımıyor; sayfa uydurmuyor.", color = JarvisColors.Amber, fontSize = 12.sp)
         else -> {
             Text(nb.summary, color = JarvisColors.Text, fontSize = 13.sp)
             nb.ideas.forEach { Text("• $it", color = JarvisColors.Text, fontSize = 12.sp) }
@@ -154,7 +154,7 @@ private fun BookPage(b: Book, shelf: List<Book>, library: Library, assistant: As
     OutlinedButton(enabled = !writing, onClick = {
         scope.launch {
             writing = true
-            msg = "Jarvis yazıyor…"
+            msg = "Rick yazıyor…"
             val text = runCatching { assistant.plainText(BookNotebook.SYSTEM, BookNotebook.prompt(b, shelf)) }.getOrNull()
             if (text == null) {
                 msg = "Defter için gerçek bir model gerekiyor (Modeller ekranı)."
@@ -165,7 +165,7 @@ private fun BookPage(b: Book, shelf: List<Book>, library: Library, assistant: As
             }
             writing = false
         }
-    }) { Text(if (nb == null) "Jarvis doldursun" else "Yeniden yaz") }
+    }) { Text(if (nb == null) "Rick doldursun" else "Yeniden yaz") }
     if (msg.isNotEmpty()) Text(msg, color = JarvisColors.Amber, fontSize = 12.sp)
 
     Text("NOTLARINIZ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontSize = 11.sp, letterSpacing = 2.sp)

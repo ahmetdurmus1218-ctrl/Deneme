@@ -88,18 +88,18 @@ compose.desktop {
         jvmArgs += listOf("-Djarvis.version=${project.version}", "-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8")
         nativeDistributions {
             targetFormats(TargetFormat.Msi)
-            packageName = "Jarvis"
+            packageName = "Rick"
             // MSI needs MAJOR.MINOR.BUILD; strip any "-suffix".
             packageVersion = project.version.toString().substringBefore('-')
             // ASCII only: WiX builds the MSI with code page 1252, which has no ı/ş/ğ.
-            description = "Jarvis - offline Turkish personal assistant"
-            vendor = "Jarvis"
-            copyright = "Jarvis"
+            description = "Rick - offline Turkish personal assistant"
+            vendor = "Rick"
+            copyright = "Rick"
             // Bundle a complete Java runtime so the user never installs Java.
             includeAllModules = true
             windows {
                 menu = true
-                menuGroup = "Jarvis"
+                menuGroup = "Rick"
                 shortcut = true
                 dirChooser = false
                 perUserInstall = true
@@ -110,35 +110,35 @@ compose.desktop {
     }
 }
 
-// Section 4: a second launcher, jarvis-kapi.exe, is the only Jarvis program the firewall lets out
+// Section 4: a second launcher, rick-kapi.exe, is the only Rick program the firewall lets out
 // (during an approved download). jpackage launchers read app/<launcher name>.cfg, so a copy of the
 // launcher with its own .cfg (another main class) is a separate program with its own firewall rule.
 // Compose's packageMsi builds from its own inputs, not from this image, so jarvisMsiWithKapi runs
 // jpackage once more on the image (with the WiX that Compose downloaded) and replaces the MSI.
 tasks.matching { it.name == "createDistributable" }.configureEach {
     doLast {
-        val image = layout.buildDirectory.dir("compose/binaries/main/app/Jarvis").get().asFile
-        val exe = File(image, "Jarvis.exe")
-        val cfg = File(image, "app/Jarvis.cfg")
+        val image = layout.buildDirectory.dir("compose/binaries/main/app/Rick").get().asFile
+        val exe = File(image, "Rick.exe")
+        val cfg = File(image, "app/Rick.cfg")
         if (!exe.isFile || !cfg.isFile) {
-            logger.lifecycle("jarvis-kapi: no Windows launcher in ${image.path}, skipped")
+            logger.lifecycle("rick-kapi: no Windows launcher in ${image.path}, skipped")
             return@doLast
         }
-        exe.copyTo(File(image, "jarvis-kapi.exe"), overwrite = true)
+        exe.copyTo(File(image, "rick-kapi.exe"), overwrite = true)
         val kapiCfg = cfg.readLines().map { line ->
             if (line.startsWith("app.mainclass=")) "app.mainclass=io.github.ahmetdurmus1218.jarvis.desktop.kapi.KapiProcessKt" else line
         }
-        check(kapiCfg.any { it == "app.mainclass=io.github.ahmetdurmus1218.jarvis.desktop.kapi.KapiProcessKt" }) { "Jarvis.cfg has no app.mainclass" }
-        File(image, "app/jarvis-kapi.cfg").writeText(kapiCfg.joinToString("\r\n", postfix = "\r\n"))
-        logger.lifecycle("jarvis-kapi launcher added to ${image.path}")
+        check(kapiCfg.any { it == "app.mainclass=io.github.ahmetdurmus1218.jarvis.desktop.kapi.KapiProcessKt" }) { "Rick.cfg has no app.mainclass" }
+        File(image, "app/rick-kapi.cfg").writeText(kapiCfg.joinToString("\r\n", postfix = "\r\n"))
+        logger.lifecycle("rick-kapi launcher added to ${image.path}")
     }
 }
 
 val isWindowsHost = System.getProperty("os.name").orEmpty().startsWith("Windows")
 val jarvisMsiWithKapi = tasks.register("jarvisMsiWithKapi") {
-    description = "Rebuilds the MSI from the app image that contains jarvis-kapi.exe."
+    description = "Rebuilds the MSI from the app image that contains rick-kapi.exe."
     dependsOn("createDistributable")
-    val image = layout.buildDirectory.dir("compose/binaries/main/app/Jarvis")
+    val image = layout.buildDirectory.dir("compose/binaries/main/app/Rick")
     val msiDir = layout.buildDirectory.dir("compose/binaries/main/msi")
     val wixRoot = rootProject.layout.buildDirectory.dir("wixToolset")
     val ownWix = layout.buildDirectory.dir("third-party/wix")
@@ -146,7 +146,7 @@ val jarvisMsiWithKapi = tasks.register("jarvisMsiWithKapi") {
     onlyIf { isWindowsHost }
     doLast {
         val img = image.get().asFile
-        check(File(img, "jarvis-kapi.exe").isFile) { "jarvis-kapi.exe missing from ${img.path}" }
+        check(File(img, "rick-kapi.exe").isFile) { "rick-kapi.exe missing from ${img.path}" }
         // The WiX Compose downloaded if it can be found, otherwise our own pinned copy (GitHub release, SHA-256).
         val candle = wixRoot.get().asFile.walkTopDown().firstOrNull { it.name.equals("candle.exe", ignoreCase = true) } ?: run {
             val zip = ownWix.get().file("wix311-binaries.zip").asFile
@@ -172,16 +172,16 @@ val jarvisMsiWithKapi = tasks.register("jarvisMsiWithKapi") {
         val jpackage = File(System.getProperty("java.home"), "bin/jpackage.exe")
         val pb = ProcessBuilder(
             jpackage.path, "--type", "msi", "--app-image", img.path, "--dest", dest.path,
-            "--name", "Jarvis", "--app-version", version,
-            "--description", "Jarvis - offline Turkish personal assistant", "--vendor", "Jarvis", "--copyright", "Jarvis",
-            "--win-menu", "--win-menu-group", "Jarvis", "--win-shortcut", "--win-per-user-install",
+            "--name", "Rick", "--app-version", version,
+            "--description", "Rick - offline Turkish personal assistant", "--vendor", "Rick", "--copyright", "Rick",
+            "--win-menu", "--win-menu-group", "Rick", "--win-shortcut", "--win-per-user-install",
             "--win-upgrade-uuid", "6a0f0c4e-1d43-4a5e-9f0b-3c1d6f2b7a91",
         ).redirectErrorStream(true)
         pb.environment()["PATH"] = candle.parentFile.path + File.pathSeparator + (System.getenv("PATH") ?: "")
         val proc = pb.start()
         val out = proc.inputStream.readBytes().decodeToString()
         if (proc.waitFor() != 0) throw GradleException("jpackage failed:\n$out")
-        logger.lifecycle("MSI with jarvis-kapi.exe: ${dest.listFiles()?.joinToString { it.name }}")
+        logger.lifecycle("MSI with rick-kapi.exe: ${dest.listFiles()?.joinToString { it.name }}")
     }
 }
 tasks.matching { it.name == "packageMsi" }.configureEach { finalizedBy(jarvisMsiWithKapi) }

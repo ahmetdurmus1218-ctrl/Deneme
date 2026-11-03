@@ -79,6 +79,9 @@ fun ModelsScreen(bridge: PlatformBridge, registry: ModelRegistry, installer: Mod
                 }
             }
         }) { Text("Dosyadan yükle") }
+        OutlinedButton(onClick = {
+            scope.launch { msg = foundText(installer.findLocal(items, askFolder = true)) }
+        }) { Text("📂 Klasörde bul (indirmeden)") }
         msg?.let { Text(it, color = JarvisColors.Amber) }
         if (items.isEmpty()) Text("Bu sürümün kilit dosyasında model yok.", color = JarvisColors.Amber)
         val busy by installer.busy.collectAsState()
@@ -121,7 +124,7 @@ fun MemoryScreen(memory: MemoryStore, settings: SettingsStore, documents: Docume
         enabled = memory.enabled()
     }
     ScreenColumn("Hafıza") {
-        Text("Jarvis'in sizin hakkınızda hatırladıkları. Bu sürümde hafıza yalnızca uygulama açıkken tutulur; şifreli kalıcı hafıza v0.4'te gelecek.", color = JarvisColors.TextDim, fontSize = 12.sp)
+        Text("Rick'in sizin hakkınızda hatırladıkları. Bu sürümde hafıza yalnızca uygulama açıkken tutulur; şifreli kalıcı hafıza v0.4'te gelecek.", color = JarvisColors.TextDim, fontSize = 12.sp)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Hafıza açık", modifier = Modifier.weight(1f))
             Switch(checked = enabled, onCheckedChange = { v ->
@@ -146,7 +149,7 @@ fun MemoryScreen(memory: MemoryStore, settings: SettingsStore, documents: Docume
 
         Text("Belgelerim", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
         Text(
-            "PDF, TXT ve MD dosyalarınızı ekleyin; Jarvis sorularınızı bunlardan kaynak göstererek cevaplar. Belgeler cihazdan çıkmaz.",
+            "PDF, TXT ve MD dosyalarınızı ekleyin; Rick sorularınızı bunlardan kaynak göstererek cevaplar. Belgeler cihazdan çıkmaz.",
             color = JarvisColors.TextDim, fontSize = 12.sp,
         )
         Button(enabled = !importing, onClick = {
@@ -184,7 +187,7 @@ fun MemoryScreen(memory: MemoryStore, settings: SettingsStore, documents: Docume
 @Composable
 fun NetworkLogScreen(events: List<NetworkEvent>, formatTime: (Long) -> String) {
     ScreenColumn("Ağ kayıt defteri") {
-        Text("Jarvis'in yaptığı her internet isteği burada listelenir: zaman, alan adı, bayt ve onay.", color = JarvisColors.TextDim, fontSize = 12.sp)
+        Text("Rick'in yaptığı her internet isteği burada listelenir: zaman, alan adı, bayt ve onay.", color = JarvisColors.TextDim, fontSize = 12.sp)
         if (events.isEmpty()) Text("Henüz hiçbir ağ isteği yapılmadı.", color = JarvisColors.Green)
         events.asReversed().forEach { e ->
             Column(Modifier.fillMaxWidth().background(JarvisColors.SurfaceHigh, RoundedCornerShape(10.dp)).padding(10.dp)) {
@@ -206,7 +209,7 @@ fun SettingsScreen(bridge: PlatformBridge, settings: SettingsStore, registry: Mo
     ScreenColumn("Ayarlar") {
         Text("Model", fontWeight = FontWeight.SemiBold)
         val llms = registry.forPlatform(bridge.platform).filter { it.kind == "llm" }
-        Text("Kurulu modellerden biri seçilmezse cihaza uygun olan kendiliğinden kullanılır. Hiç model kurulu değilse Jarvis deneme modunda çalışır.", color = JarvisColors.TextDim, fontSize = 12.sp)
+        Text("Kurulu modellerden biri seçilmezse cihaza uygun olan kendiliğinden kullanılır. Hiç model kurulu değilse Rick deneme modunda çalışır.", color = JarvisColors.TextDim, fontSize = 12.sp)
         llms.forEach { m ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(m.title, modifier = Modifier.weight(1f))
@@ -232,7 +235,7 @@ fun SettingsScreen(bridge: PlatformBridge, settings: SettingsStore, registry: Mo
                 }) { Text("Türkçe ses paketini indir") }
             }
             SpeechInput.LanguagePack.UNSUPPORTED ->
-                Text("Telefonun cihaz içi ses tanıması Türkçe'yi desteklemiyor. Modeller ekranından Jarvis'in kendi ses tanımasını (Whisper) indirin; o zamana kadar yazarak kullanabilirsiniz.", color = JarvisColors.Amber, fontSize = 12.sp)
+                Text("Telefonun cihaz içi ses tanıması Türkçe'yi desteklemiyor. Modeller ekranından Rick'in kendi ses tanımasını (Whisper) indirin; o zamana kadar yazarak kullanabilirsiniz.", color = JarvisColors.Amber, fontSize = 12.sp)
             else -> {}
         }
         packNote?.let { Text(it, fontSize = 12.sp) }
@@ -241,7 +244,7 @@ fun SettingsScreen(bridge: PlatformBridge, settings: SettingsStore, registry: Mo
         WakeSettings(bridge, settings)
         FirewallSettings(bridge)
         Button(onClick = onRunWizard) { Text("Kurulum sihirbazını aç") }
-        Text("Jarvis ${bridge.appVersion}", color = JarvisColors.TextDim, fontSize = 12.sp)
+        Text("Rick ${bridge.appVersion}", color = JarvisColors.TextDim, fontSize = 12.sp)
     }
 }
 
@@ -251,4 +254,11 @@ private fun Toggle(label: String, value: Boolean, onChange: (Boolean) -> Unit) {
         Text(label, modifier = Modifier.weight(1f))
         Switch(checked = value, onCheckedChange = onChange)
     }
+}
+
+/** Result line of "Klasörde bul" (-1: cancelled). */
+fun foundText(n: Int): String? = when {
+    n < 0 -> null
+    n == 0 -> "Eşleşen model dosyası bulunamadı (dosya adı, boyutu ve SHA-256 özeti kilit dosyasıyla aynı olmalı)."
+    else -> "$n dosya bu cihazda bulundu ve doğrulandı; indirilmeyecek."
 }

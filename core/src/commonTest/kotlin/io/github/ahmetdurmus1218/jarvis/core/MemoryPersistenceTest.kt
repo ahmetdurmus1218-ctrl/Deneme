@@ -36,7 +36,7 @@ class MemoryPersistenceTest {
     @Test
     fun factsFromTheUsersOwnWords() {
         assertEquals(listOf("Kullanıcının adı Ahmet."), FactExtractor.byRules("Benim adım Ahmet."))
-        assertEquals(listOf("Kullanıcı Manisa'da yaşıyor."), FactExtractor.byRules("Jarvis, Manisa'da yaşıyorum"))
+        assertEquals(listOf("Kullanıcı Manisa'da yaşıyor."), FactExtractor.byRules("Rick, Manisa'da yaşıyorum"))
         assertEquals(listOf("Kullanıcı türk kahvesi seviyor."), FactExtractor.byRules("Ben türk kahvesi severim"))
         assertEquals(listOf("Kullanıcı patlıcan sevmiyor."), FactExtractor.byRules("patlıcan sevmem"))
         assertEquals(listOf("Kullanıcının fıstık alerjisi var."), FactExtractor.byRules("Fıstık alerjim var"))

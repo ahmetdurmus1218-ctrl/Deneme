@@ -27,7 +27,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
- * Jarvis's own speech recognition: the microphone is recorded by this app and decoded on the phone
+ * Rick's own speech recognition: the microphone is recorded by this app and decoded on the phone
  * with Whisper small (sherpa-onnx). It does not depend on the phone maker's speech service and works
  * the same on every device once the three hash-verified Whisper files are installed.
  */
@@ -36,7 +36,7 @@ class WhisperSpeechInput(
     private val registry: ModelRegistry,
     private val ensureMicPermission: suspend () -> Boolean,
 ) : SpeechInput {
-    override val engineName = "Whisper small (Jarvis'in kendi ses tanıması, cihaz içi)"
+    override val engineName = "Whisper small (Rick'in kendi ses tanıması, cihaz içi)"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var job: Job? = null
     @Volatile private var stopRequested = false
@@ -62,7 +62,7 @@ class WhisperSpeechInput(
         job = scope.launch {
             try {
                 if (!ensureMicPermission()) {
-                    listener.onError("Mikrofon izni gerekli. Telefon Ayarları → Uygulamalar → Jarvis → İzinler → Mikrofon.")
+                    listener.onError("Mikrofon izni gerekli. Telefon Ayarları → Uygulamalar → Rick → İzinler → Mikrofon.")
                     return@launch
                 }
                 val paths = installedFiles() ?: run {
