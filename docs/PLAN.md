@@ -57,6 +57,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Sahne tasarımı: canlı çekirdek, durum, daktilo altyazı, cam kartlar, sayaç sayılar, geçmiş görünümü, durum çubuğu.
 - [x] Sohbet modu (eller serbest), testli.
 - [x] PC'de Whisper mikrofon (Windows'ta CI testiyle doğrulandı).
+- [x] `v0.2.4` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v0.2.4
 - [ ] Sıradaki arayüz adımları: kamera ile el/yüz takibi ve efektler (kullanıcı kararı bekleniyor), Mark 1/Mark 2 gibi yoğunluk seçeneği.
 
 ## v0.3 — Bilgi
