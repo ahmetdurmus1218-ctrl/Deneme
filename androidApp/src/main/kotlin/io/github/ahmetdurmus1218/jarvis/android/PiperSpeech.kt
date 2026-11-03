@@ -80,11 +80,14 @@ class PiperSpeechOutput(
     private val storage: AndroidModelStorage,
     private val registry: ModelRegistry,
     private val fallback: SpeechOutput,
+    /** True when the media volume is all the way down (nothing can be heard). */
+    private val mediaMuted: () -> Boolean = { false },
 ) : SpeechOutput {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val loadLock = Mutex()
     @Volatile private var tts: OfflineTts? = null
     @Volatile private var failed = false
+    @Volatile private var failure: String? = null
     @Volatile private var track: AudioTrack? = null
     @Volatile private var generation = 0
 
@@ -101,8 +104,10 @@ class PiperSpeechOutput(
 
     override val silentReason: String?
         get() = when {
+            mediaMuted() -> "Telefonun medya sesi kapalı; yan taraftaki ses tuşuyla açın."
             tts != null -> null
             installed() && !failed -> null // still loading: speak() waits for it
+            failed -> "Rick'in sesi açılamadı (${failure ?: "bilinmeyen hata"}). Modeller ekranından Piper'ı silip yeniden indirin."
             else -> fallback.silentReason
         }
 
@@ -129,6 +134,7 @@ class PiperSpeechOutput(
         } catch (e: Throwable) {
             Log.w(TAG, "Piper voice failed to load", e)
             failed = true
+            failure = e.message ?: e.javaClass.simpleName
             null
         }
     }
@@ -156,7 +162,7 @@ class PiperSpeechOutput(
         val sampleRate = engine.sampleRate()
         withContext(Dispatchers.IO) {
             val out = AudioTrack.Builder()
-                .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
                 .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_FLOAT).setSampleRate(sampleRate).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
                 .setTransferMode(AudioTrack.MODE_STREAM)
                 .setBufferSizeInBytes(AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT) * 4)

@@ -248,6 +248,7 @@ fun SettingsScreen(bridge: PlatformBridge, settings: SettingsStore, registry: Mo
         }
         packNote?.let { Text(it, fontSize = 12.sp) }
         Text("Ses sentezi: ${bridge.speechOutput?.engineName ?: "yok"}", color = JarvisColors.TextDim, fontSize = 12.sp)
+        VoiceTest(bridge, s.speechRate)
         DisplaySettings(settings)
         WakeSettings(bridge, settings)
         FirewallSettings(bridge)
@@ -269,4 +270,23 @@ fun foundText(n: Int): String? = when {
     n < 0 -> null
     n == 0 -> "Eşleşen model dosyası bulunamadı (dosya adı, boyutu ve SHA-256 özeti kilit dosyasıyla aynı olmalı)."
     else -> "$n dosya bu cihazda bulundu ve doğrulandı; indirilmeyecek."
+}
+
+/** "🔊 Sesi dene": speaks the test sentence and says plainly why nothing was heard, if so. */
+@Composable
+private fun VoiceTest(bridge: PlatformBridge, rate: Float) {
+    val scope = rememberCoroutineScope()
+    var note by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val tts = bridge.speechOutput
+    OutlinedButton(enabled = tts != null && !busy, onClick = {
+        scope.launch {
+            busy = true
+            note = "Konuşuyor…"
+            runCatching { tts?.speak(TEST_SENTENCE, rate) }
+            note = tts?.silentReason?.let { "🔇 $it" } ?: "Duymadıysanız telefonun medya sesini açın (yan ses tuşu, müzik sesi)."
+            busy = false
+        }
+    }) { Text("🔊 Sesi dene") }
+    note?.let { Text(it, color = JarvisColors.Amber, fontSize = 12.sp) }
 }

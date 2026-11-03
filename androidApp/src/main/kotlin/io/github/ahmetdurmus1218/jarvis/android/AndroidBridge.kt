@@ -102,7 +102,13 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
             else act.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
-    override val speechOutput = PiperSpeechOutput(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, AndroidSpeechOutput(app)).also { it.warmUp() }
+    override val speechOutput = PiperSpeechOutput(
+        models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, AndroidSpeechOutput(app),
+        mediaMuted = {
+            (app.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager)
+                .getStreamVolume(android.media.AudioManager.STREAM_MUSIC) == 0
+        },
+    ).also { it.warmUp() }
 
     override fun deviceInfo(): DeviceInfo {
         val am = app.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager

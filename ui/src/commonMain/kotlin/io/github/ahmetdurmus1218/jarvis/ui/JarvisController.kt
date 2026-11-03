@@ -79,6 +79,8 @@ class JarvisController(
     /** Set when an answer could not be heard (no offline Turkish voice): the chat says why and offers the voice. */
     val voiceMissing: StateFlow<String?> = _voiceMissing.asStateFlow()
 
+    private var lastSilentNotice: String? = null
+
     /** Call after the voice was installed. */
     fun voiceInstalled() {
         _voiceMissing.value = null
@@ -124,10 +126,14 @@ class JarvisController(
                     _mode.value = CoreMode.SPEAKING
                     _subtitle.value = text
                     runCatching { tts.speak(text, settings.state.value.speechRate) }
-                    tts.silentReason?.let { why ->
-                        if (_voiceMissing.value == null) {
+                    val why = tts.silentReason
+                    if (why != null && lastSilentNotice != why) {
+                        lastSilentNotice = why
+                        if (tts.ownModelGroup != null) {
                             _voiceMissing.value = why
                             _partial.value = "🔇 $why Sesli cevap için aşağıdaki düğmeyle ${AssistantName.SHORT}'in kendi Türkçe sesini indirin (internetsiz çalışır)."
+                        } else {
+                            _partial.value = "🔇 $why"
                         }
                     }
                 }
