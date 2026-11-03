@@ -163,3 +163,30 @@ altyazı ve kayarak gelen cam kartlar; geçmiş ayrı görünümde. Saat, her ka
 çizilir (`derivedStateOf`). Sohbet modu: sesle sorulan bir tur tamamen cevaplanıp seslendirilince 350 ms
 sonra yeniden dinlenir; sessizlik, "sus" ya da yazıyla soru döngüyü bitirir (denetleyici testleriyle).
 Tasarım CI'daki ekran görüntülerinden (günlüğe base64 basılır) gözden geçirilir.
+
+## D26 — Wikipedia: telefonda libzim, PC'de kiwix-serve
+Arama mantığı çekirdekte (`Wikipedia`): sorudan sorgu (soru sözcükleri atılır), önce başlık araması (tam
+eşleşen başlık öne), sonra tam metin, tekrarlar ayıklanır, en iyi makalenin ilk 2500 karakteri `wiki_ara`
+çıktısına eklenir (küçük modellerin tek turda cevaplayabilmesi için); makaleler 6000 karakterlik parçalarla
+okunur. Makale HTML'i çekirdekte düz metne çevrilir (betikler, dipnot işaretleri atılır; bilgi kutusu
+satırları korunur; Kaynakça/Dış bağlantılar'da durulur). Android'de java-libkiwix 2.7.0'ın yalnızca ZIM
+okuyucu kütüphaneleri (`c++_shared`, `zim`, `zim_wrapper`) yüklenir ve paketlenir; Kiwix sunucu kısmı
+(`libkiwix.so`, CPU türü başına ~28 MB) dışarıda bırakıldı. libkiwix'in manifesti `allowBackup=true`
+getiriyordu: Kale `false` kalır ve CI birleşik manifesti denetler. PC'de kilitli kiwix-tools'un
+`kiwix-serve`'ü 127.0.0.1'de, rastgele portta çalışır; `/suggest`, `/search?format=xml`, `/raw/...`
+kullanılır. ZIM ya da GGUF indirilirken PC'de onu çalıştıran program (kiwix-tools / llama.cpp) aynı
+indirmeye eklenir. Testler: emülatörde gerçek bir (İngilizce, 14 MB) Wikipedia ZIM'i libzim ile açılır;
+PC'de gerçek kiwix-serve (yerelde Debian 3.5.0, CI'da kilitli Windows 3.8.1).
+
+## D27 — Belgeler: BM25 + 5 harflik Türkçe kök
+Yerel embedding modeli ek indirme ve bellek gerektirdiği için ilk sürümde BM25 seçildi (görev metni
+"bulunamazsa BM25" diyor). Türkçe eklemeli bir dil olduğundan terimler normalleştirilip ilk 5 harfe
+kesilir ("Ankara'nın", "Ankara'da" → "ankar"); bu Türkçe bilgi erişiminde bilinen, sözlüksüz bir
+yöntemdir. Parçalar paragraf/cümle sınırında en fazla 700 karakter. Dizin uygulamanın özel dosyalarında
+JSON olarak tutulur (şifreleme v0.4'te). PDF metni Android'de PdfBox-Android 2.0.27.0 (BouncyCastle
+dışarıda: şifreli PDF'ler açık bir mesajla reddedilir), PC'de Apache PDFBox 3.0.8 ile çıkarılır.
+
+## D28 — Aksiyon araçları ve güvenlik
+`alarm_kur`, `zamanlayici`, `uygulama_ac` hızlı komutlarla aynı platform yürütücüsünü kullanır; yan etkili
+araç oldukları için soruda güvenilmeyen veri (Wikipedia, belge, web) okunduktan sonra reddedilir. Bir
+makaleye gömülü "alarm kur" talimatının cihaza ulaşamadığı bir testle doğrulanır.

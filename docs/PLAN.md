@@ -61,10 +61,11 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [ ] Sıradaki arayüz adımları: kamera ile el/yüz takibi ve efektler (kullanıcı kararı bekleniyor), Mark 1/Mark 2 gibi yoğunluk seçeneği.
 
 ## v0.3 — Bilgi
-- [ ] Android: java-libkiwix (`org.kiwix:libkiwix` 2.7.0 doğrulandı) ile Türkçe Wikipedia ZIM araması/okuma (`wiki_ara`, `wiki_oku`).
-- [ ] PC: `kiwix-serve` (3.8.1 kilitli) alt süreç + arama API'si.
-- [ ] Belge içe aktarma (PDF/TXT/MD), parçalama, yerel embedding ya da BM25, `belge_ara`.
-- [ ] Platform aksiyon araçlarının (alarm_kur, zamanlayici, uygulama_ac) LLM'e açılması; araç çıktısı bağlamdayken riskli aksiyon için onay.
+- [x] Android: java-libkiwix 2.7.0 (yalnızca ZIM okuyucu yerel kütüphaneleri paketlenir) ile Wikipedia ZIM araması/okuma (`wiki_ara`, `wiki_oku`); emülatörde gerçek bir Wikipedia ZIM'iyle test.
+- [x] PC: `kiwix-serve` (3.8.1 kilitli) 127.0.0.1'de alt süreç; /suggest, /search?format=xml, /raw; PC'de ZIM indirilince kiwix-tools da gelir. Gerçek kiwix-serve ile test (yerelde 3.5.0, CI'da Windows 3.8.1).
+- [x] Belge içe aktarma (PDF/TXT/MD), parçalama, Türkçe BM25 (5 harf kök), `belge_ara`; Hafıza ekranında "Belgelerim".
+- [x] Aksiyon araçları (`alarm_kur`, `zamanlayici`, `uygulama_ac`) telefonda modele açık; Wikipedia/belge okunduktan sonra reddedilir (testli); arama/mesaj uygulamaları için onay.
+- [x] Kaynak çipleri ve doğrulama Wikipedia/belge cevaplarında çalışıyor.
 
 ## v0.4 — Ses ve hafıza
 - [~] sherpa-onnx ile Whisper small: Android'de v0.2.2'de bitti; PC'de (Windows JNI 2.0.1) kaldı.

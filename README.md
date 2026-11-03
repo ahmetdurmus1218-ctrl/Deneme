@@ -4,7 +4,7 @@ Jarvis telefonunuzda (Android) ve bilgisayarınızda (Windows) **tamamen interne
 bir yapay zekâ asistanıdır. Konuşmalarınız, hafızası ve belgeleriniz cihazınızdan çıkmaz. Abonelik, API
 anahtarı ya da reklam yoktur.
 
-> **Durum:** v0.2.4. Gerçek yapay zekâ modeli ve Jarvis'in kendi Türkçe ses tanıması (Whisper) çalışıyor: telefonda Gemma 4 (LiteRT-LM), PC'de Qwen 3.5 9B
+> **Durum:** v0.3.0. Gerçek yapay zekâ modeli ve Jarvis'in kendi Türkçe ses tanıması (Whisper) çalışıyor: telefonda Gemma 4 (LiteRT-LM), PC'de Qwen 3.5 9B
 > (llama.cpp, Vulkan). Model indirilmeden önce Jarvis "sahte model" ile deneme modunda cevap verir.
 > Offline Wikipedia ve belge araması v0.3'te gelecek. Ayrıntılar: [`docs/PLAN.md`](docs/PLAN.md).
 
@@ -68,6 +68,13 @@ Jarvis'in dosyaları: `%LOCALAPPDATA%\Jarvis` (Gezgin'in adres çubuğuna yazıp
 3. Telefonda Jarvis → **Modeller** → **Dosyadan yükle** → dosyayı seçin.
 4. Jarvis dosyanın SHA-256 özetini hesaplar; kilit listesindeki bir dosyayla eşleşirse kurar. Eşleşmezse kırmızı
    **"Doğrulanamadı"** uyarısı gösterir ve iki ayrı onay ister — emin değilseniz reddedin.
+
+## 4b. Wikipedia ve belgeler
+
+- **Wikipedia:** Modeller → "Türkçe Wikipedia (resimsiz)" → İndir (3,7 GB; Wi-Fi'de indirin). Kurulunca bilgi
+  soruları kaynak gösterilerek cevaplanır.
+- **Belgeleriniz:** Hafıza → "Belge ekle (PDF / TXT / MD)". Sonra "kira sözleşmemde depozito ne kadar?" gibi sorun.
+  Belgeler yalnızca cihazınızda saklanır.
 
 ## 5. Sık sorunlar
 

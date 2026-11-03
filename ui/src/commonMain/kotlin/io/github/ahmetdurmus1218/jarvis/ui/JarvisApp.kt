@@ -78,7 +78,17 @@ class AppGraph(
     ) { NowProvider.System.now().epochMillis }
     val assistant = Assistant(
         engine,
-        DefaultTools.create(memory, wiki = bridge.zim?.let { Wikipedia(it) }, documents = documents),
+        DefaultTools.create(
+            memory,
+            wiki = bridge.zim?.let { Wikipedia(it) },
+            documents = documents,
+            // Device actions for the model; the PC has no alarms or app launching.
+            extra = if (bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.ANDROID) {
+                io.github.ahmetdurmus1218.jarvis.core.tools.ActionTools { bridge.execute(it) }.all()
+            } else {
+                emptyList()
+            },
+        ),
         memory,
     )
     val installer = ModelInstaller(bridge, registry, settings, netLog)
