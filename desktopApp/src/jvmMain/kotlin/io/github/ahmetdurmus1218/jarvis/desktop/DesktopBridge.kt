@@ -172,6 +172,7 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
     )
     /** Jarvis's own Whisper; until its files are installed, the chat offers the download. */
     override val speechInput: SpeechInput = io.github.ahmetdurmus1218.jarvis.desktop.stt.DesktopWhisperSpeechInput(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled)
+    override val micStream = io.github.ahmetdurmus1218.jarvis.desktop.stt.DesktopMicStream()
     /** Piper (the same Turkish voice as the phone) once installed; Windows SAPI tr-TR until then. */
     override val speechOutput: SpeechOutput = io.github.ahmetdurmus1218.jarvis.desktop.tts.DesktopPiperSpeech(
         models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, WindowsSapiSpeech.availableOrNull(),

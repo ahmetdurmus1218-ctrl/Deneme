@@ -100,5 +100,6 @@ class RouterTest {
         assertEquals(QuickCommand.HandControl(true), QuickCommandRouter.route("Jarvis, el kontrolünü aç"))
         assertEquals(QuickCommand.HandControl(false), QuickCommandRouter.route("el kontrolünü kapat"))
         assertEquals(null, QuickCommandRouter.route("Mars'ta hayat var mı?"))
+        assertEquals(QuickCommand.Sleep, QuickCommandRouter.route("Jarvis, uyku moduna geç"))
     }
 }

@@ -24,6 +24,14 @@ data class Settings(
     /** How Jarvis addresses the user and labels the face lock ("AHMET · TANINDI"); empty = "efendim". */
     val userName: String = "",
     val effects: io.github.ahmetdurmus1218.jarvis.core.vision.EffectSettings = io.github.ahmetdurmus1218.jarvis.core.vision.EffectSettings(),
+    /** Minutes without use before sleep mode (0 = never). */
+    val sleepAfterMin: Int = 5,
+    /** "alkis+soz": two claps then "uyan Jarvis"; "alkis": claps alone. */
+    val wakeMode: String = "alkis+soz",
+    /** How far above the room's noise a clap must jump (calibrated in Settings). */
+    val clapThreshold: Float = 8f,
+    /** The user's secret clap rhythm (gaps in ms); null = a plain double clap. */
+    val clapRhythm: List<Long>? = null,
 )
 
 private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }

@@ -232,11 +232,12 @@ fun SettingsScreen(bridge: PlatformBridge, settings: SettingsStore, registry: Mo
                 }) { Text("Türkçe ses paketini indir") }
             }
             SpeechInput.LanguagePack.UNSUPPORTED ->
-                Text("Telefonun cihaz içi ses tanıması Türkçe'yi desteklemiyor. Yazarak kullanın; Jarvis'in kendi ses tanıması (Whisper) sonraki sürümlerde geliyor.", color = JarvisColors.Amber, fontSize = 12.sp)
+                Text("Telefonun cihaz içi ses tanıması Türkçe'yi desteklemiyor. Modeller ekranından Jarvis'in kendi ses tanımasını (Whisper) indirin; o zamana kadar yazarak kullanabilirsiniz.", color = JarvisColors.Amber, fontSize = 12.sp)
             else -> {}
         }
         packNote?.let { Text(it, fontSize = 12.sp) }
         Text("Ses sentezi: ${bridge.speechOutput?.engineName ?: "yok"}", color = JarvisColors.TextDim, fontSize = 12.sp)
+        WakeSettings(bridge, settings)
         Button(onClick = onRunWizard) { Text("Kurulum sihirbazını aç") }
         Text("Jarvis ${bridge.appVersion}", color = JarvisColors.TextDim, fontSize = 12.sp)
     }

@@ -37,9 +37,13 @@ import io.github.ahmetdurmus1218.jarvis.core.memory.InMemoryMemoryStore
 import io.github.ahmetdurmus1218.jarvis.core.memory.MemoryStore
 import io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry
 import io.github.ahmetdurmus1218.jarvis.core.time.NowProvider
+import kotlinx.coroutines.launch
 import io.github.ahmetdurmus1218.jarvis.ui.screens.ApprovalScreen
 import io.github.ahmetdurmus1218.jarvis.ui.screens.CameraScreen
 import io.github.ahmetdurmus1218.jarvis.ui.screens.HomePanel
+import io.github.ahmetdurmus1218.jarvis.ui.screens.SleepScreen
+import io.github.ahmetdurmus1218.jarvis.ui.screens.WakeSequence
+import io.github.ahmetdurmus1218.jarvis.core.stt.WakePhrase
 import io.github.ahmetdurmus1218.jarvis.ui.screens.notice
 import io.github.ahmetdurmus1218.jarvis.ui.screens.VisionActions
 import io.github.ahmetdurmus1218.jarvis.ui.screens.SpeechModelOffer
@@ -119,11 +123,26 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         // "Jarvis, el kontrolünü aç" (closing is handled by the camera screen itself).
         var homeOpen by remember { mutableStateOf(false) }
         var notice by remember { mutableStateOf<String?>(null) }
+        var sleeping by remember { mutableStateOf(false) }
+        var waking by remember { mutableStateOf(false) }
+        val turnsNow by controller.turns.collectAsState()
+        val modeNow by controller.mode.collectAsState()
+        // Sleep after a while without use (any question, answer, tab or panel restarts the wait).
+        LaunchedEffect(turnsNow.size, modeNow, tab, cameraOpen, homeOpen, sleeping, waking, wizard, settings.sleepAfterMin) {
+            if (sleeping || waking || wizard || settings.sleepAfterMin <= 0) return@LaunchedEffect
+            kotlinx.coroutines.delay(settings.sleepAfterMin * 60_000L)
+            if (controller.mode.value == CoreMode.IDLE && !cameraOpen && approval == null) sleeping = true
+        }
+        LaunchedEffect(sleeping) { graph.bridge.keepScreenOn(sleeping) }
         LaunchedEffect(controller) {
             controller.appCommands.collect { c ->
                 when (c) {
                     is io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.HandControl -> if (c.on) cameraOpen = true
                     is io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.Home -> c.action.notice()?.let { notice = it }
+                    io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.Sleep -> scope.launch {
+                        kotlinx.coroutines.delay(3_500) // let it finish saying so
+                        sleeping = true
+                    }
                     else -> {}
                 }
             }
@@ -197,6 +216,23 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                 }
             }
             if (homeOpen) HomePanel(graph.home) { homeOpen = false }
+            if (sleeping) {
+                SleepScreen(graph.bridge, settings) { sleeping = false; waking = true }
+            } else if (waking) {
+                val checks = remember {
+                    listOf(
+                        "Beyin" to graph.engineLabel,
+                        "Ses tanıma" to (graph.bridge.speechInput?.engineName ?: "yok"),
+                        "Ses" to (graph.bridge.speechOutput?.engineName ?: "yok"),
+                        "Wikipedia" to (if (graph.bridge.zim?.isReady() == true) "hazır" else "kurulu değil"),
+                        "Belgeler" to "${graph.documents.list().size} belge",
+                        "Ev" to "simülasyon · 2 ışık, 2 kahve makinesi",
+                        "Ağ" to "kapalı · her şey bu cihazda",
+                    )
+                }
+                val hour = remember { NowProvider.System.now().hour }
+                WakeSequence(checks, WakePhrase.greeting(hour), onGreet = { controller.speakTest(it) }) { waking = false }
+            }
             notice?.let { n ->
                 Text(
                     "🏠 $n", color = JarvisColors.Amber, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 12.sp,

@@ -298,6 +298,7 @@ object QuickResponder {
         QuickCommand.StopSpeaking -> Sahne("", Gorsel(GorselTip.YOK))
         is QuickCommand.ShowPlanet -> Sahne("${cmd.kind.label} geliyor efendim.", Gorsel(GorselTip.BASLIK, baslik = cmd.kind.label))
         is QuickCommand.Home -> Sahne("")
+        QuickCommand.Sleep -> Sahne("Uyku moduna geçiyorum. İki alkışla uyandırabilirsiniz.")
         is QuickCommand.HandControl -> Sahne(if (cmd.on) "El kontrolü açılıyor." else "El kontrolü kapatıldı.")
         is QuickCommand.Calculate -> try {
             val r = io.github.ahmetdurmus1218.jarvis.core.tools.Calculator.format(

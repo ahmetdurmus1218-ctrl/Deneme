@@ -13,6 +13,12 @@ interface PlatformBridge {
     /** Live camera with hand and face tracking (the phone); null where there is none. */
     val camera: VisionCamera? get() = null
 
+    /** Keeps the screen from turning off (sleep mode waits for claps). */
+    fun keepScreenOn(on: Boolean) {}
+
+    /** Raw 16 kHz microphone samples for the clap wake-up (sleep mode); null if the device has none. */
+    val micStream: MicStream? get() = null
+
     /** A screenshot of this screen as JPEG (the PC), for "ekranda ne var / ekranı oku". */
     suspend fun screenshotJpeg(): ByteArray? = null
 
@@ -47,6 +53,13 @@ interface AppFiles {
     fun read(name: String): String?
     fun write(name: String, text: String)
     fun append(name: String, line: String)
+}
+
+/** The microphone as a stream of 16 kHz mono samples (−1..1), only while started; nothing is stored. */
+interface MicStream {
+    /** Starts delivering samples on a background thread; false if the microphone cannot be opened. */
+    suspend fun start(onSamples: (FloatArray, Int) -> Unit): Boolean
+    fun stop()
 }
 
 interface SpeechInput {

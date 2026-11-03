@@ -64,7 +64,7 @@ class AppUiTest {
         override fun append(name: String, line: String) { m[name] = m[name].orEmpty() + line + "\n" }
     }
 
-    private class UiTestBridge : PlatformBridge {
+    internal class UiTestBridge : PlatformBridge {
         override val platform = Platform.DESKTOP
         override val appVersion = "ui-test"
         override fun deviceInfo() = DeviceInfo("Test PC · Windows 11", 16.0, 500_000_000_000L, listOf("Önerilen model: Qwen 3.5 9B"))
@@ -198,21 +198,12 @@ class AppUiTest {
         shot("08b-ev-paneli")
         click("KAPAT")
 
-        // 6. Hand control by voice command: the PC has no tracking camera, so it opens the demo.
-        // The clock is stepped by hand from here, so the effects (endless animations) run in the test.
-        rule.mainClock.autoAdvance = false
+        // 6. Hand control by voice command: the PC has no tracking camera, so it opens the demo
+        // (the effects themselves are drawn in HandControlUiTest with a stepped clock).
         ask("Jarvis, el kontrolünü aç")
-        for (i in 0 until 100) {
-            if (rule.onAllNodesWithText("J.A.R.V.I.S · EL KONTROLÜ").fetchSemanticsNodes().isNotEmpty()) break
-            rule.mainClock.advanceTimeBy(100)
-        }
         waitForText("J.A.R.V.I.S · EL KONTROLÜ")
-        for ((ms, name) in listOf(1_500L to "09-el-ates", 3_500L to "10-el-muhur", 4_000L to "11-el-gezegen", 3_500L to "12-el-iki-elle", 2_400L to "13-el-patlama", 2_600L to "14-el-simsek", 3_000L to "15-el-isik-izi")) {
-            rule.mainClock.advanceTimeBy(ms)
-            shot(name)
-        }
-        rule.mainClock.autoAdvance = true
         waitForText("DEMO", substring = true)
+        shot("09-el-kontrolu")
         click("⚙")
         waitForText("EFEKTLER")
         shot("16-el-efekt-ayarlari")

@@ -69,6 +69,14 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
         WhisperSpeechInput(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, micPermission),
         AndroidSpeechInput(app, ensureMicPermission = micPermission, launch = { block -> activity?.launchOnUi(block) }),
     )
+    override val micStream = AndroidMicStream(micPermission)
+    override fun keepScreenOn(on: Boolean) {
+        val act = activity ?: return
+        act.runOnUiThread {
+            if (on) act.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            else act.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
     override val speechOutput = PiperSpeechOutput(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, AndroidSpeechOutput(app)).also { it.warmUp() }
 
     override fun deviceInfo(): DeviceInfo {
