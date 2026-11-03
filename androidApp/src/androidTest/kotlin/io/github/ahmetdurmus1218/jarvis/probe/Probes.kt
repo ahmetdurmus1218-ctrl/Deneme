@@ -114,7 +114,7 @@ class Probes : Instrumentation() {
         val tts = PiperSpeechOutput(storage, ModelRegistry.bundled, NoSpeech)
         if (!tts.installed()) error("Piper voice is not installed in the app")
         val t0 = System.nanoTime()
-        val (samples, rate) = tts.render("Merhaba efendim, Rick hazır. Saat on dört otuz beş.") ?: error("Piper did not load: ${tts.engineName}")
+        val (samples, rate) = tts.render("Merhaba efendim, ben Rick. Her şey hazır. Saat on dört otuz beş.") ?: error("Piper did not load: ${tts.engineName}")
         val t1 = System.nanoTime()
         out.putString("tts_ms", ((t1 - t0) / 1_000_000).toString())
         out.putString("audio_ms", (samples.size * 1000L / rate).toString())

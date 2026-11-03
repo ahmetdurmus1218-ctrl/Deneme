@@ -39,7 +39,7 @@ GitHub'da bu sayfanın sağındaki **Releases** bölümüne girin, en üstteki s
    - önerilen paketi gösterir (dil modeli + ses tanıma + ses + Türkçe Wikipedia, toplam boyutla),
    - **tek onay** ister: onay ekranında ne indirileceği, hangi siteden, boyutu ve beklenen parmak izi yazar;
      "Onayla"dan sonra parmak izi / yüz tanıma ya da ekran kilidi PIN'iniz istenir,
-   - indirir, her dosyanın SHA-256 özetini doğrular ve "Merhaba efendim, Rick hazır." der.
+   - indirir, her dosyanın SHA-256 özetini doğrular ve "Merhaba efendim, ben Rick. Her şey hazır." der.
    - İsterseniz **"Sonra kur"** deyip modelleri daha sonra sohbet ya da Modeller ekranından kurabilirsiniz.
 
 **Kullanım:** alttaki mikrofon tuşuna **basılı tutup** konuşun, bırakınca Rick cevap verir. Ya da yazın.

@@ -38,7 +38,7 @@ import io.github.ahmetdurmus1218.jarvis.ui.PlatformBridge
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisColors
 import kotlinx.coroutines.launch
 
-const val TEST_SENTENCE = "Merhaba efendim, Rick hazır."
+const val TEST_SENTENCE = "Merhaba efendim, ben Rick. Her şey hazır."
 
 private enum class Step { CHECK, BUNDLE, DOWNLOAD, TEST, DONE }
 

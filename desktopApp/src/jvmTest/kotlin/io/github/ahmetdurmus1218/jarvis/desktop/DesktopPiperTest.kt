@@ -115,7 +115,7 @@ class DesktopPiperTest {
         var rate = 0
         val tts = DesktopPiperSpeech(OneFile(copy), ModelRegistry.bundled, null) { r -> rate = r; rec }
         val t0 = System.nanoTime()
-        tts.speak("Merhaba efendim, Rick hazır. Saat on dört otuz beş.", 1f)
+        tts.speak("Merhaba efendim, ben Rick. Her şey hazır. Saat on dört otuz beş.", 1f)
         println("Piper: ${rec.samples.size} samples at $rate Hz in ${(System.nanoTime() - t0) / 1_000_000} ms; engine: ${tts.engineName}")
         assertTrue(rec.drained)
         assertTrue(rec.samples.size > rate * 2, "at least two seconds of speech")

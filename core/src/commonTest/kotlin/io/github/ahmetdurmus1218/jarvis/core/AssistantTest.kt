@@ -47,7 +47,7 @@ class AssistantTest {
     fun mockConversationStreamsScenes() = runTest {
         val events = assistant().ask("Merhaba Rick").toList()
         val scenes = events.filterIsInstance<AssistantEvent.SceneReady>()
-        assertEquals("Merhaba efendim, Rick hazır.", scenes.first().scene.sahne.ses)
+        assertEquals("Merhaba efendim, ben Rick. Her şey hazır.", scenes.first().scene.sahne.ses)
         assertIs<AssistantEvent.Completed>(events.last())
     }
 

@@ -231,7 +231,10 @@ kurulamaz ve modeller, hafıza ve ayarlar silinirdi. "Jarvis/Cervis" demeye deva
 `%LOCALAPPDATA%\Jarvis` ilk açılışta `Rick` olarak taşınır, eski güvenlik duvarı kuralları yenileri
 kurulurken silinir; MSI'ın upgrade UUID'si aynı kaldığı için yeni MSI eskisinin yerine geçer. Türkçe ekler
 değişmez: Jarvis ve Rick'in son ünlüsü (i) ve son ünsüzü (sert) aynıdır ("Rick'e", "Rick'in", "Rick'ten").
-Piper "ck"yi "k" okur.
+Piper "ck"yi "k" okur. Sınır: Whisper bu tek heceli İngilizce adı Türkçe konuşmada çoğu zaman tanımıyor
+(Piper'ın "Rick hazır" cümlesini "bir kazır" diye yazdı). Bu yüzden karşılama cümlesi "Merhaba efendim, ben
+Rick. Her şey hazır." oldu (Whisper ile cihazda sınandı) ve komutlar adı söylemeden de çalışır; adla
+seslenmek isteyenin sözü Whisper'ın yazdığı biçimlerle (rick, rik, …) eşleşir.
 
 ## D34 — İndirmeden önce cihazda ara
 Güncellemeden ya da yeniden kurulumdan sonra modellerin tekrar indirilmemesi için yükleyici her
