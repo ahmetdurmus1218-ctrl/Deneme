@@ -227,7 +227,7 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
                         SettingsPanel.AIRPLANE -> Settings.ACTION_AIRPLANE_MODE_SETTINGS
                         SettingsPanel.DISPLAY -> Settings.ACTION_DISPLAY_SETTINGS
                         SettingsPanel.BATTERY_SAVER -> Settings.ACTION_BATTERY_SAVER_SETTINGS
-                        SettingsPanel.DND -> Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS
+                        SettingsPanel.DND -> "android.settings.ZEN_MODE_SETTINGS"
                     },
                 ),
                 "Bu ayar ekranı bu telefonda yok",
@@ -250,7 +250,7 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
                     a.target != null && number == null -> "Rehberde \"${a.target}\" adında birini bulamadım."
                     number == "" -> "Rehbere bakmak için izin gerekli."
                     else -> start(
-                        Intent(Intent.ACTION_SENDTO, android.net.Uri.parse("smsto:" + (number?.let(android.net.Uri::encode) ?: ""))).putExtra("sms_body", a.text),
+                        Intent(Intent.ACTION_SENDTO, android.net.Uri.parse("smsto:" + (number?.let { android.net.Uri.encode(it) } ?: ""))).putExtra("sms_body", a.text),
                         "Mesaj uygulaması bulunamadı",
                     )
                 }

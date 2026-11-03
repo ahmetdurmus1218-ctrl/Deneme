@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -242,7 +243,7 @@ private fun InputBar(
                 ),
             )
         }
-        val buttons: @Composable () -> Unit = {
+        val buttons: @Composable RowScope.() -> Unit = {
             if (vision != null) VisionButton(vision, input, controller) { onInput("") }
             if (menu.isNotEmpty()) {
                 Box {
@@ -264,7 +265,7 @@ private fun InputBar(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) { buttons() }
             }
         } else {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 field(Modifier.weight(1f))
                 buttons()
             }
