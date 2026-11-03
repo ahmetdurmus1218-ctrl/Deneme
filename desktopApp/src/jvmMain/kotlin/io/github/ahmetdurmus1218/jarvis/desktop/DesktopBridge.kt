@@ -162,6 +162,8 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
     override val files: AppFiles = DesktopFiles(File(root, "app"))
     override val models: ModelStorage = DesktopModelStorage(File(root, "models"), partial)
     override val downloader = DesktopKapi(partial)
+    override suspend fun pickDocument(): io.github.ahmetdurmus1218.jarvis.ui.DocumentPick = DesktopDocuments.pick()
+
     /** Offline Wikipedia through a local kiwix-serve, once the ZIM and kiwix-tools are installed. */
     override val zim = io.github.ahmetdurmus1218.jarvis.desktop.knowledge.KiwixServe.forInstalled(
         models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, File(root, "bin"),

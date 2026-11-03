@@ -40,6 +40,13 @@ for p in "${FORBIDDEN[@]}"; do
   fi
 done
 
+# Conversations and memory must never leave through Android's cloud backup either. Libraries can
+# declare allowBackup=true in their manifest; the merged value in the final APK is what counts.
+if "$AAPT2" dump xmltree --file AndroidManifest.xml "$KALE_APK" | grep -q "android:allowBackup([^)]*)=true"; then
+  echo "::error::Kale APK allows backup (android:allowBackup=true)"
+  fail=1
+fi
+
 if [[ -n "$GATE_APK" ]]; then
   echo "== Gate permissions ($GATE_APK)"
   GATE_PERMS="$(perms "$GATE_APK")"

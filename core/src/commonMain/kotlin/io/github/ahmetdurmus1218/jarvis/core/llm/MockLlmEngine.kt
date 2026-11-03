@@ -103,8 +103,27 @@ class MockLlmEngine(private val tokenDelayMs: Long = 12, private val chunkSize: 
         }
     }
 
-    /** Demo answer from the article wiki_ara read: its first real sentence, with the source. */
-    private fun fromWikipedia(messages: List<ChatMessage>): String? {
+    /** Demo answer from the user's documents (belge_ara) or Wikipedia (wiki_ara), with the source. */
+    private fun fromWikipedia(messages: List<ChatMessage>): String? = fromDocuments(messages) ?: fromWiki(messages)
+
+    private fun fromDocuments(messages: List<ChatMessage>): String? {
+        val msg = messages.lastOrNull { it.role == Role.TOOL && it.toolName == "belge_ara" } ?: return null
+        val body = msg.content.substringAfter('>').substringBeforeLast("</arac_ciktisi").trim()
+        val json = runCatching { SceneJson.parseToJsonElement(body.substring(body.indexOf('{'))).jsonObject }.getOrNull() ?: return null
+        val first = (json["sonuclar"] as? kotlinx.serialization.json.JsonArray)?.firstOrNull() as? JsonObject ?: return null
+        val doc = first["belge"]?.jsonPrimitive?.contentOrNull ?: return null
+        val text = first["metin"]?.jsonPrimitive?.contentOrNull ?: return null
+        // The sentence of the piece that shares the most words with the question.
+        val question = io.github.ahmetdurmus1218.jarvis.core.knowledge.Terms.of(messages.lastOrNull { it.role == Role.USER }?.content.orEmpty()).toSet()
+        val best = text.split(Regex("(?<=[.!?])\\s+")).filter { it.length >= 10 }
+            .maxByOrNull { sentence -> io.github.ahmetdurmus1218.jarvis.core.knowledge.Terms.of(sentence).count { it in question } } ?: text
+        return reply(
+            Sahne(best.take(220).trim(), Gorsel(GorselTip.KAYNAK_KARTI, baslik = doc, kaynak = "Belgem", konum = "parça ${first["parca"]?.jsonPrimitive?.contentOrNull ?: "1"}")),
+            kaynaklar = listOf(Kaynak(doc, "belge", "parça ${first["parca"]?.jsonPrimitive?.contentOrNull ?: "1"}")),
+        )
+    }
+
+    private fun fromWiki(messages: List<ChatMessage>): String? {
         val msg = messages.lastOrNull { it.role == Role.TOOL && it.toolName == "wiki_ara" } ?: return null
         val body = msg.content.substringAfter('>').substringBeforeLast("</arac_ciktisi").trim()
         val json = runCatching { SceneJson.parseToJsonElement(body.substring(body.indexOf('{'))).jsonObject }.getOrNull() ?: return null

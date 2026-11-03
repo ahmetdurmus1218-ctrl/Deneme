@@ -127,5 +127,9 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.litertlm.android)
     implementation(libs.kiwix.libkiwix)
+    implementation(libs.pdfbox.android) {
+        // Only needed for password-protected PDFs, which are refused; saves ~7 MB.
+        exclude(group = "org.bouncycastle")
+    }
     implementation(files(sherpaAar).builtBy(fetchSherpaAar))
 }

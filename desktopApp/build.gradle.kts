@@ -69,6 +69,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.swing)
             implementation(sherpaJar("sherpa-onnx-jvm-$sherpaVersion.jar"))
             implementation(sherpaJar("sherpa-onnx-native-lib-win-x64-$sherpaVersion.jar"))
+            implementation(libs.pdfbox.desktop)
         }
         jvmTest.dependencies {
             implementation(kotlin("test"))

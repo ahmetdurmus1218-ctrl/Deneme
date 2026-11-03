@@ -1,5 +1,7 @@
 package io.github.ahmetdurmus1218.jarvis.core.assistant
 
+import io.github.ahmetdurmus1218.jarvis.core.knowledge.BelgeAraTool
+import io.github.ahmetdurmus1218.jarvis.core.knowledge.DocumentIndex
 import io.github.ahmetdurmus1218.jarvis.core.knowledge.WikiAraTool
 import io.github.ahmetdurmus1218.jarvis.core.knowledge.WikiOkuTool
 import io.github.ahmetdurmus1218.jarvis.core.knowledge.Wikipedia
@@ -10,7 +12,6 @@ import io.github.ahmetdurmus1218.jarvis.core.tools.HafizaEkleTool
 import io.github.ahmetdurmus1218.jarvis.core.tools.HafizaListeleTool
 import io.github.ahmetdurmus1218.jarvis.core.tools.HafizaSilTool
 import io.github.ahmetdurmus1218.jarvis.core.tools.HesaplaTool
-import io.github.ahmetdurmus1218.jarvis.core.tools.NotInstalledTool
 import io.github.ahmetdurmus1218.jarvis.core.tools.TarihSaatTool
 import io.github.ahmetdurmus1218.jarvis.core.tools.Tool
 import io.github.ahmetdurmus1218.jarvis.core.tools.ToolRegistry
@@ -22,12 +23,13 @@ object DefaultTools {
         now: NowProvider = NowProvider.System,
         extra: List<Tool> = emptyList(),
         wiki: Wikipedia? = null,
+        documents: DocumentIndex? = null,
     ): ToolRegistry =
         ToolRegistry(
             listOf(
                 WikiAraTool(wiki),
                 WikiOkuTool(wiki),
-                NotInstalledTool("belge_ara", "Kullanıcının içe aktardığı belgelerde arama yapar.", "Belge dizini"),
+                BelgeAraTool(documents),
                 HesaplaTool(),
                 BirimCevirTool(),
                 TarihSaatTool(now),

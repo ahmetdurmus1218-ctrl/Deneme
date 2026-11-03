@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 interface PlatformBridge {
     /** Offline Wikipedia (ZIM) access; null where the platform has none. */
     val zim: io.github.ahmetdurmus1218.jarvis.core.knowledge.ZimBackend? get() = null
+
+    /** Opens the file picker and returns the text of a PDF / TXT / MD file (read on the device). */
+    suspend fun pickDocument(): DocumentPick = DocumentPick.Failed("Bu cihazda belge ekleme desteklenmiyor")
     val platform: Platform
     val appVersion: String
     fun deviceInfo(): DeviceInfo
@@ -134,3 +137,12 @@ interface ModelStorage {
     /** Opens the system file picker and copies the chosen file into a temp location while hashing it. */
     suspend fun pickAndImport(): ImportOutcome
 }
+
+sealed interface DocumentPick {
+    data class Picked(val name: String, val text: String) : DocumentPick
+    data object Cancelled : DocumentPick
+    data class Failed(val message: String) : DocumentPick
+}
+
+/** Largest document accepted (PDFs of books are fine; this only stops accidents). */
+const val MAX_DOCUMENT_BYTES = 60L * 1024 * 1024

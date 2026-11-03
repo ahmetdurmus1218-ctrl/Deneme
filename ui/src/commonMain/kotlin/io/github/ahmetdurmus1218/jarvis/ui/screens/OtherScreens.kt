@@ -34,6 +34,8 @@ import io.github.ahmetdurmus1218.jarvis.core.memory.MemoryStore
 import io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry
 import io.github.ahmetdurmus1218.jarvis.core.models.formatBytes
 import io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent
+import io.github.ahmetdurmus1218.jarvis.core.knowledge.DocumentIndex
+import io.github.ahmetdurmus1218.jarvis.ui.DocumentPick
 import io.github.ahmetdurmus1218.jarvis.ui.DownloadState
 import io.github.ahmetdurmus1218.jarvis.ui.ModelInstaller
 import io.github.ahmetdurmus1218.jarvis.ui.PlatformBridge
@@ -106,8 +108,11 @@ fun ModelsScreen(bridge: PlatformBridge, registry: ModelRegistry, installer: Mod
 }
 
 @Composable
-fun MemoryScreen(memory: MemoryStore, settings: SettingsStore) {
+fun MemoryScreen(memory: MemoryStore, settings: SettingsStore, documents: DocumentIndex, bridge: PlatformBridge) {
     val scope = rememberCoroutineScope()
+    var docs by remember { mutableStateOf(documents.list()) }
+    var docMsg by remember { mutableStateOf<String?>(null) }
+    var importing by remember { mutableStateOf(false) }
     var facts by remember { mutableStateOf<List<Fact>>(emptyList()) }
     var enabled by remember { mutableStateOf(true) }
     var refresh by remember { mutableStateOf(0) }
@@ -138,6 +143,41 @@ fun MemoryScreen(memory: MemoryStore, settings: SettingsStore) {
             }
         }
         if (facts.isNotEmpty()) OutlinedButton(onClick = { scope.launch { memory.clear(); refresh++ } }) { Text("Tümünü sil") }
+
+        Text("Belgelerim", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
+        Text(
+            "PDF, TXT ve MD dosyalarınızı ekleyin; Jarvis sorularınızı bunlardan kaynak göstererek cevaplar. Belgeler cihazdan çıkmaz.",
+            color = JarvisColors.TextDim, fontSize = 12.sp,
+        )
+        Button(enabled = !importing, onClick = {
+            scope.launch {
+                importing = true
+                docMsg = when (val r = bridge.pickDocument()) {
+                    is DocumentPick.Picked -> runCatching { documents.add(r.name, r.text) }.fold(
+                        onSuccess = { "Eklendi: ${it.title} (${it.chunks} parça)" },
+                        onFailure = { it.message ?: "Eklenemedi" },
+                    )
+                    is DocumentPick.Failed -> r.message
+                    DocumentPick.Cancelled -> null
+                }
+                docs = documents.list()
+                importing = false
+            }
+        }) { Text(if (importing) "Okunuyor…" else "Belge ekle (PDF / TXT / MD)") }
+        docMsg?.let { Text(it, color = JarvisColors.Amber, fontSize = 13.sp) }
+        if (docs.isEmpty()) Text("Henüz belge yok.", color = JarvisColors.TextDim)
+        docs.forEach { d ->
+            Row(
+                Modifier.fillMaxWidth().background(JarvisColors.SurfaceHigh, RoundedCornerShape(10.dp)).padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(d.title)
+                    Text("${d.chunks} parça · ${d.chars} karakter", color = JarvisColors.TextDim, fontSize = 12.sp)
+                }
+                TextButton(onClick = { scope.launch { documents.remove(d.id); docs = documents.list() } }) { Text("Sil") }
+            }
+        }
     }
 }
 

@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.sp
 import io.github.ahmetdurmus1218.jarvis.core.assistant.Assistant
 import io.github.ahmetdurmus1218.jarvis.core.assistant.DefaultTools
+import io.github.ahmetdurmus1218.jarvis.core.knowledge.DocumentIndex
+import io.github.ahmetdurmus1218.jarvis.core.knowledge.TextStore
 import io.github.ahmetdurmus1218.jarvis.core.knowledge.Wikipedia
 import io.github.ahmetdurmus1218.jarvis.core.llm.EngineSelector
 import io.github.ahmetdurmus1218.jarvis.core.llm.LlmEngine
@@ -67,7 +69,18 @@ class AppGraph(
     val netLog = NetworkLogStore(bridge.files)
     val memory: MemoryStore = InMemoryMemoryStore { NowProvider.System.now().epochMillis }
     val engine = EngineSelector(fallback) { realEngine?.invoke(this) }
-    val assistant = Assistant(engine, DefaultTools.create(memory, wiki = bridge.zim?.let { Wikipedia(it) }), memory)
+    /** The user's own documents (PDF/TXT/MD), searched with BM25 by belge_ara. */
+    val documents = DocumentIndex(
+        object : TextStore {
+            override fun read(name: String) = bridge.files.read(name)
+            override fun write(name: String, text: String) = bridge.files.write(name, text)
+        },
+    ) { NowProvider.System.now().epochMillis }
+    val assistant = Assistant(
+        engine,
+        DefaultTools.create(memory, wiki = bridge.zim?.let { Wikipedia(it) }, documents = documents),
+        memory,
+    )
     val installer = ModelInstaller(bridge, registry, settings, netLog)
     val engineLabel: String get() = engine.id.let { if (it == "mock") "sahte model (gerçek model kurulu değil)" else it }
 }
@@ -124,7 +137,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                 ChatScreen(controller, graph.engineLabel, stt != null, offer)
                             }
                             Tab.MODELS -> ModelsScreen(graph.bridge, graph.registry, graph.installer)
-                            Tab.MEMORY -> MemoryScreen(graph.memory, graph.settings)
+                            Tab.MEMORY -> MemoryScreen(graph.memory, graph.settings, graph.documents, graph.bridge)
                             Tab.NETLOG -> NetworkLogScreen(netEvents, formatTime)
                             Tab.SETTINGS -> SettingsScreen(graph.bridge, graph.settings, graph.registry, graph.installer) { wizard = true }
                         }
