@@ -110,6 +110,8 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Kendini geliştirme: düzeltmelerden ve 👍/👎'den öğrenme, boştayken internetsiz Wikipedia'dan kaynaklı not defteri, brifingde "okuduklarım", Hafıza ekranında liste ve anahtar (D37).
 - [x] `v1.0.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.0.0 (rick.apk 80 MB, rick-kapi.apk 8 MB, Rick-Setup-1.0.0.msi 110 MB, models.lock.json, SHA256SUMS.txt).
 
+- [x] `v1.0.1` yayımlandı: Piper medya sesinden çalıyor (USAGE_ASSISTANT bazı telefonlarda duyulmuyordu), sessizlik nedeni sohbette, Ayarlar → 🔊 Sesi dene. https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.0.1
+
 ## Kaldığım yer
 Oturum 2 (2026-11-03): v0.3–v0.5 ve halilozat özellikleri yayımlandı (v0.5.0). Ardından kullanıcının telefon
 denemesine göre v1.0: ad Rick, sesli cevap, küçük ekran, indirmeden önce cihazda arama, modelsiz cihaz
