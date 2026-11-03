@@ -111,6 +111,9 @@ interface SpeechInput {
      */
     val ownModelGroup: String? get() = null
 
+    /** Loads the recognizer in the background so the next start answers quickly (sleep → wake word). */
+    fun warmUp() {}
+
     interface Listener {
         fun onPartial(text: String)
         fun onFinal(text: String)

@@ -189,6 +189,18 @@ class DesktopWhisperSpeechInput(
         }
     }
 
+    override fun warmUp() {
+        val paths = installedFiles() ?: return
+        scope.launch { runCatching { loaded(paths) } }
+    }
+
+    private suspend fun loaded(paths: WhisperFiles): JvmWhisperTranscriber = loadLock.withLock {
+        transcriber?.takeIf { it.paths == paths } ?: run {
+            transcriber?.close()
+            JvmWhisperTranscriber(paths).also { transcriber = it }
+        }
+    }
+
     private suspend fun transcribe(paths: WhisperFiles, samples: FloatArray): String {
         val t = loadLock.withLock {
             transcriber?.takeIf { it.paths == paths } ?: run {

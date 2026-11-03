@@ -130,6 +130,20 @@ class WhisperSpeechInput(
         }
     }
 
+    override fun warmUp() {
+        val paths = installedFiles() ?: return
+        scope.launch(Dispatchers.Default) {
+            runCatching {
+                loadLock.withLock {
+                    if (transcriber?.paths != paths) {
+                        transcriber?.close()
+                        transcriber = WhisperTranscriber(paths)
+                    }
+                }
+            }
+        }
+    }
+
     private suspend fun transcribe(paths: Triple<String, String, String>, samples: FloatArray): String {
         val t = loadLock.withLock {
             transcriber?.takeIf { it.paths == paths } ?: run {
@@ -168,6 +182,7 @@ class PreferWhisperSpeechInput(
     override fun stop() { (active ?: current).stop() }
     override fun cancel() { (active ?: current).cancel() }
     override val ownModelGroup: String? get() = if (whisper.isAvailable()) null else WhisperSpeechInput.GROUP
+    override fun warmUp() = current.warmUp()
     override suspend fun languagePack(): SpeechInput.LanguagePack = current.languagePack()
     override suspend fun downloadLanguagePack(): Boolean = current.downloadLanguagePack()
 }

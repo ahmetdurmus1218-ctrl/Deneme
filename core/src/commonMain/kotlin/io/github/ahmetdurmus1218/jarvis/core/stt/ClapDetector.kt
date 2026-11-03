@@ -127,7 +127,12 @@ class ClapDetector(
 
 /** "uyan Rick" (and Whisper spellings) after the claps. */
 object WakePhrase {
-    private val RE = Regex("\\b(?:uyan|uyanin|kalk|gunaydin)\\b")
+    /**
+     * After the claps any of these counts: "uyan", "uyansana", "uyanın", "kalk", "günaydın", "merhaba",
+     * "selam", "hey", or the name as Whisper writes it. Short words are often misheard; the claps
+     * already are the deliberate part, so this stays forgiving.
+     */
+    private val RE = Regex("\\b(?:uyan\\w*|kalk\\w*|gunaydin\\w*|merhaba|selam\\w*|hey|${io.github.ahmetdurmus1218.jarvis.core.AssistantName.WAKE})\\b")
     fun matches(text: String): Boolean = RE.containsMatchIn(io.github.ahmetdurmus1218.jarvis.core.text.Turkish.normalize(text))
 
     /** "Günaydın / İyi günler / İyi akşamlar efendim" by the hour. */

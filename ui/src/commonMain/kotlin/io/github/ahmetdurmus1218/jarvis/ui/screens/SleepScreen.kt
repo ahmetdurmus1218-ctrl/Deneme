@@ -55,11 +55,16 @@ fun SleepScreen(bridge: PlatformBridge, settings: Settings, onWake: () -> Unit) 
     var heard by remember { mutableStateOf("") }
     var level by remember { mutableStateOf(0f) }
 
+    var status by remember { mutableStateOf("") }
+
     LaunchedEffect(Unit) {
+        // Load speech recognition now, so "uyan" is understood right after the claps.
+        if (settings.wakeMode != WAKE_CLAP_ONLY) bridge.speechInput?.warmUp()
         val mic = bridge.micStream
         while (true) {
             if (mic == null) { micOk = false; return@LaunchedEffect }
             phase = Phase.SLEEP
+            status = ""
             val claps = CompletableDeferred<Unit>()
             val detector = ClapDetector(threshold = settings.clapThreshold).apply { rhythm = settings.clapRhythm }
             micOk = mic.start { s, n ->
@@ -70,17 +75,19 @@ fun SleepScreen(bridge: PlatformBridge, settings: Settings, onWake: () -> Unit) 
             claps.await()
             mic.stop()
             if (settings.wakeMode == WAKE_CLAP_ONLY) { onWake(); return@LaunchedEffect }
-            // Claps heard: now "uyan Rick" within a few seconds.
+            // Claps heard: now "uyan" (the recognizer itself gives up after ~8 s of silence).
             phase = Phase.PHRASE
+            status = "Dinliyorum…"
             val stt = bridge.speechInput
             if (stt == null || !stt.isAvailable()) { onWake(); return@LaunchedEffect }
             val said = CompletableDeferred<String?>()
             stt.start(object : SpeechInput.Listener {
-                override fun onPartial(text: String) {}
+                override fun onPartial(text: String) { if (text.isNotBlank()) status = text }
                 override fun onFinal(text: String) { said.complete(text) }
                 override fun onError(message: String) { said.complete(null) }
             })
-            val text = withTimeoutOrNull(PHRASE_WINDOW_MS) { said.await() }
+            // Generous: recording ends by itself; decoding on a phone can take several seconds.
+            val text = withTimeoutOrNull(PHRASE_RESULT_MS) { said.await() }
             if (text == null) stt.cancel()
             heard = text.orEmpty()
             if (text != null && WakePhrase.matches(text)) { onWake(); return@LaunchedEffect }
@@ -111,13 +118,13 @@ fun SleepScreen(bridge: PlatformBridge, settings: Settings, onWake: () -> Unit) 
         }
         Column(Modifier.align(Alignment.BottomCenter).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
             val hint = when {
-                phase == Phase.PHRASE -> "\"Uyan Rick\" deyin"
+                phase == Phase.PHRASE -> "\"Uyan\" deyin · $status"
                 micOk == false -> "Uyandırmak için ekrana iki kez dokunun."
                 settings.clapRhythm != null -> "Ritminizi çalın · ya da iki kez dokunun"
                 else -> "İki kez alkışlayın · ya da iki kez dokunun"
             }
             Text(hint, color = JarvisColors.TextDim.copy(alpha = 0.6f), fontFamily = FontFamily.Monospace, fontSize = 11.sp)
-            if (heard.isNotBlank() && phase == Phase.SLEEP) Text("duyulan: $heard", color = JarvisColors.TextDim.copy(alpha = 0.4f), fontSize = 10.sp)
+            if (heard.isNotBlank() && phase == Phase.SLEEP) Text("duyulan: \"$heard\" · tekrar alkışlayıp \"uyan\" deyin", color = JarvisColors.TextDim.copy(alpha = 0.5f), fontSize = 10.sp)
         }
     }
 }
@@ -126,7 +133,8 @@ private enum class Phase { SLEEP, PHRASE }
 
 const val WAKE_CLAP_AND_PHRASE = "alkis+soz"
 const val WAKE_CLAP_ONLY = "alkis"
-private const val PHRASE_WINDOW_MS = 9_000L
+/** Upper bound for one wake-word attempt: up to 8 s of waiting, the words, then decoding. */
+private const val PHRASE_RESULT_MS = 40_000L
 
 /**
  * Waking up: the rings draw one by one, real system checks appear, panels come back, and Rick
