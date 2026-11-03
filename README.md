@@ -85,6 +85,10 @@ Jarvis'in dosyaları: `%LOCALAPPDATA%\Jarvis` (Gezgin'in adres çubuğuna yazıp
   paketini indirin. ✋ ateş, ✋✋ mühür halkaları, 🤏 gezegen ("Jarvis, Mars yap"), ✊→✋ patlatma, ☝️☝️ şimşek, ☝️ ışık izi.
   Basılı tutun: 👍 dinle, ✌️ "bu ne?", ✊ sus. ⚙ ile efektleri tek tek kapatın, adınızı yazın (yüz kilidi).
 - **Kahve falı:** 📷 → "☕ Kahve falı" ile fincan fotoğrafını seçin (görebilen model gerekir).
+- **☰ menüsü** (sohbet ekranı): günlük brifing, yapılacaklar, ev, kitaplık, el kontrolü, uyku modu.
+- **Günlük brifing:** "Jarvis, brifing ver" ya da "aydınlat beni": tarih, gün ışığı, yapılacaklar, okuduğunuz kitap, ev.
+- **Yapılacaklar (✅):** "not al: süt al", "yapılacaklarım neler?", "fatura tamam".
+- **Temalar:** Ayarlar → Görünüm: yedi tema, yazı boyutu, "Hareketi azalt".
 - **Ev (🏠):** ışıklar ve kahve makineleri uygulamanın içinde canlandırılır: "bana bol köpüklü bir Türk kahvesi yap".
 - **Kitaplık (📚):** "Kitaplığıma Davranış'ı ekle", "Oblomov'da 120. sayfadayım", raf fotoğrafından ekleme.
 - **Uyku:** 5 dakika boşta kalınca uyur; iki kez alkışlayıp "uyan Jarvis" deyin (ya da ekrana iki kez dokunun).

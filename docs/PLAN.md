@@ -93,6 +93,8 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Uyku modu ve iki alkışla uyanma (+ "uyan Jarvis"), gizli ritim, kalibrasyon, sistem kontrollü uyanış sekansı.
 - [x] Kitaplık: sesle ekleme/not/alıntı/sayfa/bitirdim, raf fotoğrafından ekleme, Jarvis'in kitap defteri (benzerler yalnızca kullanıcının rafından), öneriler kendi kitaplarından.
 - [x] Mark 2 yoğun HUD.
+- [x] Temalar (7 palet, açık tema dahil), yazı boyutu, hareketi azalt; ☰ menüsü.
+- [x] Yapılacaklar listesi (sesle) ve internetsiz günlük brifing ("aydınlat beni"nin cihaz içi karşılığı).
 - [~] İnternet gerektirenler bilinçli olarak yok: haber brifingi, piyasa, hava durumu, YouTube, Home Assistant, ElevenLabs, ikinci cihazı kamera yapma (D32).
 - [~] Kamerada kitaplığa uzanıp kitabı "çekme" AR animasyonu yok; raf fotoğraftan okunuyor.
 
