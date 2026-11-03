@@ -140,13 +140,32 @@ val jarvisMsiWithKapi = tasks.register("jarvisMsiWithKapi") {
     val image = layout.buildDirectory.dir("compose/binaries/main/app/Jarvis")
     val msiDir = layout.buildDirectory.dir("compose/binaries/main/msi")
     val wixRoot = rootProject.layout.buildDirectory.dir("wixToolset")
+    val ownWix = layout.buildDirectory.dir("third-party/wix")
     val version = project.version.toString().substringBefore('-')
     onlyIf { isWindowsHost }
     doLast {
         val img = image.get().asFile
         check(File(img, "jarvis-kapi.exe").isFile) { "jarvis-kapi.exe missing from ${img.path}" }
-        val candle = wixRoot.get().asFile.walkTopDown().firstOrNull { it.name.equals("candle.exe", ignoreCase = true) }
-            ?: throw GradleException("WiX (candle.exe) not found under ${wixRoot.get().asFile}")
+        // The WiX Compose downloaded if it can be found, otherwise our own pinned copy (GitHub release, SHA-256).
+        val candle = wixRoot.get().asFile.walkTopDown().firstOrNull { it.name.equals("candle.exe", ignoreCase = true) } ?: run {
+            val zip = ownWix.get().file("wix311-binaries.zip").asFile
+            fetchVerified(
+                "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip",
+                "2c1888d5d1dba377fc7fa14444cf556963747ff9a0a289a3599cf09da03b9e2e", zip,
+            )
+            val dir = ownWix.get().dir("unpacked").asFile
+            if (!File(dir, "candle.exe").isFile) {
+                dir.mkdirs()
+                java.util.zip.ZipFile(zip).use { z ->
+                    for (e in z.entries()) {
+                        val out = File(dir, e.name).canonicalFile
+                        require(out.path.startsWith(dir.canonicalPath + File.separator)) { "bad zip entry ${e.name}" }
+                        if (e.isDirectory) out.mkdirs() else { out.parentFile.mkdirs(); z.getInputStream(e).use { i -> out.outputStream().use { i.copyTo(it) } } }
+                    }
+                }
+            }
+            File(dir, "candle.exe")
+        }
         val dest = msiDir.get().asFile.apply { mkdirs() }
         dest.listFiles()?.filter { it.name.endsWith(".msi") }?.forEach { it.delete() }
         val jpackage = File(System.getProperty("java.home"), "bin/jpackage.exe")
