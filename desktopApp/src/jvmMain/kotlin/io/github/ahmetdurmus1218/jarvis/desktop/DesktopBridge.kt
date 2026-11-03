@@ -121,7 +121,7 @@ class DesktopModelStorage(private val dir: File, private val partialDir: File) :
 
 /**
  * Windows SAPI voice through PowerShell (System.Speech), used only if a Turkish (tr-TR) voice is
- * installed. The text goes through stdin, never through the command line. Piper replaces it in v0.4.
+ * installed. The text goes through stdin, never through the command line. Used until Piper is installed.
  */
 class WindowsSapiSpeech : SpeechOutput {
     override val engineName = "Windows konuşma (SAPI, tr-TR)"
@@ -172,7 +172,10 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
     )
     /** Jarvis's own Whisper; until its files are installed, the chat offers the download. */
     override val speechInput: SpeechInput = io.github.ahmetdurmus1218.jarvis.desktop.stt.DesktopWhisperSpeechInput(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled)
-    override val speechOutput: SpeechOutput? = WindowsSapiSpeech.availableOrNull()
+    /** Piper (the same Turkish voice as the phone) once installed; Windows SAPI tr-TR until then. */
+    override val speechOutput: SpeechOutput = io.github.ahmetdurmus1218.jarvis.desktop.tts.DesktopPiperSpeech(
+        models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, WindowsSapiSpeech.availableOrNull(),
+    ).also { it.warmUp() }
 
     override fun deviceInfo(): DeviceInfo {
         val os = ManagementFactory.getOperatingSystemMXBean()
@@ -183,7 +186,7 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
             freeStorageBytes = root.usableSpace,
             notes = listOf(
                 "Önerilen model: Qwen 3.5 9B (Q4_K_M), Vulkan ile GPU'da.",
-                "Ses tanıma bu sürümde yalnızca telefonda; PC'de Whisper v0.4'te gelecek.",
+                "Ses: Whisper (dinleme) ve Piper Türkçe ses (konuşma), ikisi de bilgisayarda çalışır.",
             ),
         )
     }

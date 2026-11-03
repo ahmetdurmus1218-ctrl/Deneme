@@ -9,6 +9,7 @@ import java.io.File
 import io.github.ahmetdurmus1218.jarvis.android.AndroidModelStorage
 import io.github.ahmetdurmus1218.jarvis.android.AndroidCamera
 import io.github.ahmetdurmus1218.jarvis.android.AndroidZim
+import io.github.ahmetdurmus1218.jarvis.android.PiperSpeechOutput
 import io.github.ahmetdurmus1218.jarvis.core.vision.Gesture
 import io.github.ahmetdurmus1218.jarvis.core.vision.GestureClassifier
 import io.github.ahmetdurmus1218.jarvis.core.knowledge.Wikipedia
@@ -50,6 +51,7 @@ class Probes : Instrumentation() {
                 "whisper" -> whisper(out)
                 "wiki" -> wiki(out)
                 "tracking" -> tracking(out)
+                "piper" -> piper(out)
                 else -> error("unknown probe $probe")
             }
         } catch (t: Throwable) {
@@ -100,6 +102,42 @@ class Probes : Instrumentation() {
         val n = Turkish.normalize(text)
         val stoppedAfterSpeech = utterance.decision == SpeechEndpointer.Decision.END && samples.size < pcm.size
         return "merhaba" in n && "hava" in n && "nasil" in n && stoppedAfterSpeech
+    }
+
+    /**
+     * Jarvis's own voice ON the device: the Piper archive the app installed through Kapı is unpacked
+     * and speaks a sentence (phonemes from the core Turkish phonemizer); Whisper must hear it.
+     */
+    private fun piper(out: Bundle): Boolean = runBlocking {
+        val app = targetContext
+        val storage = AndroidModelStorage(app) { null }
+        val tts = PiperSpeechOutput(storage, ModelRegistry.bundled, NoSpeech)
+        if (!tts.installed()) error("Piper voice is not installed in the app")
+        val t0 = System.nanoTime()
+        val (samples, rate) = tts.render("Merhaba efendim, Jarvis hazır. Saat on dört otuz beş.") ?: error("Piper did not load: ${tts.engineName}")
+        val t1 = System.nanoTime()
+        out.putString("tts_ms", ((t1 - t0) / 1_000_000).toString())
+        out.putString("audio_ms", (samples.size * 1000L / rate).toString())
+        out.putString("engine", tts.engineName)
+        val n = (samples.size.toLong() * 16000 / rate).toInt()
+        val pcm = FloatArray(n) { i ->
+            val x = i * (samples.size - 1).toDouble() / (n - 1)
+            val a = x.toInt()
+            val f = (x - a).toFloat()
+            samples[a] * (1 - f) + samples[minOf(a + 1, samples.lastIndex)] * f
+        }
+        val paths = WhisperSpeechInput(storage, ModelRegistry.bundled) { true }.installedFiles() ?: error("Whisper files are not installed")
+        val t = WhisperTranscriber(paths)
+        val text = try { t.transcribe(pcm) } finally { t.close() }
+        out.putString("heard", text)
+        val norm = Turkish.normalize(text)
+        "merhaba" in norm && "hazir" in norm
+    }
+
+    private object NoSpeech : io.github.ahmetdurmus1218.jarvis.ui.SpeechOutput {
+        override val engineName = "-"
+        override suspend fun speak(text: String, rate: Float) {}
+        override fun stop() {}
     }
 
     private fun wiki(out: Bundle): Boolean = runBlocking {

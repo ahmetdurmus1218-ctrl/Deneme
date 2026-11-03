@@ -37,11 +37,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/whisper
-          key: whisper-${{ hashFiles('models.lock.json') }}
-      - run: python3 tools/fetch-models.py "$RUNNER_TEMP/whisper" stt-whisper-small
+          key: voice-files-${{ hashFiles('models.lock.json') }}
+      - run: python3 tools/fetch-models.py "$RUNNER_TEMP/whisper" stt-whisper-small tts-piper-tr
       - name: Unit tests (core, ui, desktop incl. UI walkthrough, gate)
         env:
           JARVIS_WHISPER_DIR: ${{ runner.temp }}/whisper
+          JARVIS_PIPER_ARCHIVE: ${{ runner.temp }}/whisper/vits-piper-tr_TR-dfki-medium.tar.bz2
         run: ./gradlew --no-daemon :core:jvmTest :ui:jvmTest :desktopApp:jvmTest :gate:testDebugUnitTest
       - name: Desktop UI walkthrough (text of every screen)
         if: always()
@@ -143,9 +144,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/whisper
-          key: whisper-${{ hashFiles('models.lock.json') }}
+          key: voice-files-${{ hashFiles('models.lock.json') }}
       - shell: bash
-        run: python tools/fetch-models.py "$RUNNER_TEMP/whisper" stt-whisper-small
+        run: python tools/fetch-models.py "$RUNNER_TEMP/whisper" stt-whisper-small tts-piper-tr
       - name: kiwix-tools (locked Windows build) and a small real Wikipedia ZIM for the kiwix-serve test
         shell: bash
         run: |
@@ -157,11 +158,12 @@ jobs:
         shell: bash
         env:
           JARVIS_WHISPER_DIR: ${{ runner.temp }}/whisper
+          JARVIS_PIPER_ARCHIVE: ${{ runner.temp }}/whisper/vits-piper-tr_TR-dfki-medium.tar.bz2
         run: ./gradlew --no-daemon :desktopApp:jvmTest :desktopApp:packageMsi
       - name: Desktop test output (Windows)
         if: always()
         shell: bash
-        run: grep -h "Whisper (PC path)\|kiwix-serve" desktopApp/build/test-results/jvmTest/*.xml || true
+        run: grep -h "Whisper (PC path)\|kiwix-serve\|Piper:\|Whisper heard" desktopApp/build/test-results/jvmTest/*.xml || true
       - name: jpackage logs
         if: failure()
         shell: bash

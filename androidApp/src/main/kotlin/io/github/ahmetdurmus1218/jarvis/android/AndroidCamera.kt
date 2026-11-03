@@ -1,6 +1,7 @@
 package io.github.ahmetdurmus1218.jarvis.android
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.os.SystemClock
@@ -80,36 +81,60 @@ class AndroidCamera(
         val previewView = remember { PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER } }
         val ready = trackingReady()
         val trackers = remember(ready) { if (ready) Trackers.create(app, modelPath(HAND_MODEL)!!, modelPath(FACE_MODEL)!!) else null }
+        var cameraError by remember { mutableStateOf<String?>(null) }
         DisposableEffect(trackers) { onDispose { trackers?.close() } }
         DisposableEffect(frontCamera, trackers) {
             val owner = lifecycleOwner()
             val executor = Executors.newSingleThreadExecutor()
-            val future = ProcessCameraProvider.getInstance(context)
             var provider: ProcessCameraProvider? = null
-            future.addListener({
-                if (owner == null) return@addListener
-                val p = future.get()
-                provider = p
-                val preview = CameraPreview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
-                val analysis = ImageAnalysis.Builder()
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
-                    .build()
-                analysis.setAnalyzer(executor) { proxy -> analyze(proxy, frontCamera, trackers, onFrame) }
-                val selector = if (frontCamera) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
-                try {
-                    p.unbindAll()
-                    p.bindToLifecycle(owner, selector, preview, analysis)
-                } catch (e: Exception) {
-                    Log.w(TAG, "camera bind failed", e)
-                }
-            }, ContextCompat.getMainExecutor(context))
+            if (!context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+                cameraError = NO_CAMERA
+            } else {
+                val future = ProcessCameraProvider.getInstance(context)
+                future.addListener({
+                    if (owner == null) return@addListener
+                    // A missing or busy camera must never take the app down: say so on the screen instead.
+                    try {
+                        val p = future.get()
+                        provider = p
+                        val preview = CameraPreview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
+                        val analysis = ImageAnalysis.Builder()
+                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                            .build()
+                        val wanted = if (frontCamera) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
+                        val other = if (frontCamera) CameraSelector.DEFAULT_BACK_CAMERA else CameraSelector.DEFAULT_FRONT_CAMERA
+                        val selector = when {
+                            p.hasCamera(wanted) -> wanted
+                            p.hasCamera(other) -> other
+                            else -> null
+                        }
+                        if (selector == null) {
+                            cameraError = NO_CAMERA
+                        } else {
+                            val mirror = selector == CameraSelector.DEFAULT_FRONT_CAMERA
+                            analysis.setAnalyzer(executor) { proxy -> analyze(proxy, mirror, trackers, onFrame) }
+                            p.unbindAll()
+                            p.bindToLifecycle(owner, selector, preview, analysis)
+                            cameraError = null
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "camera unavailable", e)
+                        cameraError = "Kamera açılamadı. Başka bir uygulama kullanıyor olabilir; kapatıp tekrar deneyin."
+                    }
+                }, ContextCompat.getMainExecutor(context))
+            }
             onDispose {
-                provider?.unbindAll()
+                runCatching { provider?.unbindAll() }
                 executor.shutdown()
             }
         }
-        AndroidView(factory = { previewView }, modifier = modifier)
+        Box(modifier) {
+            AndroidView(factory = { previewView }, modifier = Modifier.matchParentSize())
+            cameraError?.let { msg ->
+                Box(Modifier.matchParentSize(), contentAlignment = Alignment.Center) { Text(msg) }
+            }
+        }
     }
 
     private var lastTs = 0L
@@ -201,5 +226,6 @@ class AndroidCamera(
         const val GROUP = "vision-tracking"
         const val HAND_MODEL = "vision-hand-landmarker"
         const val FACE_MODEL = "vision-face-detector"
+        const val NO_CAMERA = "Bu cihazda kamera bulunamadı."
     }
 }

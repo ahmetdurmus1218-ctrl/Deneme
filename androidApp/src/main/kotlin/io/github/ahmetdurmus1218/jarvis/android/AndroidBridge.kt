@@ -69,7 +69,7 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
         WhisperSpeechInput(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, micPermission),
         AndroidSpeechInput(app, ensureMicPermission = micPermission, launch = { block -> activity?.launchOnUi(block) }),
     )
-    override val speechOutput = AndroidSpeechOutput(app)
+    override val speechOutput = PiperSpeechOutput(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, AndroidSpeechOutput(app)).also { it.warmUp() }
 
     override fun deviceInfo(): DeviceInfo {
         val am = app.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager

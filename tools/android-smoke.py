@@ -384,6 +384,12 @@ def main():
         if "INSTRUMENTATION_RESULT: result=PASS" not in out:
             raise SystemExit("Whisper probe failed")
 
+        step("Piper voice ON the device: Jarvis says a sentence, Whisper on the phone must hear it")
+        out = adb("shell", "am", "instrument", "-w", "-e", "probe", "piper", PROBES, check=False)
+        print(out)
+        if "INSTRUMENTATION_RESULT: result=PASS" not in out:
+            raise SystemExit("Piper probe failed")
+
         step("offline Wikipedia ON the device: libzim search + read on a real Wikipedia ZIM")
         zim = fetch_test_zim()
         adb("push", zim, "/data/local/tmp/test.zim")
