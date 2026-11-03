@@ -15,6 +15,10 @@ sealed interface QuickCommand {
     data object StopSpeaking : QuickCommand
     data class Calculate(val expression: String) : QuickCommand
     data class ConvertUnit(val value: Double, val from: String, val to: String) : QuickCommand
+    /** In-app: the planet between the fingers in hand control ("Mars yap", "Jüpiter'e çevir"). */
+    data class ShowPlanet(val kind: io.github.ahmetdurmus1218.jarvis.core.vision.PlanetKind) : QuickCommand
+    /** In-app: opens / closes hand control (the camera with effects). */
+    data class HandControl(val on: Boolean) : QuickCommand
 }
 
 /**
@@ -37,6 +41,8 @@ object QuickCommandRouter {
     private val ALARM = Regex("\\b(?:alarm|uyandir)\\w*")
     private val CLOCK = Regex("(\\d{1,2})(?:[:.](\\d{2})|\\s+(\\d{2})(?!\\d)|\\s+(bucuk)\\w*)?\\s*(?:de|da|te|ta|e|a|ye|ya)?\\b")
     private val OPEN_APP = Regex("^(.+?)\\s+(?:uygulamasini\\s+)?(?:ac|acar misin|acsana|acabilir misin|baslat)$")
+    private val PLANET = Regex("^(?:bir )?(saturn|dunya|mars|jupiter|ay|gunes)\\w*\\s+(?:yap|cevir|olsun|getir|goster)\\w*$")
+    private val HAND = Regex("^(?:el kontrol\\w*|el modu\\w*|efekt\\w*)\\s+(ac|kapat|kapa)\\w*$")
     private val CALC_SHAPE = Regex("^[\\d\\s.,+\\-*/^%()×÷:]+$")
     private val CALC_FUNC = Regex("^(?:sqrt|ln|log|sin|cos|tan|abs)\\b")
 
@@ -59,6 +65,8 @@ object QuickCommandRouter {
         if (TIME.matches(n)) return QuickCommand.TimeNow
         if (DATE.matches(n)) return QuickCommand.DateToday
         if (STOP.matches(n)) return QuickCommand.StopSpeaking
+        PLANET.matchEntire(n)?.let { m -> io.github.ahmetdurmus1218.jarvis.core.vision.PlanetKind.fromSpeech(m.groupValues[1])?.let { return QuickCommand.ShowPlanet(it) } }
+        HAND.matchEntire(n)?.let { m -> return QuickCommand.HandControl(m.groupValues[1] == "ac") }
         val nd = TurkishNumbers.wordsToDigits(n)
         timer(nd)?.let { return it }
         if (ALARM.containsMatchIn(nd)) alarm(nd)?.let { return it }

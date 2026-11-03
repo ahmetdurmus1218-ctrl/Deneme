@@ -45,6 +45,10 @@ class JarvisController(
     val memory: MemoryStore,
     val settings: SettingsStore,
 ) {
+    private val _appCommands = kotlinx.coroutines.flow.MutableSharedFlow<QuickCommand>(extraBufferCapacity = 8)
+    /** Commands for the app itself (hand control, planets), handled by the screens. */
+    val appCommands: kotlinx.coroutines.flow.SharedFlow<QuickCommand> = _appCommands
+
     private val _turns = MutableStateFlow<List<Turn>>(emptyList())
     val turns: StateFlow<List<Turn>> = _turns.asStateFlow()
 
@@ -189,7 +193,9 @@ class JarvisController(
                     updateTurn(id) { it.copy(done = true, scenes = listOf(VerifiedScene(Sahne("Tamam, susuyorum.")))) }
                     return
                 }
-                val error = bridge.execute(ev.command)
+                val inApp = ev.command is QuickCommand.ShowPlanet || ev.command is QuickCommand.HandControl
+                if (inApp) _appCommands.tryEmit(ev.command)
+                val error = if (inApp) null else bridge.execute(ev.command)
                 val scene = if (error == null) ev.scene else VerifiedScene(Sahne(error))
                 updateTurn(id) { it.copy(scenes = listOf(scene), done = true) }
                 say(scene.sahne.ses)

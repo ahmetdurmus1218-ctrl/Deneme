@@ -22,6 +22,7 @@ enum class Gesture(val label: String) {
     THUMBS_UP("Başparmak yukarı"),
     VICTORY("Zafer işareti"),
     POINTING("İşaret parmağı"),
+    PINCH("Çimdik"),
 }
 
 /**
@@ -53,12 +54,20 @@ object GestureClassifier {
         return d(p[4], p[5]) > palm * 0.55f && d(p[4], p[0]) > d(p[3], p[0])
     }
 
+    /** Thumb and index fingertips touching, with the index finger reaching out (not curled into a fist). */
+    fun isPinch(h: Hand): Boolean {
+        val p = h.points
+        val palm = d(p[0], p[9]).coerceAtLeast(1e-4f)
+        return d(p[4], p[8]) < palm * 0.3f && d(p[0], p[8]) > d(p[0], p[5]) * 1.1f
+    }
+
     fun classify(h: Hand): Gesture {
         val f = fingersExtended(h)
         val thumb = thumbExtended(h)
         val p = h.points
         val count = f.count { it }
         return when {
+            isPinch(h) && !(count == 4 && thumb) -> Gesture.PINCH
             count == 4 && thumb -> Gesture.OPEN_PALM
             count == 0 && thumb && p[4].y < p[5].y && p[4].y < p[0].y - d(p[0], p[9]) * 0.3f -> Gesture.THUMBS_UP
             count == 0 && !thumb -> Gesture.FIST

@@ -108,6 +108,12 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         var tab by remember { mutableStateOf(Tab.CHAT) }
         var wizard by remember { mutableStateOf(!settings.wizardDone) }
         var cameraOpen by remember { mutableStateOf(false) }
+        // "Jarvis, el kontrolünü aç" (closing is handled by the camera screen itself).
+        LaunchedEffect(controller) {
+            controller.appCommands.collect { c ->
+                if (c is io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.HandControl && c.on) cameraOpen = true
+            }
+        }
 
         LaunchedEffect(settings.memoryEnabled) { graph.memory.setEnabled(settings.memoryEnabled) }
         LaunchedEffect(Unit) { graph.bridge.downloader.refresh() }
@@ -115,10 +121,11 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         // Edge-to-edge on Android: keep everything clear of the status bar, navigation bar and keyboard.
         Box(Modifier.fillMaxSize().background(JarvisColors.Background).windowInsetsPadding(WindowInsets.safeDrawing)) {
             val camera = graph.bridge.camera
-            if (cameraOpen && camera != null) {
+            if (cameraOpen) {
                 CameraScreen(
                     camera, controller, graph.installer,
-                    trackingItems = graph.registry.forPlatform(graph.bridge.platform).filter { it.group == camera.trackingGroup },
+                    trackingItems = camera?.let { c -> graph.registry.forPlatform(graph.bridge.platform).filter { it.group == c.trackingGroup } }.orEmpty(),
+                    settingsStore = graph.settings,
                     onClose = { cameraOpen = false },
                 )
             } else if (wizard) {
@@ -155,7 +162,8 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                     }
                                 }
                                 val vision = VisionActions(
-                                    openCamera = camera?.let { { cameraOpen = true } },
+                                    // The phone opens its camera; the PC opens hand control as a demo.
+                                    openCamera = { cameraOpen = true },
                                     screenshot = { graph.bridge.screenshotJpeg() },
                                     pickImage = { graph.bridge.pickImageJpeg() },
                                     // The PC has no live camera: it shows the screen or an image instead.

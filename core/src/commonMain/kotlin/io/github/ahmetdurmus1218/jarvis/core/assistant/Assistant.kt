@@ -288,6 +288,8 @@ object QuickResponder {
         }
         is QuickCommand.OpenApp -> Sahne("${cmd.appName.replaceFirstChar { it.uppercase() }} açılıyor.", Gorsel(GorselTip.BASLIK, baslik = cmd.appName))
         QuickCommand.StopSpeaking -> Sahne("", Gorsel(GorselTip.YOK))
+        is QuickCommand.ShowPlanet -> Sahne("${cmd.kind.label} geliyor efendim.", Gorsel(GorselTip.BASLIK, baslik = cmd.kind.label))
+        is QuickCommand.HandControl -> Sahne(if (cmd.on) "El kontrolü açılıyor." else "El kontrolü kapatıldı.")
         is QuickCommand.Calculate -> try {
             val r = io.github.ahmetdurmus1218.jarvis.core.tools.Calculator.format(
                 io.github.ahmetdurmus1218.jarvis.core.tools.Calculator.evaluate(cmd.expression),

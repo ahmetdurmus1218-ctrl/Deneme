@@ -21,6 +21,9 @@ data class Settings(
     val fullOffline: Boolean = false,
     val memoryEnabled: Boolean = true,
     val wizardDone: Boolean = false,
+    /** How Jarvis addresses the user and labels the face lock ("AHMET · TANINDI"); empty = "efendim". */
+    val userName: String = "",
+    val effects: io.github.ahmetdurmus1218.jarvis.core.vision.EffectSettings = io.github.ahmetdurmus1218.jarvis.core.vision.EffectSettings(),
 )
 
 private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }

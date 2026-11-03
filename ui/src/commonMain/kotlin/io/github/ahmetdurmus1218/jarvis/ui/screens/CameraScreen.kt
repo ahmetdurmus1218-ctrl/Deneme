@@ -5,9 +5,11 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.withInfiniteAnimationFrameMillis
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,9 +17,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,33 +38,36 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.ahmetdurmus1218.jarvis.core.models.LockedItem
 import io.github.ahmetdurmus1218.jarvis.core.models.formatBytes
-import io.github.ahmetdurmus1218.jarvis.core.vision.FaceBox
+import io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand
+import io.github.ahmetdurmus1218.jarvis.core.vision.DemoHands
+import io.github.ahmetdurmus1218.jarvis.core.vision.EffectSettings
+import io.github.ahmetdurmus1218.jarvis.core.vision.FaceLock
 import io.github.ahmetdurmus1218.jarvis.core.vision.Gesture
 import io.github.ahmetdurmus1218.jarvis.core.vision.GestureClassifier
-import io.github.ahmetdurmus1218.jarvis.core.vision.GestureTrigger
 import io.github.ahmetdurmus1218.jarvis.core.vision.Hand
+import io.github.ahmetdurmus1218.jarvis.core.vision.HandEffects
+import io.github.ahmetdurmus1218.jarvis.core.vision.PlanetKind
 import io.github.ahmetdurmus1218.jarvis.ui.CoreMode
 import io.github.ahmetdurmus1218.jarvis.ui.JarvisController
 import io.github.ahmetdurmus1218.jarvis.ui.ModelInstaller
+import io.github.ahmetdurmus1218.jarvis.ui.SettingsStore
 import io.github.ahmetdurmus1218.jarvis.ui.VisionCamera
 import io.github.ahmetdurmus1218.jarvis.ui.VisionFrame
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisColors
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.max
 import kotlin.math.sin
 
 /** MediaPipe's hand skeleton: pairs of landmark indices joined by a bone. */
@@ -69,58 +79,146 @@ private val TIPS = listOf(4, 8, 12, 16, 20)
 
 const val QUESTION_WHAT = "Bu ne? Gördüğünü kısaca anlat."
 const val QUESTION_READ = "Buradaki yazıyı oku."
+const val QUESTION_FORTUNE = "Bu bir Türk kahvesi fincanı. Telvede gerçekten gördüğün şekillerden esprili, kısa bir kahve falı yorumla; bunun bilim olmadığını bir kez söyle."
+const val GESTURE_LEGEND = "✋ ateş · 🤏 gezegen · ✊→✋ patlat · ☝️ iz · ☝️☝️ şimşek · basılı tut: 👍 dinle ✌️ bu ne? ✊ sus"
 
 /**
- * Jarvis's eyes: the live camera with a HUD drawn over hands and faces, gestures as commands
- * (👍 listen, ✋ quiet, ✌️ what is this, ☝️ read), and "Bu ne?" / "Oku" through the vision model.
- * Faces are only located, never identified; frames never leave the phone.
+ * Hand control: the live camera (or a camera-less demo) with effects that follow the hands — fire,
+ * seal rings, pinch planets, bursts, lightning, a light trail — hold-to-act controls (👍 listen,
+ * ✌️ what is this, ✊ quiet), the face HUD lock, and "Bu ne?" / "Oku" / "Fal" through the vision
+ * model. Faces are only located, never identified; frames never leave the device.
  */
 @Composable
 fun CameraScreen(
-    camera: VisionCamera,
+    camera: VisionCamera?,
     controller: JarvisController,
     installer: ModelInstaller,
     trackingItems: List<LockedItem>,
+    settingsStore: SettingsStore,
     onClose: () -> Unit,
 ) {
+    val settings by settingsStore.state.collectAsState()
     var front by remember { mutableStateOf(true) }
+    var demo by remember { mutableStateOf(camera == null) }
+    var panel by remember { mutableStateOf(false) }
     var frame by remember { mutableStateOf<VisionFrame?>(null) }
-    var gesture by remember { mutableStateOf(Gesture.NONE) }
-    var fired by remember { mutableStateOf<Gesture?>(null) }
-    val trigger = remember { GestureTrigger() }
+    var faceLabels by remember { mutableStateOf<List<FaceLock.Label>>(emptyList()) }
+    var demoTitle by remember { mutableStateOf("") }
+    var canvasW by remember { mutableStateOf(1f) }
+    var canvasH by remember { mutableStateOf(1f) }
+    var tick by remember { mutableStateOf(0L) }
+    var fps by remember { mutableStateOf(0) }
+    val engine = remember { HandEffects() }
+    val faceLock = remember { FaceLock() }
     val scope = rememberCoroutineScope()
     val mode by controller.mode.collectAsState()
     val turns by controller.turns.collectAsState()
     val partial by controller.partialTranscript.collectAsState()
     val installed by installer.installedVersion.collectAsState()
-    val tracking = remember(installed) { camera.trackingReady() }
+    val tracking = remember(installed) { camera?.trackingReady() == true }
+    val text = rememberTextMeasurer()
+    engine.settings = settings.effects
 
     fun ask(question: String) {
+        val cam = camera ?: return controller.showNotice("Bu cihazda kamera yok: PC'de 📷 menüsünden ekran ya da resim gösterebilirsiniz.")
         scope.launch {
-            val jpeg = camera.snapshotJpeg()
+            val jpeg = cam.snapshotJpeg()
             if (jpeg == null) controller.showNotice("Kamera görüntüsü alınamadı.") else controller.askAboutImage(question, jpeg)
         }
     }
 
-    LaunchedEffect(fired) {
-        when (fired) {
-            Gesture.THUMBS_UP -> controller.startListening()
-            Gesture.OPEN_PALM -> controller.stopSpeaking()
-            Gesture.VICTORY -> ask(QUESTION_WHAT)
-            Gesture.POINTING -> ask(QUESTION_READ)
-            else -> {}
+    // "Jarvis, Mars yap" / "el kontrolünü kapat"
+    LaunchedEffect(Unit) {
+        controller.appCommands.collect { c ->
+            when (c) {
+                is QuickCommand.ShowPlanet -> engine.requestPlanet(c.kind)
+                is QuickCommand.HandControl -> if (!c.on) onClose()
+                else -> {}
+            }
         }
-        fired = null
     }
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
-        camera.Preview(Modifier.fillMaxSize(), front) { f ->
-            frame = f
-            val g = f.hands.firstOrNull()?.let(GestureClassifier::classify) ?: Gesture.NONE
-            gesture = g
-            trigger.feed(g, io.github.ahmetdurmus1218.jarvis.core.time.NowProvider.System.now().epochMillis)?.let { fired = it }
+    // One effects step per display frame, with the newest tracked hands (or the demo's).
+    LaunchedEffect(demo) {
+        // Frame time drives everything (deterministic under a test clock).
+        var start = -1L
+        var frames = 0
+        var fpsAt = -1L
+        while (isActive) {
+            // UI tests refuse infinite animations while their clock runs by itself: wait and retry.
+            val now = try {
+                withInfiniteAnimationFrameMillis { it }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                if (!isActive) throw e
+                kotlinx.coroutines.delay(200)
+                continue
+            }
+            if (start < 0) { start = now; fpsAt = now }
+            val f = frame
+            val fired: Gesture?
+            if (demo) {
+                val s = minOf(canvasW, canvasH)
+                val (scene, hands) = DemoHands.at(now - start)
+                demoTitle = scene.title
+                engine.update(now, hands, s.toInt(), s.toInt())
+                fired = null // the demo never sends commands
+            } else {
+                fired = engine.update(now, f?.hands.orEmpty(), f?.width ?: 1, f?.height ?: 1)
+                if (settings.effects.faceLock && f != null) {
+                    val (labels, greet) = faceLock.update(now, f.faces, settings.userName, busy = controller.mode.value != CoreMode.IDLE)
+                    faceLabels = labels
+                    if (greet) controller.speakTest(FaceLock.GREETING)
+                } else {
+                    faceLabels = emptyList()
+                }
+            }
+            when (fired) {
+                Gesture.THUMBS_UP -> controller.startListening()
+                Gesture.VICTORY -> ask(QUESTION_WHAT)
+                Gesture.FIST -> controller.stopSpeaking()
+                else -> {}
+            }
+            frames++
+            if (now - fpsAt >= 1_000) { fps = frames; frames = 0; fpsAt = now }
+            tick = now
         }
-        HudOverlay(frame, gesture, mode, Modifier.fillMaxSize())
+    }
+
+    val clock by rememberInfiniteTransition().animateFloat(0f, 600f, infiniteRepeatable(tween(600_000, easing = LinearEasing)))
+
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        if (!demo && camera != null) {
+            camera.Preview(Modifier.fillMaxSize(), front) { f -> frame = f }
+        } else {
+            DemoBackdrop(Modifier.fillMaxSize(), clock)
+        }
+        val shakeX = if (engine.shake > 0f) sin(tick * 0.09f) * engine.shake * 18f else 0f
+        val shakeY = if (engine.shake > 0f) sin(tick * 0.13f + 1f) * engine.shake * 12f else 0f
+        Canvas(Modifier.fillMaxSize().graphicsLayer { translationX = shakeX; translationY = shakeY }) {
+            canvasW = size.width
+            canvasH = size.height
+            if (tick < 0) return@Canvas // reading the frame tick redraws every frame
+            val m = if (demo) {
+                val s = minOf(size.width, size.height)
+                ImageMapper(s, s, size, crop = false)
+            } else {
+                val f = frame ?: return@Canvas
+                if (f.width <= 0 || f.height <= 0) return@Canvas
+                ImageMapper(f.width.toFloat(), f.height.toFloat(), size, crop = true)
+            }
+            if (!demo) {
+                val f = frame
+                if (f != null) faceLabels.forEach { l ->
+                    val x0 = m.x(l.face.left * f.width); val x1 = m.x(l.face.right * f.width)
+                    drawFaceLabel(l, minOf(x0, x1), m.y(l.face.top * f.height), maxOf(x0, x1), m.y(l.face.bottom * f.height), clock, text)
+                }
+            }
+            val hands = engine.lastHands
+            val iw = if (demo) minOf(size.width, size.height) else (frame?.width ?: 1).toFloat()
+            val ih = if (demo) minOf(size.width, size.height) else (frame?.height ?: 1).toFloat()
+            hands.forEach { h -> drawHand(h, m, iw, ih, clock, mode) }
+            drawEffects(engine, m, clock)
+        }
 
         // Top bar
         Row(
@@ -129,16 +227,31 @@ fun CameraScreen(
         ) {
             TextButton(onClick = onClose) { Text("← GERİ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace) }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("J.A.R.V.I.S · GÖRÜŞ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, fontSize = 13.sp)
+                Text("J.A.R.V.I.S · EL KONTROLÜ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, fontSize = 13.sp)
+                val g = frame?.hands?.firstOrNull()?.let(GestureClassifier::classify) ?: Gesture.NONE
                 Text(
-                    "${frame?.hands?.size ?: 0} el · ${frame?.faces?.size ?: 0} yüz" + if (gesture != Gesture.NONE) " · ${gesture.label}" else "",
+                    if (demo) "DEMO · $demoTitle · $fps FPS"
+                    else "${frame?.hands?.size ?: 0} el · ${frame?.faces?.size ?: 0} yüz · $fps FPS" + if (g != Gesture.NONE) " · ${g.label}" else "",
                     color = JarvisColors.TextDim, fontFamily = FontFamily.Monospace, fontSize = 10.sp,
                 )
             }
-            TextButton(onClick = { front = !front }) { Text("⟲", color = JarvisColors.Cyan, fontSize = 20.sp) }
+            TextButton(onClick = { panel = !panel }) { Text("⚙", color = JarvisColors.Cyan, fontSize = 20.sp) }
+            if (camera != null) {
+                TextButton(onClick = { demo = !demo }) { Text(if (demo) "KAMERA" else "DEMO", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontSize = 11.sp) }
+                if (!demo) TextButton(onClick = { front = !front }) { Text("⟲", color = JarvisColors.Cyan, fontSize = 20.sp) }
+            }
         }
 
-        // Bottom: answer, gesture legend, buttons
+        if (panel) {
+            EffectsPanel(
+                settings.effects, settings.userName,
+                onChange = { e -> settingsStore.update { it.copy(effects = e) } },
+                onName = { n -> settingsStore.update { it.copy(userName = n.take(24)) } },
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 64.dp, end = 8.dp),
+            )
+        }
+
+        // Bottom: answer, legend, buttons
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f))))
@@ -153,20 +266,106 @@ fun CameraScreen(
             } else if (answer.isNotBlank()) {
                 Text(answer, color = JarvisColors.Text, fontSize = 17.sp, textAlign = TextAlign.Center)
             }
-            if (!tracking) {
+            if (!demo && camera != null && !tracking) {
                 TrackingOffer(installer, trackingItems)
             } else {
                 Text(
-                    "👍 dinle   ✋ sus   ✌️ bu ne?   ☝️ oku",
-                    color = JarvisColors.TextDim, fontSize = 13.sp,
-                    modifier = Modifier.border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 4.dp),
+                    GESTURE_LEGEND,
+                    color = JarvisColors.TextDim, fontSize = 12.sp, textAlign = TextAlign.Center,
+                    modifier = Modifier.border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 4.dp),
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { ask(QUESTION_WHAT) }, enabled = mode != CoreMode.THINKING) { Text("BU NE?") }
-                OutlinedButton(onClick = { ask(QUESTION_READ) }, enabled = mode != CoreMode.THINKING) { Text("OKU", color = JarvisColors.Cyan) }
+            if (camera != null && !demo) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(onClick = { ask(QUESTION_WHAT) }, enabled = mode != CoreMode.THINKING) { Text("BU NE?") }
+                    OutlinedButton(onClick = { ask(QUESTION_READ) }, enabled = mode != CoreMode.THINKING) { Text("OKU", color = JarvisColors.Cyan) }
+                    OutlinedButton(onClick = { ask(QUESTION_FORTUNE) }, enabled = mode != CoreMode.THINKING) { Text("☕ FAL", color = JarvisColors.Amber) }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun DemoBackdrop(modifier: Modifier, t: Float) {
+    Canvas(modifier.background(JarvisColors.Background)) {
+        val step = 48.dp.toPx()
+        var x = (t * 20f) % step
+        while (x < size.width) {
+            drawLine(JarvisColors.Cyan.copy(alpha = 0.06f), Offset(x, 0f), Offset(x, size.height), 1f)
+            x += step
+        }
+        var y = 0f
+        while (y < size.height) {
+            drawLine(JarvisColors.Cyan.copy(alpha = 0.06f), Offset(0f, y), Offset(size.width, y), 1f)
+            y += step
+        }
+    }
+}
+
+@Composable
+private fun EffectsPanel(e: EffectSettings, name: String, onChange: (EffectSettings) -> Unit, onName: (String) -> Unit, modifier: Modifier) {
+    Column(
+        modifier.widthIn(max = 320.dp).background(JarvisColors.Surface.copy(alpha = 0.94f), RoundedCornerShape(14.dp))
+            .border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(14.dp)).padding(12.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text("EFEKTLER", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp)
+        @Composable
+        fun row(label: String, on: Boolean, set: (Boolean) -> Unit) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(label, color = JarvisColors.Text, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                Switch(checked = on, onCheckedChange = set)
+            }
+        }
+        row("✋ Ateş ve kıvılcım", e.fire) { onChange(e.copy(fire = it)) }
+        row("✋✋ Mühür halkaları", e.seals) { onChange(e.copy(seals = it)) }
+        row("🤏 Gezegen", e.planets) { onChange(e.copy(planets = it)) }
+        row("✊→✋ Patlatma", e.burst) { onChange(e.copy(burst = it)) }
+        row("☝️☝️ Şimşek", e.lightning) { onChange(e.copy(lightning = it)) }
+        row("☝️ Işık izi", e.trail) { onChange(e.copy(trail = it)) }
+        row("👍 ✌️ ✊ Jarvis kontrolleri", e.controls) { onChange(e.copy(controls = it)) }
+        row("Yüz kilidi", e.faceLock) { onChange(e.copy(faceLock = it)) }
+        Text("Gezegen", color = JarvisColors.TextDim, fontSize = 12.sp)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Chip(e.fixedPlanet == null, "Sıradaki") { onChange(e.copy(fixedPlanet = null)) }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            PlanetKind.entries.take(3).forEach { k -> Chip(e.fixedPlanet == k, k.label) { onChange(e.copy(fixedPlanet = k)) } }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            PlanetKind.entries.drop(3).forEach { k -> Chip(e.fixedPlanet == k, k.label) { onChange(e.copy(fixedPlanet = k)) } }
+        }
+        OutlinedTextField(value = name, onValueChange = onName, singleLine = true, label = { Text("Adınız (yüz kilidi)") })
+    }
+}
+
+@Composable
+private fun Chip(selected: Boolean, label: String, onClick: () -> Unit) {
+    Text(
+        label, fontSize = 11.sp,
+        color = if (selected) JarvisColors.Background else JarvisColors.Cyan,
+        modifier = Modifier
+            .background(if (selected) JarvisColors.Cyan else Color.Transparent, RoundedCornerShape(50))
+            .border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(50))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+    )
+}
+
+private fun DrawScope.drawHand(h: Hand, m: ImageMapper, iw: Float, ih: Float, t: Float, mode: CoreMode) {
+    val c = if (mode == CoreMode.LISTENING) JarvisColors.Amber else JarvisColors.Cyan
+    val pts = h.points.map { Offset(m.x(it.x * iw), m.y(it.y * ih)) }
+    val palm = (pts[0] - pts[9]).getDistance()
+    for ((a, b) in BONES) {
+        drawLine(c.copy(alpha = 0.2f), pts[a], pts[b], strokeWidth = palm * 0.14f, cap = StrokeCap.Round)
+        drawLine(c.copy(alpha = 0.9f), pts[a], pts[b], strokeWidth = palm * 0.03f, cap = StrokeCap.Round)
+    }
+    pts.forEachIndexed { i, p -> if (i !in TIPS) drawCircle(Color.White.copy(alpha = 0.8f), radius = palm * 0.03f, center = p) }
+    TIPS.forEachIndexed { k, i ->
+        val r = palm * 0.08f * (0.75f + 0.25f * sin(t * 6f + k))
+        drawCircle(Brush.radialGradient(listOf(Color.White, c, Color.Transparent), center = pts[i], radius = r * 1.8f), radius = r * 1.8f, center = pts[i])
     }
 }
 
@@ -182,89 +381,3 @@ private fun TrackingOffer(installer: ModelInstaller, items: List<LockedItem>) {
     }
 }
 
-/** Maps 0..1 image coordinates onto the preview, which fills the screen and crops the rest. */
-private class Mapper(w: Int, h: Int, canvas: Size) {
-    private val scale = max(canvas.width / w, canvas.height / h)
-    private val ox = (canvas.width - w * scale) / 2f
-    private val oy = (canvas.height - h * scale) / 2f
-    private val iw = w.toFloat()
-    private val ih = h.toFloat()
-    fun x(v: Float) = ox + v * iw * scale
-    fun y(v: Float) = oy + v * ih * scale
-}
-
-@Composable
-private fun HudOverlay(frame: VisionFrame?, gesture: Gesture, mode: CoreMode, modifier: Modifier) {
-    val t by rememberInfiniteTransition().animateFloat(0f, 600f, infiniteRepeatable(tween(600_000, easing = LinearEasing)))
-    Canvas(modifier) {
-        val f = frame ?: return@Canvas
-        if (f.width <= 0 || f.height <= 0) return@Canvas
-        val m = Mapper(f.width, f.height, size)
-        f.faces.forEach { drawFace(it, m, t) }
-        f.hands.forEachIndexed { i, h -> drawHand(h, m, t, if (i == 0) gesture else Gesture.NONE, mode) }
-    }
-}
-
-private fun DrawScope.drawHand(h: Hand, m: Mapper, t: Float, gesture: Gesture, mode: CoreMode) {
-    val c = when (gesture) {
-        Gesture.THUMBS_UP -> JarvisColors.Green
-        Gesture.OPEN_PALM -> JarvisColors.Amber
-        Gesture.VICTORY, Gesture.POINTING -> JarvisColors.Violet
-        else -> if (mode == CoreMode.LISTENING) JarvisColors.Amber else JarvisColors.Cyan
-    }
-    val pts = h.points.map { Offset(m.x(it.x), m.y(it.y)) }
-    val palmSize = (pts[0] - pts[9]).getDistance()
-    // Bones: a wide soft glow under a thin bright line.
-    for ((a, b) in BONES) {
-        drawLine(c.copy(alpha = 0.25f), pts[a], pts[b], strokeWidth = palmSize * 0.16f, cap = StrokeCap.Round)
-        drawLine(c.copy(alpha = 0.95f), pts[a], pts[b], strokeWidth = palmSize * 0.035f, cap = StrokeCap.Round)
-    }
-    pts.forEachIndexed { i, p -> if (i !in TIPS) drawCircle(Color.White.copy(alpha = 0.85f), radius = palmSize * 0.035f, center = p) }
-    // Fingertips: pulsing energy orbs.
-    TIPS.forEachIndexed { k, i ->
-        val pulse = 0.75f + 0.25f * sin(t * 6f + k)
-        val r = palmSize * 0.11f * pulse
-        drawCircle(Brush.radialGradient(listOf(Color.White, c, Color.Transparent), center = pts[i], radius = r * 1.8f), radius = r * 1.8f, center = pts[i])
-    }
-    // Open palm: an energy ring turning around the palm centre.
-    if (gesture == Gesture.OPEN_PALM) {
-        val centre = Offset((pts[0].x + pts[9].x) / 2f, (pts[0].y + pts[9].y) / 2f)
-        val r = palmSize * 0.9f
-        for (k in 0 until 3) {
-            drawArc(
-                c.copy(alpha = 0.8f), startAngle = t * 120f + k * 120f, sweepAngle = 70f, useCenter = false,
-                topLeft = Offset(centre.x - r, centre.y - r), size = Size(r * 2, r * 2), style = Stroke(width = palmSize * 0.05f, cap = StrokeCap.Round),
-            )
-        }
-        for (k in 0 until 12) {
-            val a = (t * 2f + k * PI.toFloat() / 6f)
-            val rr = r * (1.15f + 0.15f * sin(t * 5f + k))
-            drawCircle(c.copy(alpha = 0.7f), radius = palmSize * 0.025f, center = Offset(centre.x + rr * cos(a), centre.y + rr * sin(a)))
-        }
-    }
-}
-
-private fun DrawScope.drawFace(f: FaceBox, m: Mapper, t: Float) {
-    val l = m.x(f.left)
-    val r = m.x(f.right)
-    val top = m.y(f.top)
-    val b = m.y(f.bottom)
-    // The front camera preview is mirrored, so left/right may arrive swapped.
-    val left = minOf(l, r)
-    val right = maxOf(l, r)
-    val w = right - left
-    val hgt = b - top
-    val c = JarvisColors.Cyan
-    val len = minOf(w, hgt) * 0.22f
-    val sw = 3.dp.toPx()
-    // Corner brackets
-    drawLine(c, Offset(left, top), Offset(left + len, top), sw); drawLine(c, Offset(left, top), Offset(left, top + len), sw)
-    drawLine(c, Offset(right, top), Offset(right - len, top), sw); drawLine(c, Offset(right, top), Offset(right, top + len), sw)
-    drawLine(c, Offset(left, b), Offset(left + len, b), sw); drawLine(c, Offset(left, b), Offset(left, b - len), sw)
-    drawLine(c, Offset(right, b), Offset(right - len, b), sw); drawLine(c, Offset(right, b), Offset(right, b - len), sw)
-    // Scan line sweeping down the box
-    val y = top + (t * 0.8f % 1f) * hgt
-    drawLine(Brush.horizontalGradient(listOf(Color.Transparent, c.copy(alpha = 0.8f), Color.Transparent), startX = left, endX = right), Offset(left, y), Offset(right, y), sw * 0.7f)
-    // Faint fill
-    drawRect(c.copy(alpha = 0.06f), topLeft = Offset(left, top), size = Size(w, hgt))
-}

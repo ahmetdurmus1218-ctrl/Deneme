@@ -185,7 +185,25 @@ class AppUiTest {
         waitForText("Sonuç: reddedildi", substring = true)
         shot("07-ag-kayit-defteri")
 
-        // 5. Settings
+        // 5. Hand control by voice command: the PC has no tracking camera, so it opens the demo.
+        rule.onNodeWithText("Sohbet").performClick()
+        waitForText("Gönder")
+        ask("Jarvis, el kontrolünü aç")
+        waitForText("J.A.R.V.I.S · EL KONTROLÜ")
+        rule.mainClock.autoAdvance = false
+        for ((ms, name) in listOf(1_500L to "09-el-ates", 3_500L to "10-el-muhur", 4_000L to "11-el-gezegen", 3_500L to "12-el-iki-elle", 2_400L to "13-el-patlama", 2_600L to "14-el-simsek", 3_000L to "15-el-isik-izi")) {
+            rule.mainClock.advanceTimeBy(ms)
+            shot(name)
+        }
+        rule.mainClock.autoAdvance = true
+        waitForText("DEMO", substring = true)
+        click("⚙")
+        waitForText("EFEKTLER")
+        shot("16-el-efekt-ayarlari")
+        click("← GERİ")
+        waitForText("Gönder")
+
+        // 6. Settings
         rule.onNodeWithText("Ayarlar").performClick()
         waitForText("Tam offline mod (tüm indirmeler kapalı)")
         shot("08-ayarlar")

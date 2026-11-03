@@ -408,7 +408,7 @@ def main():
                 tap(allow)
                 break
             time.sleep(1)
-        wait_for(text_is("J.A.R.V.I.S · GÖRÜŞ"), "camera screen")
+        wait_for(text_is("J.A.R.V.I.S · EL KONTROLÜ"), "camera screen")
         time.sleep(3)
         shot("12a-kale-kamera-acik")
         check_no_crash()
@@ -419,12 +419,17 @@ def main():
         time.sleep(4)
         adb("shell", "input", "text", PIN)
         adb("shell", "input", "keyevent", "66")
-        wait_for(text_has("👍 dinle"), "gesture legend once tracking is installed", timeout=300)
+        wait_for(text_has("✋ ateş"), "gesture legend once tracking is installed", timeout=300)
         shot("12-kale-kamera")
         tap(wait_for(text_is("BU NE?"), "what-is-this button"))
         answer = wait_for(lambda n: "Görmek için gerçek bir model gerekiyor" in label(n) or "görüntüsü alınamadı" in label(n), "vision answer", timeout=60)
         print("vision answer:", label(answer))
         shot("13-kale-kamera-cevap")
+        tap(wait_for(text_is("DEMO"), "demo button"))
+        for name, wait in (("14-el-ates", 1.5), ("15-el-muhur", 3.5), ("16-el-gezegen", 4.0), ("17-el-simsek", 8.5)):
+            time.sleep(wait)
+            shot(name)
+        check_no_crash()
         tap(wait_for(text_is("← GERİ"), "back"))
         check_no_crash()
 

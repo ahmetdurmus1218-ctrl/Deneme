@@ -214,7 +214,8 @@ private fun VisionButton(vision: VisionActions, typed: String, controller: Jarvi
                 DropdownMenuItem(text = { Text("Ekranı göster") }, onClick = { menu = false; ask("Ekranda ne var? Kısaca anlat.", vision.screenshot) })
             }
             DropdownMenuItem(text = { Text("Resim seç") }, onClick = { menu = false; ask(QUESTION_WHAT, vision.pickImage) })
-            vision.openCamera?.let { open -> DropdownMenuItem(text = { Text("Kamera") }, onClick = { menu = false; open() }) }
+            DropdownMenuItem(text = { Text("☕ Kahve falı (fincan fotoğrafı)") }, onClick = { menu = false; ask(QUESTION_FORTUNE, vision.pickImage) })
+            vision.openCamera?.let { open -> DropdownMenuItem(text = { Text(if (vision.desktop) "✋ El kontrolü (demo)" else "Kamera") }, onClick = { menu = false; open() }) }
         }
     }
 }
