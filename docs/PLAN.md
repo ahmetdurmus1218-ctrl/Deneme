@@ -67,21 +67,38 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Aksiyon araçları (`alarm_kur`, `zamanlayici`, `uygulama_ac`) telefonda modele açık; Wikipedia/belge okunduktan sonra reddedilir (testli); arama/mesaj uygulamaları için onay.
 - [x] Kaynak çipleri ve doğrulama Wikipedia/belge cevaplarında çalışıyor.
 
+## v0.3.x — Kamera (kullanıcının halilozat/jarvis örneği, internetsiz)
+- [x] CameraX + MediaPipe Tasks Vision: el (21 nokta) ve yüz takibi telefonda; modeller kilitli, SHA-256'lı.
+- [x] Hareketler (açık el, yumruk, başparmak, zafer, işaret, çimdik), gerçek MediaPipe fotoğraflarıyla test.
+- [x] "Bu ne? / Oku / ☕ Fal" görme modeliyle (Gemma 4 görme, PC'de llama-server --mmproj); PC'de ekran ve resim.
+- [x] Emülatör testi bir çökmeyi yakaladı: kamerası olmayan cihazda CameraX hata atıyordu; artık ekranda yazıyor.
+
 ## v0.4 — Ses ve hafıza
-- [~] sherpa-onnx ile Whisper small: Android'de v0.2.2'de bitti; PC'de (Windows JNI 2.0.1) kaldı.
-- [ ] Piper tr_TR-dfki-medium: sherpa-onnx 2.0'da metin→fonem için kendi Türkçe dönüştürücümüz gerekiyor (D22).
-- [ ] Şifreli hafıza: Android Room + SQLCipher (anahtar Keystore'da), PC SQLCipher JDBC; WorkManager ile arka planda bilgi çıkarımı (FactExtractor).
+- [x] Whisper small: Android (v0.2.2) ve PC (v0.2.4).
+- [x] Piper tr_TR-dfki-medium: kendi Türkçe fonem dönüştürücümüz (espeak-ng kuralları, D29), sayılar yazıyla; telefonda ve PC'de. Doğrulama: Jarvis cümleyi söylüyor, Whisper dinliyor — emülatörde ve Windows'ta "Merhaba efendim, Cervis hazır. Saat 14.35".
+- [x] Şifreli, kalıcı hafıza: AES-256-GCM (Android Keystore anahtarı / Windows DPAPI ile korunan anahtar), hafıza, belge dizini, kitaplık, ayarlar ve ağ kaydı şifreli (D30).
+- [x] Bilgi çıkarımı: her cevaptan sonra arka planda, yalnızca kullanıcının kendi sözünden (kurallar + yerel model), "HAFIZAYA EKLENDİ" bildirimi.
 
 ## v0.5 — Son rötuşlar
-- [ ] HUD animasyonlarının son hali.
-- [ ] PC güvenlik duvarı: ilk açılışta UAC ile `netsh advfirewall` giden trafik engelleme kuralları (JVM, llama-server.exe, kiwix-serve.exe); ayrı `jarvis-kapi` başlatıcısı (`--add-launcher`) ve indirme süresince geçici izin kuralı (en çok 10 dk).
-- [ ] Belgelerin son hali.
+- [x] PC güvenlik duvarı: ilk açılışta tek UAC ile Jarvis.exe, jarvis-kapi.exe ve bin altındaki her program için dışarı çıkış engeli; indirmede UAC ile yalnızca kapi kuralı en fazla 10 dakika kalkar, oturum bitince geri gelir ve yeni açılan programları da engeller (D31). Windows CI'da gerçek kuralla curl kopyası engelleniyor, kapı açılıyor, kapanıyor, süre dolunca kendiliğinden kapanıyor.
+- [x] Ayrı `jarvis-kapi.exe` başlatıcısı (yalnızca kilit kimliği kabul eder), MSI'da olduğu CI'da denetleniyor.
+- [x] HUD: Mark 1 / Mark 2 (yoğun HUD, gerçek sayılar, çevrimdışı gün doğumu/batımı).
+- [x] Belgelerin son hali (README, değişiklik notu).
+
+## Ek — halilozat/jarvis özellikleri (internetsiz karşılıkları)
+- [x] El kontrolü: ateş + kıvılcım, iki elde mühür halkaları, çimdikle gezegen (Satürn, Dünya, Mars, Jüpiter, Ay, Güneş; taşınır, eğilir, bırakınca süzülür/fırlar, iki elle büyür), yumruk→açık el patlatma ve enerji dalgası + ekran sarsıntısı, iki işaret parmağı arasında şimşek, tek parmakla ışık izi; basılı tutma halkalı kontroller (👍 dinle ya da Türk kahvesi, ✌️ bu ne?, ✊ sus); efektler tek tek kapatılabilir; kamerasız demo; "Jarvis, Mars yap".
+- [x] Yüz HUD kilidi (algılama, tanıma değil): en yakın yüz KİLİTLENİYOR → AD · TANINDI · YETKİ: TAM, diğerleri KİŞİ · TANIMLANMADI; dakikada en fazla bir selam.
+- [x] Kahve falı (fincan fotoğrafı, görme modeli, "bilim değil" uyarısıyla).
+- [x] Akıllı ev simülasyonu: iki ışık, Türk kahve makinesi, filtre kahve; sesli komutlar, Ev paneli, bildirim.
+- [x] Uyku modu ve iki alkışla uyanma (+ "uyan Jarvis"), gizli ritim, kalibrasyon, sistem kontrollü uyanış sekansı.
+- [x] Kitaplık: sesle ekleme/not/alıntı/sayfa/bitirdim, raf fotoğrafından ekleme, Jarvis'in kitap defteri (benzerler yalnızca kullanıcının rafından), öneriler kendi kitaplarından.
+- [x] Mark 2 yoğun HUD.
+- [~] İnternet gerektirenler bilinçli olarak yok: haber brifingi, piyasa, hava durumu, YouTube, Home Assistant, ElevenLabs, ikinci cihazı kamera yapma (D32).
+- [~] Kamerada kitaplığa uzanıp kitabı "çekme" AR animasyonu yok; raf fotoğraftan okunuyor.
 
 ## Kaldığım yer
-Oturum 1 (2026-11-02): Bölüm 0 ve v0.1 yazıldı, CI yeşil, "max" incelemesi yapıldı, v0.1.0 ve gerçek
-telefondaki indirme hataları için v0.1.1 yayımlandı. v0.2 (gerçek LLM: Android LiteRT-LM + Gemma 4,
-PC llama-server + Qwen 3.5 9B) yazıldı ve v0.2.0 olarak yayımlandı. Gerçek telefonda mikrofon
-çalışmadığı için Whisper (sherpa-onnx) öne alındı, emülatörde uçtan uca doğrulandı: v0.2.2/v0.2.3.
-Kullanıcıdan beklenen karar: sıradaki aşama kamera (el/yüz takibi, okuma — gönderdiği halilozat/jarvis
-örneği gibi, ama internetsiz) mi, offline Wikipedia (v0.3) mı. Sıradaki adım: v0.3 (offline
-Wikipedia: java-libkiwix / kiwix-serve, belge araması, araç çağırma ve kaynak çipleri).
+Oturum 2 (2026-11-03): v0.3 (Wikipedia, belgeler, araçlar), kamera, v0.4 (Piper, şifreli hafıza,
+bilgi çıkarımı), v0.5 (güvenlik duvarı, jarvis-kapi.exe, Mark 2) ve halilozat/jarvis özelliklerinin
+internetsiz karşılıkları yazıldı, testlendi; v0.5.0 yayımlanıyor. Sıradaki: gerçek cihaz geri
+bildirimi (Gemma 4 / Qwen performansı, alkış eşiği, Piper sesi), kullanıcı internetli özellikleri
+isterse onay akışıyla Kapı üzerinden nasıl yapılacağına karar.

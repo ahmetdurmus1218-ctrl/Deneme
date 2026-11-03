@@ -230,6 +230,7 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
     override val speechInput: SpeechInput = io.github.ahmetdurmus1218.jarvis.desktop.stt.DesktopWhisperSpeechInput(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled)
     override val micStream = io.github.ahmetdurmus1218.jarvis.desktop.stt.DesktopMicStream()
     override val cipher = DesktopCipher(File(root, "app/key.dpapi"))
+    override fun memoryUsedMb(): Long = Runtime.getRuntime().let { (it.totalMemory() - it.freeMemory()) / 1_048_576 }
     /** Piper (the same Turkish voice as the phone) once installed; Windows SAPI tr-TR until then. */
     override val speechOutput: SpeechOutput = io.github.ahmetdurmus1218.jarvis.desktop.tts.DesktopPiperSpeech(
         models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, WindowsSapiSpeech.availableOrNull(),

@@ -19,6 +19,12 @@ interface PlatformBridge {
     /** The PC's outbound firewall rules (Windows, installed app); null elsewhere. */
     val firewall: FirewallControl? get() = null
 
+    /** Battery level in percent, or null when the device does not say (a desktop PC). */
+    fun batteryPercent(): Int? = null
+
+    /** Memory used by Jarvis in MB (Mark 2's session panel), null if unknown. */
+    fun memoryUsedMb(): Long? = null
+
     /** Keeps the screen from turning off (sleep mode waits for claps). */
     fun keepScreenOn(on: Boolean) {}
 

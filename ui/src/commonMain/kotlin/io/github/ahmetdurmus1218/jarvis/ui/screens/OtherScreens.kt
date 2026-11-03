@@ -237,6 +237,7 @@ fun SettingsScreen(bridge: PlatformBridge, settings: SettingsStore, registry: Mo
         }
         packNote?.let { Text(it, fontSize = 12.sp) }
         Text("Ses sentezi: ${bridge.speechOutput?.engineName ?: "yok"}", color = JarvisColors.TextDim, fontSize = 12.sp)
+        DisplaySettings(settings)
         WakeSettings(bridge, settings)
         FirewallSettings(bridge)
         Button(onClick = onRunWizard) { Text("Kurulum sihirbazını aç") }

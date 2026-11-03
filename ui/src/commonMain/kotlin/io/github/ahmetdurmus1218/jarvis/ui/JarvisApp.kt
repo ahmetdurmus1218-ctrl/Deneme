@@ -125,6 +125,40 @@ class AppGraph(
     val engineLabel: String get() = engine.id.let { if (it == "mock") "sahte model (gerçek model kurulu değil)" else it }
 }
 
+/** Mark 2 around the chat: real numbers refreshed every few seconds. */
+@Composable
+private fun Mark2(graph: AppGraph, city: String, content: @Composable () -> Unit) {
+    var now by remember { mutableStateOf(NowProvider.System.now()) }
+    var stats by remember { mutableStateOf<io.github.ahmetdurmus1218.jarvis.ui.screens.HudStats?>(null) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            now = NowProvider.System.now()
+            val home = graph.home.state(now.epochMillis)
+            stats = io.github.ahmetdurmus1218.jarvis.ui.screens.HudStats(
+                brain = graph.engineLabel,
+                voice = graph.bridge.speechOutput?.engineName ?: "yok",
+                wiki = graph.bridge.zim?.isReady() == true,
+                facts = graph.memory.list().size,
+                documents = graph.documents.list().size,
+                books = graph.library.books().size,
+                lightsOn = home.lights.count { it.on },
+                coffee = when {
+                    home.turkish.state == io.github.ahmetdurmus1218.jarvis.core.home.Brew.BREWING -> "Türk kahvesi pişiyor"
+                    home.turkish.state == io.github.ahmetdurmus1218.jarvis.core.home.Brew.READY -> "Türk kahvesi hazır"
+                    home.filter.state == io.github.ahmetdurmus1218.jarvis.core.home.Brew.BREWING -> "filtre demleniyor"
+                    home.filter.state == io.github.ahmetdurmus1218.jarvis.core.home.Brew.READY -> "filtre hazır"
+                    else -> "boşta"
+                },
+                battery = graph.bridge.batteryPercent(),
+                memoryMb = graph.bridge.memoryUsedMb(),
+            )
+            kotlinx.coroutines.delay(2_000)
+        }
+    }
+    val s = stats
+    if (s == null) content() else io.github.ahmetdurmus1218.jarvis.ui.screens.Mark2Frame(now, city, s, content)
+}
+
 @Composable
 fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
     JarvisTheme {
@@ -224,7 +258,10 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                     // The PC has no live camera: it shows the screen or an image instead.
                                     desktop = graph.bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.DESKTOP,
                                 )
-                                ChatScreen(controller, graph.engineLabel, stt != null, offer, vision, onHome = { homeOpen = true }, onLibrary = { libraryOpen = true })
+                                val chat: @Composable () -> Unit = {
+                                    ChatScreen(controller, graph.engineLabel, stt != null, offer, vision, onHome = { homeOpen = true }, onLibrary = { libraryOpen = true })
+                                }
+                                if (settings.hudMark == 2) Mark2(graph, settings.city, chat) else chat()
                             }
                             Tab.MODELS -> ModelsScreen(graph.bridge, graph.registry, graph.installer)
                             Tab.MEMORY -> MemoryScreen(graph.memory, graph.settings, graph.documents, graph.bridge)

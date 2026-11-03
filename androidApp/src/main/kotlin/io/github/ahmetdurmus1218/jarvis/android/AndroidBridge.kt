@@ -87,6 +87,10 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
         }
     }
     override val cipher = KeystoreCipher()
+    override fun batteryPercent(): Int? =
+        (app.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager)?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)?.takeIf { it in 0..100 }
+    override fun memoryUsedMb(): Long = Runtime.getRuntime().let { (it.totalMemory() - it.freeMemory()) / 1_048_576 } +
+        android.os.Debug.getNativeHeapAllocatedSize() / 1_048_576
     override fun keepScreenOn(on: Boolean) {
         val act = activity ?: return
         act.runOnUiThread {

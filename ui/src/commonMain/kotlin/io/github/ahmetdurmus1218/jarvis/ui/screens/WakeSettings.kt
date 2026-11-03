@@ -163,3 +163,28 @@ fun FirewallSettings(bridge: PlatformBridge) {
         }
     }
 }
+
+/** Settings → Ekran: Mark 1 / Mark 2 and the city for the offline sun times. */
+@Composable
+fun DisplaySettings(settings: SettingsStore) {
+    val s by settings.state.collectAsState()
+    var cities by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Ekran", fontWeight = FontWeight.SemiBold)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf(1 to "Mark 1 · sade", 2 to "Mark 2 · yoğun HUD").forEach { (m, label) ->
+                OutlinedButton(onClick = { settings.update { it.copy(hudMark = m) } }) {
+                    Text(label, color = if (s.hudMark == m) JarvisColors.Cyan else JarvisColors.TextDim, fontSize = 12.sp)
+                }
+            }
+        }
+        Box {
+            OutlinedButton(onClick = { cities = true }) { Text("Gün doğumu için konum: ${s.city} ▾", fontSize = 12.sp) }
+            androidx.compose.material3.DropdownMenu(expanded = cities, onDismissRequest = { cities = false }) {
+                io.github.ahmetdurmus1218.jarvis.core.time.Places.TR.forEach { p ->
+                    androidx.compose.material3.DropdownMenuItem(text = { Text(p.name) }, onClick = { settings.update { it.copy(city = p.name) }; cities = false })
+                }
+            }
+        }
+    }
+}

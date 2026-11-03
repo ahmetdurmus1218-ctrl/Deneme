@@ -190,3 +190,33 @@ dışarıda: şifreli PDF'ler açık bir mesajla reddedilir), PC'de Apache PDFBo
 `alarm_kur`, `zamanlayici`, `uygulama_ac` hızlı komutlarla aynı platform yürütücüsünü kullanır; yan etkili
 araç oldukları için soruda güvenilmeyen veri (Wikipedia, belge, web) okunduktan sonra reddedilir. Bir
 makaleye gömülü "alarm kur" talimatının cihaza ulaşamadığı bir testle doğrulanır.
+
+## D29 — Piper için kendi Türkçe fonem dönüştürücümüz
+sherpa-onnx 2.0 espeak-ng'yi çıkardı; Piper sesi espeak-ng'nin IPA'sıyla eğitildi. Türkçe yazım neredeyse
+fonetik olduğundan espeak-ng'nin Türkçe kuralları (ünlü varyantları, ğ, kalın l, ɾ, ince g, uzun ünsüzler,
+vurgu ve istisnaları) Kotlin'de yeniden yazıldı (`core/tts/TurkishPhonemizer.kt`), sayılar yazıya
+çevrilir. 30 cümlede espeak'e fonem uzaklığı %6; sentezlenen ses Whisper'a dinletildiğinde espeak'inki
+kadar (ölçümde biraz daha iyi) anlaşıldı. Fonemler `GenerationConfig.phonemeCodepoints` ile verilir.
+
+## D30 — Şifreleme: SQLCipher yerine AES-GCM ile mühürlenmiş dosyalar
+Verimiz küçük JSON belgeleri (hafıza ≤ 500 kayıt, belge dizini, kitaplık, ayarlar, ağ kaydı). Room +
+SQLCipher ~7 MB yerel kütüphane ve KSP getirir; aynı korumayı daha az parçayla sağlamak için her dosya
+AES-256-GCM ile mühürlenir (doğrulamalı şifreleme: kurcalanan kayıt atılır). Anahtar telefonda Android
+Keystore içinde üretilir ve dışarı çıkamaz; PC'de rastgele anahtar Windows DPAPI (CurrentUser) ile
+mühürlü durur. Eski düz dosyalar okunur ve ilk yazışta şifrelenir.
+
+## D31 — PC güvenlik duvarı: engel kuralları + süreli kapı
+Windows'ta giden trafik varsayılan olarak serbest, engel kuralı izin kuralından önce gelir. Bu yüzden
+Jarvis.exe, jarvis-kapi.exe ve bin altındaki her program için kalıcı ENGEL kuralı kurulur (tek UAC).
+İndirmede onay = UAC: yükseltilmiş küçük bir yardımcı yalnızca kapi kuralını kapatır, oturum bitince ya
+da en geç 10 dakikada geri açar; kapanmadan önce oturumda açılan yeni programları da engeller.
+`jarvis-kapi.exe`, jpackage başlatıcısının kopyası + kendi `.cfg` dosyası (başka ana sınıf) olarak
+uygulama görüntüsüne eklenir; yalnızca kilit dosyasındaki kimlikleri indirir, Jarvis özeti yeniden hesaplar.
+Kuralları New-NetFirewallRule ile kuruyoruz (netsh çıktısı Windows diline göre değişiyor).
+
+## D32 — halilozat/jarvis: internet gerektirenler yok
+Örnek proje bulut LLM, RSS haberleri, piyasa/hava API'leri, YouTube, ElevenLabs ve Home Assistant
+kullanıyor. Bunlar bölüm 1'in "varsayılan tamamen offline" ilkesiyle çelişir. Yerel karşılığı
+olanların hepsi eklendi (el efektleri, yüz kilidi, kahve falı, ev simülasyonu, uyku/alkış, kitaplık,
+Mark 2 — gün doğumu/batımı internetsiz hesaplanır, hava/piyasa "yok" yazar). İnternetli özellikler
+istenirse ancak Kapı + her istekte onay ile ve izin listesi genişletilerek yapılabilir.

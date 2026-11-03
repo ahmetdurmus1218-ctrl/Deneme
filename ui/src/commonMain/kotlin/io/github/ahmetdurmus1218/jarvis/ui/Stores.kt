@@ -32,6 +32,10 @@ data class Settings(
     val clapThreshold: Float = 8f,
     /** The user's secret clap rhythm (gaps in ms); null = a plain double clap. */
     val clapRhythm: List<Long>? = null,
+    /** 1 = Mark 1 (the clean stage), 2 = Mark 2 (dense HUD). */
+    val hudMark: Int = 1,
+    /** City for the offline sunrise/sunset on Mark 2. */
+    val city: String = "İstanbul",
 )
 
 private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }

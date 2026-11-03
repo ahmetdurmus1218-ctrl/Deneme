@@ -4,9 +4,10 @@ Jarvis telefonunuzda (Android) ve bilgisayarınızda (Windows) **tamamen interne
 bir yapay zekâ asistanıdır. Konuşmalarınız, hafızası ve belgeleriniz cihazınızdan çıkmaz. Abonelik, API
 anahtarı ya da reklam yoktur.
 
-> **Durum:** v0.3.0. Gerçek yapay zekâ modeli ve Jarvis'in kendi Türkçe ses tanıması (Whisper) çalışıyor: telefonda Gemma 4 (LiteRT-LM), PC'de Qwen 3.5 9B
-> (llama.cpp, Vulkan). Model indirilmeden önce Jarvis "sahte model" ile deneme modunda cevap verir.
-> Offline Wikipedia ve belge araması v0.3'te gelecek. Ayrıntılar: [`docs/PLAN.md`](docs/PLAN.md).
+> **Durum:** v0.5.0. Bütün aşamalar tamam: gerçek yapay zekâ (telefonda Gemma 4, PC'de Qwen 3.5 9B), Jarvis'in kendi
+> ses tanıması (Whisper) ve kendi Türkçe sesi (Piper), internetsiz Wikipedia ve belgeleriniz, şifreli hafıza, kamera
+> ile el kontrolü ve efektler, ev simülasyonu, kitaplık, alkışla uyanma, Mark 2 ekran, bilgisayarda güvenlik duvarı.
+> Model indirilmeden önce Jarvis "sahte model" ile deneme modunda cevap verir. Ayrıntılar: [`docs/PLAN.md`](docs/PLAN.md).
 
 ---
 
@@ -46,8 +47,10 @@ GitHub'da bu sayfanın sağındaki **Releases** bölümüne girin, en üstteki s
 2. **"Windows bilgisayarınızı korudu"** (SmartScreen) mavi penceresi çıkarsa: **Ek bilgi**'ye tıklayın, sonra
    **Yine de çalıştır**'a basın. (Dosya imzasız olduğu için bu uyarı çıkar; Java kurmanıza gerek yoktur,
    içinde gelir.)
-3. Başlat menüsünden **Jarvis**'i açın. İlk açılışta kurulum sihirbazı çalışır; indirme için onay penceresi
-   çıkar. *(v0.5'te bu adım Windows'un yönetici onayı (UAC) ve güvenlik duvarı kurallarıyla güçlenecek.)*
+3. Başlat menüsünden **Jarvis**'i açın. İlk açılışta Windows **bir kez yönetici onayı (UAC)** ister: **Evet** deyin.
+   Bu, Jarvis'in ve kullandığı programların internete çıkışını Windows güvenlik duvarında kapatır. Sonra kurulum
+   sihirbazı çalışır. Her indirmede yine UAC sorulur; yalnızca ayrı indirme programı (`jarvis-kapi.exe`) en fazla
+   10 dakikalığına geçebilir ve iş bitince kapı kendiliğinden kapanır. Durum: Ayarlar → **Güvenlik duvarı**.
 
 4. **Mikrofon:** Sohbet ekranında 🎤'a tıklayın. İlk seferde **"Jarvis'in ses tanımasını indir (375 MB)"**
    düğmesi çıkar; onaylayın. Sonra 🎤'a tıklayıp konuşun, susunca Jarvis kendisi durur. Ses bilgisayarda çözülür.
@@ -76,21 +79,38 @@ Jarvis'in dosyaları: `%LOCALAPPDATA%\Jarvis` (Gezgin'in adres çubuğuna yazıp
 - **Belgeleriniz:** Hafıza → "Belge ekle (PDF / TXT / MD)". Sonra "kira sözleşmemde depozito ne kadar?" gibi sorun.
   Belgeler yalnızca cihazınızda saklanır.
 
+## 4c. Eğlenceli özellikler
+
+- **El kontrolü:** 📷 → "Kamera · el kontrolü" (bilgisayarda "El kontrolü (demo)"). İlk seferde küçük el/yüz takibi
+  paketini indirin. ✋ ateş, ✋✋ mühür halkaları, 🤏 gezegen ("Jarvis, Mars yap"), ✊→✋ patlatma, ☝️☝️ şimşek, ☝️ ışık izi.
+  Basılı tutun: 👍 dinle, ✌️ "bu ne?", ✊ sus. ⚙ ile efektleri tek tek kapatın, adınızı yazın (yüz kilidi).
+- **Kahve falı:** 📷 → "☕ Kahve falı" ile fincan fotoğrafını seçin (görebilen model gerekir).
+- **Ev (🏠):** ışıklar ve kahve makineleri uygulamanın içinde canlandırılır: "bana bol köpüklü bir Türk kahvesi yap".
+- **Kitaplık (📚):** "Kitaplığıma Davranış'ı ekle", "Oblomov'da 120. sayfadayım", raf fotoğrafından ekleme.
+- **Uyku:** 5 dakika boşta kalınca uyur; iki kez alkışlayıp "uyan Jarvis" deyin (ya da ekrana iki kez dokunun).
+  Ayarlar → Uyanış'tan alkış eşiğini ayarlayabilir, kendi gizli ritminizi kaydedebilirsiniz.
+- **Mark 2:** Ayarlar → Ekran → Mark 2: yoğun HUD (bilgisayarın geniş ekranında tam hali).
+
 ## 5. Sık sorunlar
 
 - **Mikrofon çalışmıyor / "Türkçe'yi internetsiz desteklemiyor":** Birçok telefonun kendi ses tanıması Türkçe'yi
   internetsiz yapamıyor. Sohbet ekranında çıkan **"Jarvis'in ses tanımasını indir (375 MB)"** düğmesine basın
   (onay + parmak izi/PIN). Bundan sonra Jarvis kendi ses tanımasını (Whisper) kullanır: ses kaydı telefonda
   çözülür, hiçbir yere gönderilmez. Mikrofona bir kez dokunun, konuşun; susunca kendisi durur.
-- **Jarvis yazıyor ama sesli okumuyor:** Ayarlar → Erişilebilirlik → Metin okuma'dan Türkçe sesi indirin.
-  Jarvis internet gerektiren sesleri bilerek kullanmaz.
+- **Jarvis yazıyor ama sesli okumuyor:** Modeller ekranından **Piper Türkçe ses** paketini indirin (67 MB); Jarvis
+  kendi sesiyle konuşur. O zamana kadar telefonun internetsiz Türkçe sesi kullanılır (Ayarlar → Erişilebilirlik →
+  Metin okuma'dan indirilebilir). Jarvis internet gerektiren sesleri bilerek kullanmaz.
+- **Alkışla uyanmıyor / kendiliğinden uyanıyor:** Ayarlar → Uyanış → Kalibre et: bir kez alkışlayınca nokta yanmalı,
+  konuşunca yanmamalı. Gerekirse eşiği değiştirin.
+- **Bilgisayarda indirme "UAC onayı verilmedi" diyor:** Güvenlik duvarı açıkken her indirme için Windows'un
+  yönetici onayına **Evet** demeniz gerekir.
 - **"Kapı yüklü değil":** `jarvis-kapi.apk`'yı kurun ya da bölüm 4'teki yolu kullanın.
 - **Kapı kurulu ama "Kapı servisine bağlanılamadı":** İki APK'nın aynı sürümden olduğundan emin olun. Biri
   test anahtarıyla, diğeri kendi anahtarınızla imzalıysa birlikte çalışmazlar — ikisini de silip aynı sürümün
   ikisini birden kurun.
 - **"Ekran kilidi ayarlı değil":** Güvenlik için onaylar parmak izi/PIN gerektirir. Telefonda bir ekran kilidi ayarlayın.
 - **Güncellerken "uygulama yüklenmedi":** Önceki sürüm farklı bir anahtarla imzalanmış olabilir. Eskisini
-  kaldırıp yenisini kurun (v0.1'de hafıza zaten kalıcı değil).
+  kaldırıp yenisini kurun. (Hafıza o telefonun anahtarıyla şifreli olduğundan kaldırınca silinir.)
 
 ## 6. Gizlilik garantileri ve nasıl kontrol edilir
 
@@ -106,6 +126,11 @@ Jarvis'in dosyaları: `%LOCALAPPDATA%\Jarvis` (Gezgin'in adres çubuğuna yazıp
   (Kapı bir kez, Jarvis bir kez daha). Uyuşmazsa dosya silinir ve kırmızı uyarı gösterilir.
 - **Her ağ olayı kayıt altındadır:** Jarvis → **Ağ** sekmesi: zaman, alan adı, bayt, onay şekli.
 - **Telemetri, analitik, reklam ve çökme raporu yoktur.** Yedekleme/cihazlar arası aktarım da kapalıdır.
+- **Hafıza, belgeler, kitaplık, ayarlar ve ağ kaydı şifrelidir** (AES-256-GCM). Telefonda anahtar Android Keystore'da
+  üretilir ve dışarı çıkamaz; bilgisayarda anahtar Windows hesabınıza bağlı (DPAPI). Kamera görüntüleri hiçbir yere
+  kaydedilmez; yüz kilidi tanıma değil yalnızca yüz algılamadır.
+- **Bilgisayarda güvenlik duvarı:** Jarvis.exe, llama-server, kiwix-serve ve diğer programlar için dışarı çıkış engeli.
+  Kontrol: Başlat → "Windows Defender Güvenlik Duvarı ve Gelişmiş Güvenlik" → Giden Kurallar → "Jarvis - …" kuralları.
 - **"Tam offline mod"** (Ayarlar) açıkken hiçbir indirme yapılmaz.
 
 ### Bu güvenceler nasıl denetleniyor?
@@ -162,6 +187,8 @@ Kurulum dosyaları her yeni sürüm etiketinde otomatik üretilir. Yeni bir sür
 | Türkçe Wikipedia (ZIM) | Kiwix | CC BY-SA 4.0 |
 | llama.cpp `llama-server` | `ggml-org/llama.cpp` | MIT |
 | kiwix-tools | Kiwix | GPL-3.0 |
+| MediaPipe el/yüz modelleri (hand_landmarker, BlazeFace) | Google (`storage.googleapis.com/mediapipe-models`) | Apache-2.0 |
+| Görme eklentileri (mmproj GGUF) | `unsloth` / `ggml-org` | Apache-2.0 |
 
 Kesin sürümler, adresler ve SHA-256 özetleri: [`models.lock.json`](models.lock.json).
 
