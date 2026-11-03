@@ -17,6 +17,8 @@ class EngineSelector(
 
     override fun stream(messages: List<ChatMessage>, config: GenerationConfig): Flow<String> = current.stream(messages, config)
 
+    override fun warmUp() = current.warmUp()
+
     /** The current model if it can see images right now (vision part installed and loaded). */
     val vision: VisionLlm? get() = (current as? VisionLlm)?.takeIf { it.canSee() }
 }

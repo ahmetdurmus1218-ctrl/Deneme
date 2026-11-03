@@ -83,6 +83,13 @@ Rick'in dosyaları: `%LOCALAPPDATA%\Rick` (Gezgin'in adres çubuğuna yazıp Ent
 - Modelin kendisi değişmez (yerel model eğitimi henüz güvenilir değil); gelişen, Rick'in sizden ve kaynaklardan
   öğrendikleridir. Hiçbir şey internete gitmez.
 
+## 3c. Rick'e ne yaptırabilirim? (sorar, sonra yapar)
+
+Açık komutları hemen yapar: "feneri aç", "sesi kıs", "7'de alarm kur", "Ahmet'i ara". Sohbet arasında bir
+ihtiyaç söylerseniz önce sorar: "Yarın 7'de kalkmam lazım" → "Saat 07:00 için alarm kurayım mı?". "Evet", "olur"
+ya da "tamam" derseniz (veya **Evet** düğmesine basarsanız) yapar; "hayır" derseniz yapmaz. Arama ve mesajı
+yalnızca hazırlar, son tuşa siz basarsınız. Bilgi kütüphanede yoksa internette bakmayı teklif eder (bölüm 6).
+
 ## 4. Modelleri tekrar indirmemek
 
 Rick bir dosyayı indirmeden önce **bu cihazda zaten var mı** diye bakar. Varsa ve SHA-256 özeti kilit listesiyle
@@ -161,7 +168,8 @@ aynıysa onu alır, internete hiç çıkmaz:
 - **İnternete çıkabilen tek parça Rick Kapı'dır.** Kendi başına hiçbir şey yapmaz; yalnızca siz Rick'te
   onay verdiğinizde, yalnızca listedeki sitelerden (huggingface.co, download.kiwix.org, github.com ve bunların
   indirme sunucuları), yalnızca model/veri dosyalarını (`.litertlm .onnx .gguf .zim .tar.bz2 .json .txt`)
-  indirir. `.apk .exe .so .jar` gibi çalıştırılabilir dosyaları asla indirmez. Bağlantılar sertifika
+  indirir; ayrıca sizin onayladığınız tek tek Wikipedia aramalarını (`tr.wikipedia.org`) yapar.
+  `.apk .exe .so .jar` gibi çalıştırılabilir dosyaları asla indirmez. Bağlantılar sertifika
   sabitlemeli HTTPS'tir. Kapı'yı kaldırırsanız Rick tamamen çevrimdışı çalışmaya devam eder.
 - **Her indirilen dosya doğrulanır:** SHA-256 özeti, uygulamanın içine gömülü `models.lock.json` ile karşılaştırılır
   (Kapı bir kez, Rick bir kez daha). Uyuşmazsa dosya silinir ve kırmızı uyarı gösterilir.
@@ -172,7 +180,12 @@ aynıysa onu alır, internete hiç çıkmaz:
   kaydedilmez; yüz kilidi tanıma değil yalnızca yüz algılamadır.
 - **Bilgisayarda güvenlik duvarı:** Rick.exe, llama-server, kiwix-serve ve diğer programlar için dışarı çıkış engeli.
   Kontrol: Başlat → "Windows Defender Güvenlik Duvarı ve Gelişmiş Güvenlik" → Giden Kurallar → "Rick - …" kuralları.
-- **"Tam offline mod"** (Ayarlar) açıkken hiçbir indirme yapılmaz.
+- **İnternette arama yalnızca izninizle:** Bir bilgi kütüphanede yoksa Rick "internette, Wikipedia'da bakayım mı?"
+  diye sorar. "Evet" derseniz önce dışarı gidecek tek metni (yalnızca arama kelimeleri, ör. "Atatürk") gösterir,
+  sonra parmak izi/PIN (bilgisayarda UAC) onayı ister. Bir onay = tek arama. Yalnızca `tr.wikipedia.org` sorulur;
+  hafızanız, sohbetiniz ve belgeleriniz gönderilmez. Kapatmak için: Ayarlar → "Kütüphanede yoksa internette
+  bakmayı teklif et". Bu özellik için Kapı'nın 1.1 sürümü gerekir.
+- **"Tam offline mod"** (Ayarlar) açıkken hiçbir indirme ve internet araması yapılmaz.
 
 ### Bu güvenceler nasıl denetleniyor?
 

@@ -56,6 +56,7 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
     override val files: AppFiles = AndroidFiles(app)
     override val models = AndroidModelStorage(app, folderPicker = { activity?.pickFolder() }) { activity?.pickDocument() }
     override val downloader = GateClient(app, models)
+    override val web: io.github.ahmetdurmus1218.jarvis.ui.WebGate get() = downloader
     override suspend fun pickDocument(): io.github.ahmetdurmus1218.jarvis.ui.DocumentPick {
         val act = activity ?: return io.github.ahmetdurmus1218.jarvis.ui.DocumentPick.Failed("Uygulama ön planda değil")
         val uri = act.pickDocument() ?: return io.github.ahmetdurmus1218.jarvis.ui.DocumentPick.Cancelled
@@ -108,7 +109,31 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
             (app.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager)
                 .getStreamVolume(android.media.AudioManager.STREAM_MUSIC) == 0
         },
+        ensureAudible = {
+            val am = app.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+            val s = android.media.AudioManager.STREAM_MUSIC
+            runCatching {
+                if (am.getStreamVolume(s) == 0) {
+                    am.setStreamVolume(s, maxOf(1, am.getStreamMaxVolume(s) * 2 / 5), 0)
+                    "🔊 Medya sesi tamamen kısıktı; cevabımı duyabilmeniz için biraz açtım."
+                } else null
+            }.getOrNull()
+        },
+        audioFocus = { take -> speechFocus.set(take) },
     ).also { it.warmUp() }
+
+    /** Lowers other apps' music while Rick speaks and gives the focus back afterwards. */
+    private val speechFocus = object {
+        private val am = app.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+        private val request = android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+            .setAudioAttributes(
+                android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH).build(),
+            ).build()
+        fun set(take: Boolean) {
+            runCatching { if (take) am.requestAudioFocus(request) else am.abandonAudioFocusRequest(request) }
+        }
+    }
 
     override fun deviceInfo(): DeviceInfo {
         val am = app.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager

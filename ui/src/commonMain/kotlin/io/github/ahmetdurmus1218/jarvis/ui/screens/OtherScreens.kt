@@ -228,7 +228,7 @@ fun SettingsScreen(bridge: PlatformBridge, settings: SettingsStore, registry: Mo
         Toggle("Sohbet modu (cevaptan sonra yeniden dinler)", s.conversationMode) { v -> settings.update { it.copy(conversationMode = v) } }
         Text("Konuşma hızı: ${(s.speechRate * 100).toInt()}%")
         Slider(value = s.speechRate, onValueChange = { v -> settings.update { it.copy(speechRate = v) } }, valueRange = 0.6f..1.6f)
-        Toggle("Web araması (her sorguda onay istenir)", s.webSearch) { v -> settings.update { it.copy(webSearch = v) } }
+        Toggle("Kütüphanede yoksa internette bakmayı teklif et (her aramada onayınız istenir)", s.webOffer) { v -> settings.update { it.copy(webOffer = v) } }
         Toggle("Tam offline mod (tüm indirmeler kapalı)", s.fullOffline) { v -> settings.update { it.copy(fullOffline = v) } }
         Text("Ses tanıma: ${bridge.speechInput?.engineName ?: "yok"}", color = JarvisColors.TextDim, fontSize = 12.sp)
         when (pack) {

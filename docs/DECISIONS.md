@@ -288,3 +288,49 @@ bilgi tarafında, tamamen cihazda yapılır:
 - Hepsi şifreli dosyada (en fazla 200 ders, 300 not), Hafıza ekranında görülür, tek tek ya da toptan
   silinir; Hafıza → "Kendini geliştirme" anahtarıyla kapatılır. İnternet kullanılmaz.
 
+## D38 — Kütüphanede yoksa internette bakmayı teklif etmek (her aramada onay)
+Kullanıcı Rick'in gerektiğinde "veri setlerine çıkabilmesini, ama benden izin isteyerek" istedi. Bölüm 3.3
+web aramasını varsayılan kapalı ve ayarlardan açılır tanımlıyordu; kullanıcının yeni isteğiyle değişti:
+- Bilgi sorusunun cevabı internetsiz Wikipedia'da ve belgelerde yoksa Rick dürüstçe söyler ve **teklif eder**:
+  "İsterseniz internette, Wikipedia'da bakayım; yalnızca "…" araması gider." Kullanıcı "evet" demeden ya da
+  düğmeye basmadan hiçbir şey olmaz; "evet"ten sonra yine **biyometrik/PIN (PC'de UAC) onayı** istenir.
+  Bir onay = tek arama. Ayar: "Kütüphanede yoksa internette bakmayı teklif et" (açık); "Tam offline mod"
+  açıkken ya da Kapı yokken teklif hiç çıkmaz. Eski `webSearch` anahtarı artık kullanılmıyor.
+- Tek kaynak **tr.wikipedia.org'un arama API'si** (ücretsiz, anahtarsız). Dışarı giden tek şey soru
+  kelimelerinden ayıklanmış arama metnidir ("Atatürk kimdir?" → "Atatürk"); ekranda onaydan önce gösterilir.
+  Hafıza, sohbet, belge gönderilmez.
+- İsteği yine yalnızca Kapı yapar (telefonda Rick Kapı, PC'de rick-kapi.exe + geçici güvenlik duvarı kapısı).
+  Kapı yalnızca `OnlineWikipedia.searchUrl` ile üretilmiş adresi kabul eder (başka API eylemi, başka alan adı,
+  http yok), yönlendirme izlemez, yalnızca JSON alır, en fazla 200 KB. Sertifika sabitleme: DigiCert,
+  GlobalSign ve Let's Encrypt kökleri (test edildi).
+- Gelen metin Wikipedia makalesi gibi **veri**dir: enjeksiyon taranır, sonrasında yan etkili araç çalışmaz,
+  sayı/alıntı sayfada birebir geçmeli; kaynak çipi "web". Dil modeli yoksa en iyi sayfanın ilk cümleleri
+  aynen okunur. Her arama Ağ sekmesine yazılır.
+- Rick 1.1 ile gelen Kapı 1.1 gerekir; eski Kapı bu isteği tanımaz (30 sn sonra "Kapı'yı güncelleyin").
+
+## D39 — Hız ve konuşma: önce yükle, kısa tut, sor sonra yap
+Kullanıcı cevapların çok geç geldiğini, sesin ancak "Sesi dene"den sonra çıktığını, konuşmanın robot gibi
+olduğunu söyledi. Nedenler ve kararlar:
+- **Model ilk soruda yükleniyordu** (telefonda Gemma 4, PC'de llama-server onlarca saniye). Artık uygulama
+  açılınca arka planda yüklenir (`LlmEngine.warmUp`); Whisper da açılışta hazırlanır.
+- **Telefonda GPU önceliği:** önce GPU (görme parçasıyla, sığmazsa yalnız metin), sonra CPU (yalnız metin).
+  Önceden GPU+görme olmazsa CPU+görme seçiliyordu; bu her cevabı yavaşlatıyordu. Görme CPU'da yalnızca
+  kameraya soru sorulunca yüklenir.
+- **Daha kısa istem:** geçmişte asistan cevapları yalnızca söylenen cümlelerle (kart/detay/kaynak yok), son 4
+  tur; hafızadan en yeni 30 bilgi; sohbette "detay" ve "kaynaklar" istenmez. PC'de `cache_prompt` ile sabit
+  baş kısım yeniden kullanılır.
+- **İkinci model çağrısı kaldırıldı:** her cevaptan sonra hafıza için modele ayrıca sorulması bir sonraki soruyu
+  bekletiyordu. Artık yalnızca kullanıcının kendinden söz ettiği cümlelerde ("benim", "adım", "severim"…) ve
+  Rick konuşmayı bitirince yapılır; yeni soru gelince iptal edilir.
+- **Ses:** Piper sesi yüksek öncelikli kendi iş parçacığında üretilir (dil modeli bütün çekirdekleri
+  kullanırken ses saniyelerce gecikiyor ya da hiç çıkmıyordu); konuşurken ses odağı alınır (müzik kısılır);
+  medya sesi tamamen kısıksa Rick onu %40'a açar ve bunu söyler.
+- **İnsancıl konuşma:** sistem istemi sıcak, doğal, kısa cümleli bir dost üslubuna çevrildi ("efendim" her
+  cümlede değil, duyguya karşılık, gerekirse kısa soru).
+- **Sor, sonra yap:** sohbet arasında söylenen ihtiyaçlar ("yarın 7'de kalkmam lazım", "burası çok karanlık",
+  "canım sıkılıyor", "annemi aramam lazım", "artık yatıyorum") modelsiz ve anında bir teklife dönüşür ("Saat
+  07:00 için alarm kurayım mı?"). "Evet / olur / tamam" ya da düğme ile yapılır, "hayır / gerek yok" ile
+  yapılmaz, başka bir cümle teklifi kapatır. Arama yine yalnızca hazırlanır, tuşa kullanıcı basar. PC'de
+  yapamadığı şeyleri (fener, arama) teklif etmez. Dil modeli de aynı kuralla eğitildi: ihtiyaçta önce sorar,
+  açık istekte doğrudan yapar.
+

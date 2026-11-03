@@ -36,6 +36,10 @@ data class Turn(
     val interrupted: Boolean = false,
     /** The user's verdict: 1 = 👍, -1 = 👎, 0 = none. */
     val feedback: Int = 0,
+    /** Something Rick offered to do in this turn; done only after a yes. */
+    val offer: io.github.ahmetdurmus1218.jarvis.core.assistant.Offer? = null,
+    /** The user's answer to [offer] (null: not answered yet). */
+    val offerAnswer: Boolean? = null,
 )
 
 enum class CoreMode { IDLE, LISTENING, THINKING, SPEAKING }
@@ -53,6 +57,8 @@ class JarvisController(
     private val learning: io.github.ahmetdurmus1218.jarvis.core.learning.Learning? = null,
     /** One idle research step given the recent questions; null = no idle reading. */
     private val research: (suspend (List<String>) -> io.github.ahmetdurmus1218.jarvis.core.learning.ResearchNote?)? = null,
+    /** Where approved web searches are written down (the "Ağ" screen). */
+    private val netLog: NetworkLogStore? = null,
 ) {
     private val _appCommands = kotlinx.coroutines.flow.MutableSharedFlow<QuickCommand>(extraBufferCapacity = 8)
     /** Commands for the app itself (hand control, planets), handled by the screens. */
@@ -126,6 +132,7 @@ class JarvisController(
                     _mode.value = CoreMode.SPEAKING
                     _subtitle.value = text
                     runCatching { tts.speak(text, settings.state.value.speechRate) }
+                    tts.takeNotice()?.let { _partial.value = it }
                     val why = tts.silentReason
                     if (why != null && lastSilentNotice != why) {
                         lastSilentNotice = why
@@ -182,11 +189,16 @@ class JarvisController(
         _turns.value = _turns.value.map { if (it.id == id) f(it) else it }
     }
 
-    /** Last turns as chat history; assistant turns are given back in the same JSON format the model must produce. */
-    private fun history(): List<ChatMessage> = _turns.value.filter { it.done && it.error == null && !it.interrupted }.takeLast(6).flatMap { t ->
+    /**
+     * Last turns as chat history. Assistant turns are given back in the JSON format the model must
+     * produce, but only what was said (no cards, details or sources): every token here is read again
+     * before each answer, so a short history means a faster answer.
+     */
+    private fun history(): List<ChatMessage> = _turns.value.filter { it.done && it.error == null && !it.interrupted }.takeLast(HISTORY_TURNS).flatMap { t ->
+        val said = t.scenes.map { it.sahne.ses }.filter { it.isNotBlank() }
         listOf(
             ChatMessage(Role.USER, t.user),
-            ChatMessage(Role.ASSISTANT, t.assistantText ?: SceneJson.encodeToString(Reply.serializer(), Reply(t.scenes.map { it.sahne }))),
+            ChatMessage(Role.ASSISTANT, SceneJson.encodeToString(Reply.serializer(), Reply(said.map { Sahne(it) }))),
         )
     }
 
@@ -267,9 +279,18 @@ class JarvisController(
         val clean = text.trim()
         if (clean.isEmpty()) return
         noteActivity()
+        // An open offer ("Feneri açayım mı?") is answered by "evet" / "hayır"; anything else moves on.
+        pendingOffer()?.let { t ->
+            when (io.github.ahmetdurmus1218.jarvis.core.assistant.OfferReply.parse(clean)) {
+                true -> { answerOffer(t.id, true, clean); return }
+                false -> { answerOffer(t.id, false, clean); return }
+                null -> updateTurn(t.id) { it.copy(offerAnswer = false) }
+            }
+        }
         if (learnCorrection(clean)) return
         stopSpeaking()
         askJob?.cancel()
+        factJob?.cancel()
         currentTurnId?.let { prev -> updateTurn(prev) { if (it.done) it else it.copy(done = true, interrupted = true) } }
         val id = nextId++
         currentTurnId = id
@@ -318,10 +339,118 @@ class JarvisController(
                 _turns.value.firstOrNull { it.id == id }?.let { learnFrom(it.user) }
             }
             is AssistantEvent.Failed -> updateTurn(id) { it.copy(done = true, error = ev.message) }
+            is AssistantEvent.Offered -> {
+                updateTurn(id) { it.copy(scenes = listOf(ev.scene), offer = ev.offer, done = true) }
+                say(ev.scene.sahne.ses)
+            }
         }
-        if (ev is AssistantEvent.Completed || ev is AssistantEvent.Quick || ev is AssistantEvent.Failed) {
+        if (ev is AssistantEvent.Completed || ev is AssistantEvent.Quick || ev is AssistantEvent.Failed || ev is AssistantEvent.Offered) {
             if (queued == 0 && _mode.value == CoreMode.THINKING) _mode.value = CoreMode.IDLE
             if (ev !is AssistantEvent.Failed) maybeContinueConversation() else continueAfter = null
+        }
+    }
+
+    // ---- offers ("… ayım mı?") ----
+
+    /** The newest turn, if it holds an offer nobody has answered yet. */
+    private fun pendingOffer(): Turn? = _turns.value.lastOrNull()?.takeIf { it.offer != null && it.offerAnswer == null && it.done }
+
+    /** The user's answer to the offer in [turnId], by button or by voice ([said]). */
+    fun answerOffer(turnId: Long, yes: Boolean, said: String? = null) {
+        val turn = _turns.value.firstOrNull { it.id == turnId } ?: return
+        val offer = turn.offer ?: return
+        if (turn.offerAnswer != null) return
+        noteActivity()
+        stopSpeaking()
+        askJob?.cancel()
+        updateTurn(turnId) { it.copy(offerAnswer = yes) }
+        val id = nextId++
+        currentTurnId = id
+        // Hands-free: after the result is spoken, listen again if the offer itself was answered by voice.
+        if (said != null) continueAfter = id
+        _turns.value = _turns.value + Turn(id, said ?: if (yes) "Evet" else "Hayır")
+        if (!yes) {
+            finishWith(id, "Peki, yapmıyorum.")
+            return
+        }
+        when (offer) {
+            is io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.Action -> askJob = scope.launch {
+                val error = bridge.execute(offer.command)
+                val scene = if (error == null) {
+                    io.github.ahmetdurmus1218.jarvis.core.assistant.QuickResponder.respond(offer.command, io.github.ahmetdurmus1218.jarvis.core.time.NowProvider.System.now())
+                } else {
+                    Sahne(error)
+                }
+                finishWith(id, scene)
+            }
+            is io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.WebLookup -> lookUpOnline(id, offer)
+        }
+    }
+
+    private fun finishWith(id: Long, text: String) = finishWith(id, Sahne(text))
+
+    private fun finishWith(id: Long, scene: Sahne) {
+        updateTurn(id) { it.copy(scenes = listOf(VerifiedScene(scene)), done = true) }
+        say(scene.ses)
+        if (queued == 0 && _mode.value == CoreMode.THINKING) _mode.value = CoreMode.IDLE
+        maybeContinueConversation()
+    }
+
+    /**
+     * The approved web search: the exact words that will leave the device are shown first, then the
+     * platform approval (fingerprint / PIN on the phone, UAC on the PC) is asked for this one search.
+     * The answer is built from the pages like any library answer and the event is logged.
+     */
+    private fun lookUpOnline(id: Long, offer: io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.WebLookup) {
+        val host = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.HOST
+        val what = "Wikipedia araması: \"${offer.query}\""
+        _mode.value = CoreMode.THINKING
+        askJob = scope.launch {
+            try {
+                val gate = bridge.web
+                if (settings.state.value.fullOffline) {
+                    finishWith(id, "Tam çevrimdışı mod açık, o yüzden internete çıkmadım. İsterseniz Ayarlar'dan kapatabilirsiniz.")
+                    return@launch
+                }
+                if (gate == null) {
+                    finishWith(id, "Bu cihazda internete çıkabilecek bir kapı yok.")
+                    return@launch
+                }
+                updateTurn(id) { it.copy(tools = listOf("🌐 $host ← \"${offer.query}\"")) }
+                _partial.value = "🌐 Yalnızca \"${offer.query}\" araması $host adresine gidecek. Onayınızı bekliyorum…"
+                val approval = bridge.approver.confirm("İnternette ara · $host", "Gidecek metin yalnızca: \"${offer.query}\". Başka hiçbir şey gönderilmez.")
+                val now = io.github.ahmetdurmus1218.jarvis.core.time.NowProvider.System.now().epochMillis
+                if (approval !is ApprovalResult.Approved) {
+                    netLog?.record(io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent(now, host, 0, what, "-", "reddedildi"))
+                    _partial.value = ""
+                    finishWith(id, "Peki, internete çıkmadım.")
+                    return@launch
+                }
+                _partial.value = "🌐 Wikipedia'da bakıyorum…"
+                val result = try {
+                    gate.fetch(io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.searchUrl(offer.query))
+                } finally {
+                    runCatching { gate.done() }
+                }
+                _partial.value = ""
+                when (result) {
+                    is WebFetch.Failed -> {
+                        netLog?.record(io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent(now, host, 0, what, approval.method.label, "hata: ${result.message}"))
+                        finishWith(id, "İnternete ulaşamadım: ${result.message}")
+                    }
+                    is WebFetch.Ok -> {
+                        netLog?.record(io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent(now, result.host, result.bytes, what, approval.method.label, "tamam"))
+                        val pages = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.parse(result.body)
+                        assistant.answerFromWeb(offer.question, pages, history()).collect { ev -> handle(id, ev) }
+                    }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                updateTurn(id) { it.copy(done = true, error = e.message ?: "Beklenmeyen hata") }
+            } finally {
+                if (currentTurnId == id && _mode.value == CoreMode.THINKING) _mode.value = CoreMode.IDLE
+            }
         }
     }
 
@@ -376,14 +505,27 @@ class JarvisController(
      * (patterns always, the local model when one is installed). Never from tool output.
      */
     private fun learnFrom(userText: String) {
-        scope.launch(kotlinx.coroutines.Dispatchers.Default) {
+        val extractor = io.github.ahmetdurmus1218.jarvis.core.memory.FactExtractor
+        factJob?.cancel()
+        factJob = scope.launch(kotlinx.coroutines.Dispatchers.Default) {
             if (!memory.enabled()) return@launch
-            val facts = io.github.ahmetdurmus1218.jarvis.core.memory.FactExtractor.byRules(userText) +
-                (factModel()?.let { io.github.ahmetdurmus1218.jarvis.core.memory.FactExtractor.byModel(it, userText) } ?: emptyList())
-            val added = facts.filter { memory.add(it) }
-            if (added.isNotEmpty()) _learned.value = added
+            val byRules = extractor.byRules(userText)
+            addFacts(byRules)
+            // The model is asked only about sentences that talk about the user, and only once Rick has
+            // finished speaking: the model is shared, so this must never hold up the next answer.
+            val model = factModel()?.takeIf { extractor.worthAsking(userText) } ?: return@launch
+            while (_mode.value != CoreMode.IDLE || queued > 0) delay(300)
+            addFacts(extractor.byModel(model, userText))
         }
     }
+
+    private suspend fun addFacts(facts: List<String>) {
+        val added = facts.filter { memory.add(it) }
+        if (added.isNotEmpty()) _learned.value = added
+    }
+
+    /** Background fact extraction of the last answer; a new question cancels it. */
+    private var factJob: Job? = null
 
     private val _learned = MutableStateFlow<List<String>>(emptyList())
     /** Facts just added to memory (shown briefly). */
@@ -408,5 +550,8 @@ class JarvisController(
 
         /** Pause between Rick finishing and listening again, so its own voice is not recorded. */
         const val CONTINUE_DELAY_MS = 350L
+
+        /** Earlier exchanges given to the model with each question. */
+        const val HISTORY_TURNS = 4
     }
 }

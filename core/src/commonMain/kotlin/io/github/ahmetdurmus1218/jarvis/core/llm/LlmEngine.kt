@@ -19,6 +19,9 @@ interface LlmEngine {
 
     /** Streams raw text tokens of the assistant reply. Thinking text must not be emitted. */
     fun stream(messages: List<ChatMessage>, config: GenerationConfig): Flow<String>
+
+    /** Starts loading the model in the background so the first question does not wait for it. */
+    fun warmUp() {}
 }
 
 /** Removes a leading <think>…</think> block from a token stream (models that inline reasoning). */

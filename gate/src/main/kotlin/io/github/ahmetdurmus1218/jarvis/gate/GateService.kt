@@ -106,6 +106,7 @@ class GateService : Service() {
                 GateProtocol.MSG_PING -> reply(replyTo, GateProtocol.MSG_PONG) { putString(GateProtocol.KEY_VERSION, BuildInfo.version(this@GateService)) }
                 GateProtocol.MSG_CANCEL -> data.getString(GateProtocol.KEY_ITEM_ID)?.let { cancelFlags[it]?.set(true) }
                 GateProtocol.MSG_DOWNLOAD -> startDownload(data, replyTo)
+                GateProtocol.MSG_QUERY -> startQuery(data.getString(GateProtocol.KEY_URL).orEmpty(), replyTo)
             }
         }
     }
@@ -148,6 +149,27 @@ class GateService : Service() {
             } finally {
                 cancelFlags.remove(req.itemId)
                 mainHandler.post { leaveForeground() }
+            }
+        }
+    }
+
+    private val query by lazy { GateQuery() }
+
+    /** One approved web search (Rick asked the user first); short, so no foreground notification. */
+    private fun startQuery(url: String, replyTo: Messenger?) {
+        executor.execute {
+            val log = GateLog(this)
+            try {
+                val r = query.fetch(url)
+                log.add("web araması · ${r.host} · ${r.bytes} bayt · tamam")
+                reply(replyTo, GateProtocol.MSG_QUERY_DONE) {
+                    putString(GateProtocol.KEY_TEXT, r.body)
+                    putString(GateProtocol.KEY_HOST, r.host)
+                    putLong(GateProtocol.KEY_BYTES, r.bytes)
+                }
+            } catch (e: Exception) {
+                log.add("web araması · hata: ${e.message}")
+                reply(replyTo, GateProtocol.MSG_ERROR) { putString(GateProtocol.KEY_MESSAGE, e.message ?: e.javaClass.simpleName) }
             }
         }
     }

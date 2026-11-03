@@ -21,10 +21,22 @@ import kotlin.system.exitProcess
  *   P <bytes> <total>            progress
  *   DONE <bytes> <sha256> <host> <path>
  *   FAIL <bytes> <message>
+ * or, with --query <url> (one approved Wikipedia search, since 1.1):
+ *   TEXT <host> <base64 body>
+ *   FAIL 0 <message>
  */
 fun main(args: Array<String>) {
     val a = args.toList()
     fun arg(name: String) = a.indexOf(name).takeIf { it >= 0 }?.let { a.getOrNull(it + 1) }
+    arg("--query")?.let { url ->
+        when (val r = DesktopKapi(File(System.getProperty("java.io.tmpdir"))).query(url)) {
+            is io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Ok -> {
+                println("TEXT ${r.host} " + java.util.Base64.getEncoder().encodeToString(r.body.encodeToByteArray()))
+                exitProcess(0)
+            }
+            is io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed -> { println("FAIL 0 ${r.message.replace('\n', ' ')}"); exitProcess(1) }
+        }
+    }
     val id = arg("--item")
     val partial = arg("--partial")
     if (id == null || partial == null) {
@@ -92,7 +104,38 @@ class KapiProcessDownloader(
 
     override suspend fun endSession(installedPaths: List<String>) = onSessionEnd(installedPaths)
 
+    /** One approved Wikipedia search, run in rick-kapi.exe (the only program the firewall lets out). */
+    suspend fun query(url: String): io.github.ahmetdurmus1218.jarvis.ui.WebFetch = withContext(Dispatchers.IO) {
+        val p = try {
+            ProcessBuilder(kapiExe.absolutePath, "--query", url).redirectErrorStream(true).start()
+        } catch (e: Exception) {
+            return@withContext io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("rick-kapi başlatılamadı: ${e.message}")
+        }
+        p.outputStream.close()
+        val lines = p.inputStream.bufferedReader().readLines()
+        p.waitFor()
+        parseQuery(lines)
+    }
+
     companion object {
+        fun parseQuery(lines: List<String>): io.github.ahmetdurmus1218.jarvis.ui.WebFetch {
+            for (line in lines) {
+                val parts = line.trim().split(' ', limit = 3)
+                when (parts.firstOrNull()) {
+                    "TEXT" -> if (parts.size == 3) {
+                        val body = runCatching { java.util.Base64.getDecoder().decode(parts[2]).decodeToString() }.getOrNull()
+                            ?: return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("rick-kapi bozuk yanıt verdi")
+                        if (body.length > io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.MAX_BYTES) {
+                            return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("Yanıt boyut sınırını aştı")
+                        }
+                        return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Ok(body, parts[1], body.encodeToByteArray().size.toLong())
+                    }
+                    "FAIL" -> return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed(line.trim().split(' ', limit = 3).getOrElse(2) { "hata" })
+                }
+            }
+            return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("rick-kapi sonuç vermedi")
+        }
+
         fun parseLine(line: String, onProgress: (DownloadProgress) -> Unit): DownloadOutcome? {
             val parts = line.trim().split(' ', limit = 5)
             return when (parts.firstOrNull()) {

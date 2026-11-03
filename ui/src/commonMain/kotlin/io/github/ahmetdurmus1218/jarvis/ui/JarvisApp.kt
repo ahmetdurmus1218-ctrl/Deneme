@@ -153,7 +153,22 @@ class AppGraph(
             )
         },
         learning = { learning.takeIf { settings.state.value.selfLearning } },
+        // Offer a Wikipedia web search only when a gate exists here and the user has not turned it off.
+        webOffer = {
+            val s = settings.state.value
+            s.webOffer && !s.fullOffline && bridge.web != null && bridge.downloader.state.value is DownloadState.Ready
+        },
+        canOffer = { cmd -> bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.ANDROID || !phoneOnly(cmd) },
     )
+
+    /** Things only a phone can do (the PC would only answer that it cannot). */
+    private fun phoneOnly(cmd: io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand): Boolean {
+        val a = (cmd as? io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.Device)?.action ?: return false
+        return a is io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.Torch ||
+            a is io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.Call ||
+            a is io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.Message ||
+            a is io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.Navigate
+    }
     val installer = ModelInstaller(bridge, registry, settings, netLog)
     val engineLabel: String get() = engine.id.let { if (it == "mock") "temel komutlar · dil modeli kurulu değil" else it }
 
@@ -211,6 +226,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                 factModel = { graph.engine.current.takeIf { it.id != "mock" } },
                 learning = graph.learning,
                 research = { recent -> graph.researchOnce(recent) },
+                netLog = graph.netLog,
             )
         }
         val settings by graph.settings.state.collectAsState()
@@ -256,6 +272,15 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
 
         LaunchedEffect(settings.memoryEnabled) { graph.memory.setEnabled(settings.memoryEnabled) }
         LaunchedEffect(Unit) { graph.bridge.downloader.refresh() }
+        // Load the language model and the speech recognizer as soon as the app is open (and again
+        // after the wizard installed them), so the first question is answered without a long wait.
+        LaunchedEffect(wizard) {
+            if (wizard) return@LaunchedEffect
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                runCatching { graph.engine.warmUp() }
+                runCatching { graph.bridge.speechInput?.warmUp() }
+            }
+        }
 
         // Edge-to-edge on Android: keep everything clear of the status bar, navigation bar and keyboard.
         Box(Modifier.fillMaxSize().background(JarvisColors.Background).windowInsetsPadding(WindowInsets.safeDrawing)) {

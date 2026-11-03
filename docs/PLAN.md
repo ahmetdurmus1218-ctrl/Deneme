@@ -112,6 +112,13 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 
 - [x] `v1.0.1` yayımlandı: Piper medya sesinden çalıyor (USAGE_ASSISTANT bazı telefonlarda duyulmuyordu), sessizlik nedeni sohbette, Ayarlar → 🔊 Sesi dene. https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.0.1
 
+## v1.1 — hızlı, sesli, soran Rick
+- [x] Model ve ses tanıma uygulama açılınca yükleniyor; telefonda GPU önceliği, görme yalnızca gerektiğinde (D39).
+- [x] Daha kısa istem (geçmiş, hafıza), sohbette detay/kaynak yok, PC'de prompt önbelleği; hafıza için ikinci model çağrısı yalnızca gerektiğinde ve Rick konuşmayı bitirince.
+- [x] Ses: yüksek öncelikli ses iş parçacığı, ses odağı, kısık medya sesini açma.
+- [x] İnsancıl üslup; sohbetteki ihtiyaçlar için "…ayım mı?" teklifleri, sesle ya da düğmeyle evet/hayır.
+- [x] Kütüphanede yoksa internette (tr.wikipedia.org) bakmayı teklif; her arama için ayrı onay, yalnızca arama metni gider, Kapı 1.1 / rick-kapi (D38).
+
 ## Kaldığım yer
 Oturum 2 (2026-11-03): v0.3–v0.5 ve halilozat özellikleri yayımlandı (v0.5.0). Ardından kullanıcının telefon
 denemesine göre v1.0: ad Rick, sesli cevap, küçük ekran, indirmeden önce cihazda arama, modelsiz cihaz

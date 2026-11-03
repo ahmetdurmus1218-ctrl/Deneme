@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -150,6 +151,7 @@ fun ChatScreen(
                     subtitle = subtitle,
                     onCoreTap = if (micAvailable) controller::toggleListening else null,
                     onFeedback = controller::feedback,
+                    onOffer = controller::answerOffer,
                 )
             }
         }
@@ -370,6 +372,7 @@ private fun Stage(
     subtitle: String,
     onCoreTap: (() -> Unit)?,
     onFeedback: ((Long, Boolean) -> Unit)? = null,
+    onOffer: ((Long, Boolean) -> Unit)? = null,
 ) {
     val scroll = rememberScrollState()
     // Keep the newest answer in view (the keyboard or a small screen can push it below the fold).
@@ -420,7 +423,9 @@ private fun Stage(
             }
             SourceChips(last.kaynaklar)
             last.error?.let { Text("Hata: $it", color = JarvisColors.Red, fontWeight = FontWeight.SemiBold) }
-            if (onFeedback != null && last.done && last.error == null && last.scenes.any { it.sahne.ses.isNotBlank() }) {
+            if (last.offer != null && onOffer != null) {
+                OfferRow(last.offerAnswer) { yes -> onOffer(last.id, yes) }
+            } else if (onFeedback != null && last.done && last.error == null && last.scenes.any { it.sahne.ses.isNotBlank() }) {
                 FeedbackRow(last.feedback) { good -> onFeedback(last.id, good) }
             }
         }
@@ -592,6 +597,21 @@ private fun TurnView(turn: Turn) {
 }
 
 /** 👍 keeps the answer as a good example; 👎 asks for the right answer, which Rick then learns. */
+/** "Evet" / "Hayır" under an offer ("Feneri açayım mı?"); saying it works the same. */
+@Composable
+private fun OfferRow(answer: Boolean?, onAnswer: (Boolean) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        when (answer) {
+            true -> Text("✓ Evet dediniz", color = JarvisColors.TextDim, fontSize = 12.sp)
+            false -> Text("✗ Hayır dediniz", color = JarvisColors.TextDim, fontSize = 12.sp)
+            null -> {
+                Button(onClick = { onAnswer(true) }) { Text("Evet") }
+                OutlinedButton(onClick = { onAnswer(false) }) { Text("Hayır") }
+            }
+        }
+    }
+}
+
 @Composable
 private fun FeedbackRow(given: Int, onGive: (Boolean) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {

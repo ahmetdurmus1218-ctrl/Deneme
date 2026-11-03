@@ -24,12 +24,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
  * Gemma 4 through Google's LiteRT-LM, fully on device. Tries the GPU backend first and falls back
- * to the CPU. Loading takes a few seconds and happens on the first question.
+ * to the CPU. Loading takes a few seconds; it starts when the app opens ([warmUp]).
  */
 class LiteRtLmEngine(
     private val context: Context,
@@ -47,11 +48,28 @@ class LiteRtLmEngine(
     /** Whether the loaded engine has Gemma's vision part (null until the first load). */
     @Volatile private var visionLoaded: Boolean? = null
 
+    private val warmScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
+
+    /** Loads the model right after start, so the first question is not kept waiting for it. */
+    override fun warmUp() {
+        if (engine == null) warmScope.launch { runCatching { ensureLoaded() } }
+    }
+
     private suspend fun ensureLoaded(): Engine = lock.withLock {
         engine?.let { return it }
-        var last: Throwable? = null
-        // With the vision part first (camera "bu ne?"), then text only; each on GPU, then CPU.
-        val attempts = listOf(true to Backend.GPU(), true to Backend.CPU(), false to Backend.GPU(), false to Backend.CPU())
+        // Speed first: the GPU (with the vision part if it fits there, else text only), then the
+        // CPU with text only. Vision on the CPU is loaded later, only when a picture is asked about
+        // (see ensureVision), because it makes every ordinary answer slower.
+        val attempts = listOf(true to Backend.GPU(), false to Backend.GPU(), false to Backend.CPU())
+        load(attempts)?.let { return it }
+        val error = lastError ?: IllegalStateException("bilinmeyen hata")
+        onLoadFailed(item, error)
+        throw IllegalStateException("${item.title} yüklenemedi (bellek yetersiz olabilir). Bir sonraki soruda daha küçük model denenecek.", error)
+    }
+
+    @Volatile private var lastError: Throwable? = null
+
+    private fun load(attempts: List<Pair<Boolean, Backend>>): Engine? {
         for ((withVision, backend) in attempts) {
             var e: Engine? = null
             try {
@@ -70,15 +88,35 @@ class LiteRtLmEngine(
                 visionLoaded = withVision
                 return e
             } catch (t: Throwable) {
-                // Free whatever a half-initialised GPU engine holds before trying the CPU.
+                // Free whatever a half-initialised engine holds before the next attempt.
                 runCatching { e?.close() }
-                last = t
+                lastError = t
             }
         }
-        val error = last ?: IllegalStateException("bilinmeyen hata")
-        onLoadFailed(item, error)
-        throw IllegalStateException("${item.title} yüklenemedi (bellek yetersiz olabilir). Bir sonraki soruda daha küçük model denenecek.", error)
+        return null
     }
+
+    /** An engine with the vision part: reloads on the CPU with it when the fast engine has none. */
+    private suspend fun ensureVision(): Engine {
+        val e = ensureLoaded()
+        if (visionLoaded == true) return e
+        return lock.withLock {
+            engine?.takeIf { visionLoaded == true }?.let { return it }
+            // Never close an engine a cancelled answer may still be generating with.
+            val until = System.currentTimeMillis() + 10_000
+            while (inUse.get() > 0 && System.currentTimeMillis() < until) kotlinx.coroutines.delay(50)
+            runCatching { engine?.close() }
+            engine = null
+            load(listOf(true to Backend.CPU()))
+                ?: (load(listOf(false to Backend.GPU(), false to Backend.CPU())).also { visionNotPossible = true }
+                    ?: throw IllegalStateException("${item.title} yeniden yüklenemedi", lastError))
+        }
+    }
+
+    private val inUse = java.util.concurrent.atomic.AtomicInteger(0)
+
+    /** The vision part could not be loaded on this phone at all. */
+    @Volatile private var visionNotPossible = false
 
     override fun stream(messages: List<ChatMessage>, config: GenerationConfig): Flow<String> = flow {
         val e = ensureLoaded()
@@ -96,8 +134,14 @@ class LiteRtLmEngine(
             thinkingConfig = thinking,
         )
         // Thinking mode is optional per model: retry without it if the model refuses.
-        val conversation = runCatching { e.createConversation(conversationConfig(ThinkingConfig(enableThinking = config.thinking))) }
-            .getOrElse { e.createConversation(conversationConfig(null)) }
+        inUse.incrementAndGet()
+        val conversation = try {
+            runCatching { e.createConversation(conversationConfig(ThinkingConfig(enableThinking = config.thinking))) }
+                .getOrElse { e.createConversation(conversationConfig(null)) }
+        } catch (t: Throwable) {
+            inUse.decrementAndGet()
+            throw t
+        }
         try {
             val tracker = DeltaTracker()
             conversation.sendMessageAsync(Message.user(last)).collect { m ->
@@ -106,13 +150,14 @@ class LiteRtLmEngine(
             }
         } finally {
             runCatching { conversation.close() }
+            inUse.decrementAndGet()
         }
     }.flowOn(Dispatchers.IO)
 
-    override fun canSee(): Boolean = visionLoaded != false
+    override fun canSee(): Boolean = !visionNotPossible
 
     override fun streamWithImage(messages: List<ChatMessage>, jpeg: ByteArray, config: GenerationConfig): Flow<String> = flow {
-        val e = ensureLoaded()
+        val e = ensureVision()
         if (visionLoaded != true) error("Bu model bu telefonda görüntüyle çalışamadı")
         val system = messages.firstOrNull { it.role == Role.SYSTEM }?.content
         val question = messages.lastOrNull { it.role == Role.USER }?.content.orEmpty()

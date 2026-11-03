@@ -15,8 +15,13 @@ data class Settings(
     /** Hands-free: after answering a spoken question, Rick listens again by itself. */
     val conversationMode: Boolean = false,
     val speechRate: Float = 1.0f,
-    /** Web search is off by default; even when on, every query needs approval. */
+    /** Old switch (before 1.1), no longer used; kept so saved settings still load. */
     val webSearch: Boolean = false,
+    /**
+     * When the offline library has no answer, offer to search the Turkish Wikipedia online. Rick only
+     * asks; each search still needs the user's yes plus the platform approval (D38).
+     */
+    val webOffer: Boolean = true,
     /** Blocks every network path (gate/kapi), including model downloads. */
     val fullOffline: Boolean = false,
     val memoryEnabled: Boolean = true,

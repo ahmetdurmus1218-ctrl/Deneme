@@ -116,6 +116,19 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
         DesktopKapi(partial)
     }
 
+    /**
+     * Approved Wikipedia searches go out through rick-kapi.exe (its firewall gate is opened by the
+     * UAC approval and closed again right after); in development, through the same code in-process.
+     */
+    override val web: io.github.ahmetdurmus1218.jarvis.ui.WebGate = object : io.github.ahmetdurmus1218.jarvis.ui.WebGate {
+        override suspend fun fetch(url: String): io.github.ahmetdurmus1218.jarvis.ui.WebFetch = when (val d = downloader) {
+            is io.github.ahmetdurmus1218.jarvis.desktop.kapi.KapiProcessDownloader -> d.query(url)
+            is DesktopKapi -> kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { d.query(url) }
+            else -> io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("Kapı yok")
+        }
+        override suspend fun done() = downloader.endSession(emptyList())
+    }
+
     override val firewall: io.github.ahmetdurmus1218.jarvis.ui.FirewallControl? = windowsFirewall?.let { fw ->
         object : io.github.ahmetdurmus1218.jarvis.ui.FirewallControl {
             override fun status(): String {

@@ -172,6 +172,40 @@ class GateDownloaderTest {
         assertFailsWith<SSLPeerUnverifiedException> { Pins.pinner.check("storage.googleapis.com", listOf(amazon)) }
         assertFailsWith<SSLPeerUnverifiedException> { Pins.pinner.check("huggingface.co", listOf(isrg)) }
         assertFailsWith<SSLPeerUnverifiedException> { Pins.pinner.check("github.com", listOf(amazon)) }
+        // Wikipedia (approved web searches): DigiCert, GlobalSign and Let's Encrypt chains.
+        Pins.pinner.check("tr.wikipedia.org", listOf(root("DigiCert Global Root G2")))
+        Pins.pinner.check("tr.wikipedia.org", listOf(root("GlobalSign")))
+        Pins.pinner.check("tr.wikipedia.org", listOf(isrg))
+        Pins.pinner.check("tr.wikipedia.org", listOf(root("DigiCert TLS ECC P384 Root G5")))
+        assertFailsWith<SSLPeerUnverifiedException> { Pins.pinner.check("tr.wikipedia.org", listOf(amazon)) }
+    }
+
+    @Test
+    fun webQueriesOtherThanRicksWikipediaSearchAreRefused() {
+        val q = GateQuery(client { req -> respond(req, 200, "{}".toByteArray()) })
+        for (url in listOf(
+            "https://tr.wikipedia.org/w/api.php?action=edit&title=X",
+            "https://huggingface.co/api/models",
+            io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.searchUrl("kedi").replace("https://", "http://"),
+        )) {
+            val e = assertFailsWith<GateException> { q.fetch(url) }
+            assertTrue(e.message!!.contains("reddedildi"), e.message)
+        }
+        assertTrue(seen.isEmpty(), "refused before any request")
+    }
+
+    @Test
+    fun aWikipediaSearchReturnsJsonWithinTheLimit() {
+        val url = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.searchUrl("Çanakkale")
+        val json = mapOf("Content-Type" to "application/json; charset=utf-8")
+        val ok = GateQuery(client { req -> respond(req, 200, "{\"query\":{}}".toByteArray(), json) }).fetch(url)
+        assertEquals("{\"query\":{}}", ok.body)
+        assertEquals("tr.wikipedia.org", ok.host)
+        assertTrue(seen.single().contains("gsrsearch=%C3%87anakkale"), seen.single())
+        assertFailsWith<GateException> { GateQuery(client { req -> respond(req, 200, "<html>".toByteArray(), mapOf("Content-Type" to "text/html")) }).fetch(url) }
+        val big = ByteArray(io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.MAX_BYTES + 10) { 'a'.code.toByte() }
+        assertFailsWith<GateException> { GateQuery(client { req -> respond(req, 200, big, json) }).fetch(url) }
+        assertFailsWith<GateException> { GateQuery(client { req -> respond(req, 302, ByteArray(0), mapOf("Location" to "https://evil.example/")) }).fetch(url) }
     }
 
     @Test

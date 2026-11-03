@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -82,8 +83,30 @@ class PiperSpeechOutput(
     private val fallback: SpeechOutput,
     /** True when the media volume is all the way down (nothing can be heard). */
     private val mediaMuted: () -> Boolean = { false },
+    /** Raises a media volume that is all the way down; returns a note for the user when it did. */
+    private val ensureAudible: () -> String? = { null },
+    /** Takes (true) / gives back (false) audio focus, so music is lowered while Rick speaks. */
+    private val audioFocus: (Boolean) -> Unit = {},
 ) : SpeechOutput {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /**
+     * The voice is made on its own high-priority thread. While the language model is still writing
+     * the rest of an answer it uses every core; at normal priority the voice then came out many
+     * seconds late or not at all. The model's threads are created from this thread too, so they
+     * inherit its priority.
+     */
+    private val voiceThread = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+        Thread({
+            runCatching { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_AUDIO) }
+                .recoverCatching { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY) }
+            r.run()
+        }, "rick-voice")
+    }
+    private val voice = voiceThread.asCoroutineDispatcher()
+    @Volatile private var notice: String? = null
+
+    override fun takeNotice(): String? = notice.also { notice = null }
     private val loadLock = Mutex()
     @Volatile private var tts: OfflineTts? = null
     @Volatile private var failed = false
@@ -124,13 +147,7 @@ class PiperSpeechOutput(
         val it = item() ?: return null
         try {
             val files = withContext(Dispatchers.IO) { PiperArchive.unpack(File(storage.pathOf(it)), it.sha256) }
-            val cfg = OfflineTtsConfig(
-                model = OfflineTtsModelConfig(
-                    vits = OfflineTtsVitsModelConfig(model = files.model, tokens = files.tokens),
-                    numThreads = 2,
-                ),
-            )
-            OfflineTts(null, cfg).also { tts = it }
+            withContext(voice) { createTts(files) }
         } catch (e: Throwable) {
             Log.w(TAG, "Piper voice failed to load", e)
             failed = true
@@ -139,11 +156,21 @@ class PiperSpeechOutput(
         }
     }
 
+    private fun createTts(files: PiperFiles): OfflineTts {
+        val cfg = OfflineTtsConfig(
+            model = OfflineTtsModelConfig(
+                vits = OfflineTtsVitsModelConfig(model = files.model, tokens = files.tokens),
+                numThreads = 2,
+            ),
+        )
+        return OfflineTts(null, cfg).also { tts = it }
+    }
+
     /** Synthesizes [text] without playing it (samples, sample rate); null when the voice is not available. */
     suspend fun render(text: String, rate: Float = 1f): Pair<FloatArray, Int>? {
         val engine = load() ?: return null
         val parts = TurkishPhonemizer.codepoints(text).map { row ->
-            withContext(Dispatchers.Default) { engine.generateWithConfig("x", GenerationConfig(speed = rate, phonemeCodepoints = arrayOf(row))).samples }
+            withContext(voice) { engine.generateWithConfig("x", GenerationConfig(speed = rate, phonemeCodepoints = arrayOf(row))).samples }
         }
         val all = FloatArray(parts.sumOf { it.size })
         var p = 0
@@ -152,10 +179,16 @@ class PiperSpeechOutput(
     }
 
     override suspend fun speak(text: String, rate: Float) {
+        // A media volume at zero would make every answer silent: turn it up (the user asked for a
+        // spoken answer; "Sesli yanıt" in Settings turns speaking off altogether).
+        ensureAudible()?.let { notice = it }
         // Installed but still unpacking (first answer after start): wait for it rather than fall back to
         // a system voice that many phones do not have offline, which would leave the answer silent.
         val engine = if (installed()) load() else null
-        if (engine == null) return fallback.speak(text, rate)
+        if (engine == null) {
+            audioFocus(true)
+            try { return fallback.speak(text, rate) } finally { audioFocus(false) }
+        }
         val rows = TurkishPhonemizer.codepoints(text)
         if (rows.isEmpty()) return
         val gen = ++generation
@@ -168,9 +201,10 @@ class PiperSpeechOutput(
                 .setBufferSizeInBytes(AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT) * 4)
                 .build()
             track = out
+            audioFocus(true)
             try {
                 out.play()
-                fun synth(i: Int) = async(Dispatchers.Default) {
+                fun synth(i: Int) = async(voice) {
                     engine.generateWithConfig("x", GenerationConfig(speed = rate, phonemeCodepoints = arrayOf(rows[i]))).samples
                 }
                 var next = synth(0)
@@ -196,6 +230,7 @@ class PiperSpeechOutput(
                 track = null
                 runCatching { out.pause(); out.flush() }
                 out.release()
+                audioFocus(false)
             }
         }
     }

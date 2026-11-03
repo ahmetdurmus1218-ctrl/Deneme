@@ -32,6 +32,29 @@ object Pins {
     private const val GTS_ROOT_R3 = "sha256/QXnt2YHvdHR3tJYmQIr0Paosp6t/nggsEGD4QJZ3Q0g="
     private const val GTS_ROOT_R4 = "sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c="
 
+    // Wikimedia (tr.wikipedia.org) is served with DigiCert and Let's Encrypt certificates (earlier
+    // GlobalSign). Root keys computed from the system trust store on 2026-11-03; DigiCert Global Root
+    // CA and GlobalSign Root CA (R1) are no longer in that store, so their widely published pins are
+    // used for phones whose chains still end there.
+    private const val DIGICERT_GLOBAL_ROOT_CA = "sha256/r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E="
+    private const val DIGICERT_GLOBAL_ROOT_G2 = "sha256/i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY="
+    private const val DIGICERT_GLOBAL_ROOT_G3 = "sha256/uUwZgwDOxcBXrQcntwu+kYFpkiVkOaezL0WYEZ3anJc="
+    private const val DIGICERT_TLS_ECC_P384_G5 = "sha256/oC+voZLIy4HLE0FVT5wFtxzKKokLDRKY1oNkfJYe+98="
+    private const val DIGICERT_TLS_RSA4096_G5 = "sha256/ape1HIIZ6T5d7GS61YBs3rD4NVvkfnVwELcCRW4Bqv0="
+    private const val GLOBALSIGN_R1 = "sha256/K87oWBWM9UZfyddvDfoxL+8lpNyoUB2ptGtn0fv6G2Q="
+    private const val GLOBALSIGN_R3 = "sha256/cGuxAXyFXFkWm61cF4HPWX8S0srS9j0aSqN0k4AP+4A="
+    private const val GLOBALSIGN_R6 = "sha256/aCdH+LpiG4fN07wpXtXKvOciocDANj0daLOJKNJ4fx4="
+    private const val GLOBALSIGN_ECC_R4 = "sha256/CLOmM1/OXvSPjw5UOYbAf9GKOxImEp9hhku9W90fHMk="
+    private const val GLOBALSIGN_ECC_R5 = "sha256/fg6tdrtoGdwvVFEahDVPboswe53YIFjqbABPAdndpd8="
+    private const val GLOBALSIGN_R46 = "sha256/rn+WLLnmp9v3uDP7GPqbcaiRdd+UnCMrap73yz3yu/w="
+    private const val GLOBALSIGN_E46 = "sha256/4EoCLOMvTM8sf2BGKHuCijKpCfXnUUR/g/0scfb9gXM="
+
+    private val WIKIMEDIA = arrayOf(
+        DIGICERT_GLOBAL_ROOT_CA, DIGICERT_GLOBAL_ROOT_G2, DIGICERT_GLOBAL_ROOT_G3, DIGICERT_TLS_ECC_P384_G5, DIGICERT_TLS_RSA4096_G5,
+        GLOBALSIGN_R1, GLOBALSIGN_R3, GLOBALSIGN_R6, GLOBALSIGN_ECC_R4, GLOBALSIGN_ECC_R5, GLOBALSIGN_R46, GLOBALSIGN_E46,
+        ISRG_ROOT_X1, ISRG_ROOT_X2, ISRG_ROOT_YR, LE_YR1, LE_YR2,
+    )
+
     private val GOOGLE = arrayOf(GTS_ROOT_R1, GTS_ROOT_R3, GTS_ROOT_R4)
     private val AMAZON = arrayOf(AMAZON_ROOT_CA_1, AMAZON_ROOT_CA_2, AMAZON_ROOT_CA_3, AMAZON_ROOT_CA_4, AMAZON_RSA_2048_M01)
     private val LETS_ENCRYPT = arrayOf(ISRG_ROOT_X1, ISRG_ROOT_X2, ISRG_ROOT_YR, LE_YR1, LE_YR2)
@@ -48,5 +71,6 @@ object Pins {
         .add("objects.githubusercontent.com", *LETS_ENCRYPT)
         .add("release-assets.githubusercontent.com", *LETS_ENCRYPT)
         .add("storage.googleapis.com", *GOOGLE)
+        .add("tr.wikipedia.org", *WIKIMEDIA)
         .build()
 }

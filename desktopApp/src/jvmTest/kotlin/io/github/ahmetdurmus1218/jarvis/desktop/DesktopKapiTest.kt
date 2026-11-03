@@ -163,4 +163,34 @@ class DesktopKapiTest {
         val f = Files.createTempFile("h", ".txt").toFile().apply { writeText("abc") }
         assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" to 3L, DesktopKapi.sha256(f))
     }
+
+    @Test
+    fun webQueriesAreOnlyRicksWikipediaSearches() {
+        val kapi = DesktopKapi(Files.createTempDirectory("kapi").toFile())
+        // Refused before any connection: other hosts, other API actions, plain http.
+        for (url in listOf(
+            "https://evil.example/w/api.php?action=query",
+            "https://tr.wikipedia.org/w/api.php?action=edit&title=X",
+            io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.searchUrl("kedi").replace("https", "http"),
+        )) {
+            assertIs<io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed>(kapi.query(url), url)
+        }
+        assertEquals(
+            setOf("tr.wikipedia.org"),
+            setOf("tr.wikipedia.org").filter { PinningTrust.pinsFor(it).isNotEmpty() }.toSet(),
+            "Wikipedia has pins",
+        )
+    }
+
+    @Test
+    fun kapiQueryOutputIsParsed() {
+        val body = """{"query":{"pages":[]}}"""
+        val ok = io.github.ahmetdurmus1218.jarvis.desktop.kapi.KapiProcessDownloader.parseQuery(
+            listOf("Picked up JAVA_TOOL_OPTIONS", "TEXT tr.wikipedia.org " + java.util.Base64.getEncoder().encodeToString(body.toByteArray())),
+        )
+        assertEquals(io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Ok(body, "tr.wikipedia.org", body.length.toLong()), ok)
+        val fail = io.github.ahmetdurmus1218.jarvis.desktop.kapi.KapiProcessDownloader.parseQuery(listOf("FAIL 0 HTTP 503"))
+        assertEquals(io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("HTTP 503"), fail)
+        assertIs<io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed>(io.github.ahmetdurmus1218.jarvis.desktop.kapi.KapiProcessDownloader.parseQuery(emptyList()))
+    }
 }

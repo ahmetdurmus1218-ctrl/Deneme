@@ -45,6 +45,8 @@ sealed interface AssistantEvent {
     data class SceneReady(val index: Int, val scene: VerifiedScene) : AssistantEvent
     data class Completed(val reply: VerifiedReply, val assistantText: String) : AssistantEvent
     data class Failed(val message: String) : AssistantEvent
+    /** Rick proposes something ([scene] asks); it is done only if the user says yes. */
+    data class Offered(val offer: Offer, val scene: VerifiedScene) : AssistantEvent
 }
 
 /**
@@ -66,10 +68,16 @@ class Assistant(
     private val briefing: (suspend () -> io.github.ahmetdurmus1218.jarvis.core.briefing.Briefing.Input)? = null,
     /** Lessons from the user's corrections / likes and the idle research notebook (null: off). */
     private val learning: (() -> io.github.ahmetdurmus1218.jarvis.core.learning.Learning?)? = null,
+    /** True when a Wikipedia web search may be offered (a gate exists and full offline mode is off). */
+    private val webOffer: () -> Boolean = { false },
+    /** Device actions this platform can really do (the PC has no torch and cannot call). */
+    private val canOffer: (QuickCommand) -> Boolean = { true },
 ) {
     companion object {
         const val MAX_TOOL_ROUNDS = 5
         const val NO_SOURCE_TEXT = "Bu bilgi kütüphanemde yok."
+        fun webOfferText(query: String) =
+            "Bunu kütüphanemde bulamadım. İsterseniz internette, Wikipedia'da bakayım; yalnızca \"$query\" araması gider."
         const val NO_VISION_TEXT = "Görmek için gerçek bir model gerekiyor. Telefonda Gemma 4'ü, bilgisayarda modelin görme eklentisini Modeller ekranından indirin."
         private const val REPAIR_PROMPT =
             "Önceki cevabın geçerli JSON değildi. Aynı cevabı yalnızca belirtilen JSON biçiminde, başka hiçbir metin olmadan yeniden yaz."
@@ -110,6 +118,11 @@ class Assistant(
             emit(AssistantEvent.Quick(cmd, VerifiedScene(scene)))
             return@flow
         }
+        // A need said in passing ("yarın 7'de kalkmam lazım"): offer to help, at once, without the model.
+        NeedDetector.detect(userText)?.takeIf { canOffer(it.offer.command) }?.let { need ->
+            emit(AssistantEvent.Offered(need.offer, VerifiedScene(Sahne(need.say))))
+            return@flow
+        }
         val budget: Budget
         val knowledge: Boolean
         when (route) {
@@ -142,9 +155,75 @@ class Assistant(
         // Knowledge questions: search local sources first (section 5.1.3).
         if (knowledge) {
             val calls = listOf("wiki_ara", "belge_ara").mapNotNull { name -> tools[name]?.let { name to JsonObject(mapOf("sorgu" to kotlinx.serialization.json.JsonPrimitive(userText))) } }
-            runTools(calls, turn).forEach { emit(it) }
+            val results = runTools(calls, turn)
+            results.forEach { emit(it) }
+            // Nothing in the offline library: rather than only saying so, offer to look it up online.
+            if (results.none { it is AssistantEvent.ToolCall && it.ok } && lessons.none { !it.liked } && notes.isEmpty() && webOffer()) {
+                val query = io.github.ahmetdurmus1218.jarvis.core.knowledge.WikiQuery.clean(userText).take(OnlineWikipedia.MAX_QUERY)
+                val scene = VerifiedScene(Sahne(webOfferText(query), Gorsel(GorselTip.BASLIK, baslik = "İnternette bakayım mı?")))
+                emit(AssistantEvent.Offered(Offer.WebLookup(query, userText), scene))
+                return@flow
+            }
         }
+        generate(turn, config, knowledge)
+    }
 
+    /**
+     * Answers [question] from pages read on the Wikipedia website after the user's approval. The
+     * pages are untrusted data like any article; numbers and quotes must appear in them verbatim.
+     */
+    fun answerFromWeb(question: String, pages: List<WebPage>, history: List<ChatMessage> = emptyList()): Flow<AssistantEvent> = flow {
+        val kaynaklar = pages.map { Kaynak(it.title, "web", it.url) }
+        if (pages.isEmpty()) {
+            val scene = VerifiedScene(Sahne("İnternette de bununla ilgili bir sayfa bulamadım.", Gorsel(GorselTip.BASLIK, baslik = "Sonuç yok")))
+            emit(AssistantEvent.SceneReady(0, scene))
+            emit(AssistantEvent.Completed(VerifiedReply(listOf(scene), null, emptyList()), ""))
+            return@flow
+        }
+        val real = (engine as? io.github.ahmetdurmus1218.jarvis.core.llm.EngineSelector)?.current ?: engine
+        if (real.id == "mock") {
+            // No language model: read the opening of the best page, word for word, with its source.
+            val top = pages.first()
+            val lead = io.github.ahmetdurmus1218.jarvis.core.learning.Researcher.leadSentences(top.text, 260)
+            val scene = Verifier.verifyScene(Sahne(lead, Gorsel(GorselTip.KAYNAK_KARTI, baslik = top.title, kaynak = "Wikipedia (internet)", konum = top.url)), listOf(top.text), true)
+            emit(AssistantEvent.SceneReady(0, scene))
+            emit(AssistantEvent.Completed(VerifiedReply(listOf(scene), top.text.takeIf { it.length > lead.length }, kaynaklar), ""))
+            return@flow
+        }
+        val budget = io.github.ahmetdurmus1218.jarvis.core.router.ComplexityScorer.budget(question)
+        val facts = if (memory.enabled()) memory.list() else emptyList()
+        val messages = mutableListOf(ChatMessage(Role.SYSTEM, SystemPrompt.build(tools, now.now(), facts, budget)))
+        messages += history.filter { it.role != Role.SYSTEM }
+        messages += ChatMessage(Role.USER, question)
+        val turn = TurnState(messages, mutableListOf())
+        turn.tainted = true // web text: no side-effect tools after this
+        val body = kotlinx.serialization.json.buildJsonObject {
+            put("kaynak", kotlinx.serialization.json.JsonPrimitive("tr.wikipedia.org (kullanıcının onayıyla internetten)"))
+            put("sonuclar", kotlinx.serialization.json.buildJsonArray {
+                pages.forEach { p ->
+                    add(kotlinx.serialization.json.buildJsonObject {
+                        put("baslik", kotlinx.serialization.json.JsonPrimitive(p.title))
+                        put("adres", kotlinx.serialization.json.JsonPrimitive(p.url))
+                        put("metin", kotlinx.serialization.json.JsonPrimitive(p.text))
+                    })
+                }
+            })
+        }.toString()
+        messages += ChatMessage(Role.TOOL, InjectionScanner.wrap("web_wikipedia", body, untrusted = true), toolName = "web_wikipedia")
+        turn.evidence += pages.map { "${it.title} ${it.text}" }
+        emit(AssistantEvent.ToolCall("web_wikipedia", pages.first().title, body, true))
+        generate(turn, GenerationConfig(maxTokens = budget.maxTokens, thinking = budget.thinking), knowledge = true, extraSources = kaynaklar)
+    }
+
+    /** The model's answer for [turn]: tool rounds, streaming scenes, one JSON repair (section 5.3). */
+    private suspend fun kotlinx.coroutines.flow.FlowCollector<AssistantEvent>.generate(
+        turn: TurnState,
+        config: GenerationConfig,
+        knowledge: Boolean,
+        extraSources: List<Kaynak> = emptyList(),
+    ) {
+        val messages = turn.messages
+        val evidence = turn.evidence
         var repaired = false
         var round = 0
         while (true) {
@@ -167,7 +246,7 @@ class Assistant(
                 messages += ChatMessage(Role.ASSISTANT, raw)
                 if (round > MAX_TOOL_ROUNDS) {
                     emit(finish(listOf(Sahne("Araç sınırına ulaştım, bu soruyu şimdilik cevaplayamıyorum.")), null, emptyList(), evidence, knowledge, raw))
-                    return@flow
+                    return
                 }
                 runTools(toolCalls, turn).forEach { emit(it) }
                 continue
@@ -182,13 +261,13 @@ class Assistant(
                         emittedScenes += v
                         emit(AssistantEvent.SceneReady(emittedScenes.size - 1, v))
                     }
-                    emit(AssistantEvent.Completed(VerifiedReply(emittedScenes, reply.detay, reply.kaynaklar), raw))
-                    return@flow
+                    emit(AssistantEvent.Completed(VerifiedReply(emittedScenes, reply.detay, (reply.kaynaklar + extraSources).distinctBy { it.baslik }), raw))
+                    return
                 }
                 is SceneStreamParser.Outcome.Broken -> {
                     if (emittedScenes.isNotEmpty()) {
                         emit(AssistantEvent.Completed(VerifiedReply(emittedScenes, null, emptyList()), raw))
-                        return@flow
+                        return
                     }
                     if (!repaired) {
                         repaired = true
@@ -197,7 +276,7 @@ class Assistant(
                         continue
                     }
                     emit(finish(listOf(SceneStreamParser.plainTextScene(raw)), null, emptyList(), evidence, knowledge, raw))
-                    return@flow
+                    return
                 }
             }
         }

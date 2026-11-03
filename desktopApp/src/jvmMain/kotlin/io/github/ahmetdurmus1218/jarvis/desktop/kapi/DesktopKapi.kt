@@ -137,6 +137,32 @@ class DesktopKapi(
         }
     }
 
+    /**
+     * One approved Wikipedia search (since 1.1): only addresses built by OnlineWikipedia, pinned
+     * HTTPS, no redirects, JSON only, size-capped. Returns the body or throws with the reason.
+     */
+    fun query(url: String): io.github.ahmetdurmus1218.jarvis.ui.WebFetch {
+        val wiki = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia
+        if (!wiki.allowed(url)) return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("İzin verilmeyen web isteği")
+        val uri = URI(url)
+        if (!"https".equals(uri.scheme, true) || uri.host != wiki.HOST) return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("İzin listesinde olmayan alan adı")
+        return try {
+            val req = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(30))
+                .header("User-Agent", wiki.USER_AGENT).header("Accept", "application/json").GET().build()
+            val r = client.send(req, HttpResponse.BodyHandlers.ofInputStream())
+            r.body().use { input ->
+                if (r.statusCode() != 200) return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("HTTP ${r.statusCode()}")
+                val type = r.headers().firstValue("content-type").orElse("")
+                if (!type.startsWith("application/json")) return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("Beklenmeyen yanıt türü: $type")
+                val bytes = input.readNBytes(wiki.MAX_BYTES + 1)
+                if (bytes.size > wiki.MAX_BYTES) return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("Yanıt boyut sınırını aştı")
+                io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Ok(bytes.decodeToString(), uri.host, bytes.size.toLong())
+            }
+        } catch (e: Exception) {
+            io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed(e.message ?: e.javaClass.simpleName)
+        }
+    }
+
     companion object {
         fun defaultClient(): HttpClient = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NEVER)
@@ -192,6 +218,16 @@ internal object PinningTrust {
         "x4QzPSC810K5/cMjb05Qm4k3Bw5zBn4lTdO/nEW/Td4=",
     )
 
+    /** Wikimedia's CAs (tr.wikipedia.org): DigiCert, GlobalSign and Let's Encrypt roots (see gate/Pins.kt). */
+    private val WIKIMEDIA = setOf(
+        "r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=", "i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY=",
+        "uUwZgwDOxcBXrQcntwu+kYFpkiVkOaezL0WYEZ3anJc=", "oC+voZLIy4HLE0FVT5wFtxzKKokLDRKY1oNkfJYe+98=",
+        "ape1HIIZ6T5d7GS61YBs3rD4NVvkfnVwELcCRW4Bqv0=", "K87oWBWM9UZfyddvDfoxL+8lpNyoUB2ptGtn0fv6G2Q=",
+        "cGuxAXyFXFkWm61cF4HPWX8S0srS9j0aSqN0k4AP+4A=", "aCdH+LpiG4fN07wpXtXKvOciocDANj0daLOJKNJ4fx4=",
+        "CLOmM1/OXvSPjw5UOYbAf9GKOxImEp9hhku9W90fHMk=", "fg6tdrtoGdwvVFEahDVPboswe53YIFjqbABPAdndpd8=",
+        "rn+WLLnmp9v3uDP7GPqbcaiRdd+UnCMrap73yz3yu/w=", "4EoCLOMvTM8sf2BGKHuCijKpCfXnUUR/g/0scfb9gXM=",
+    ) + LETS_ENCRYPT
+
     /** Google Trust Services roots R1, R3, R4 (storage.googleapis.com). */
     private val GOOGLE = setOf(
         "hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc=", "QXnt2YHvdHR3tJYmQIr0Paosp6t/nggsEGD4QJZ3Q0g=",
@@ -206,6 +242,7 @@ internal object PinningTrust {
             h == "github.com" -> SECTIGO
             h == "objects.githubusercontent.com" || h == "release-assets.githubusercontent.com" -> LETS_ENCRYPT
             h == "storage.googleapis.com" -> GOOGLE
+            h == "tr.wikipedia.org" -> WIKIMEDIA
             else -> emptySet()
         }
     }

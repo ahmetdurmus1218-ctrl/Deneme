@@ -34,9 +34,10 @@ import kotlin.coroutines.resume
  * descriptor of the destination file and receives progress. Kale itself has no network access.
  * After the gate reports success, Kale recomputes the SHA-256 on its own copy.
  */
-class GateClient(private val context: Context, private val storage: AndroidModelStorage) : Downloader {
+class GateClient(private val context: Context, private val storage: AndroidModelStorage) : Downloader, io.github.ahmetdurmus1218.jarvis.ui.WebGate {
     private companion object {
         const val BIND_TIMEOUT_MS = 15_000L
+        const val QUERY_TIMEOUT_MS = 30_000L
     }
 
     private val _state = MutableStateFlow<DownloadState>(DownloadState.Unavailable)
@@ -152,6 +153,47 @@ class GateClient(private val context: Context, private val storage: AndroidModel
             activeItem = null
             currentResult = null
             main.post { runCatching { context.unbindService(conn) } }
+        }
+    }
+
+    /**
+     * One approved Wikipedia search through Kapı (Kale has no network permission). A gate older than
+     * 1.1 does not know the request and stays silent: that ends in a timeout with an update hint.
+     */
+    override suspend fun fetch(url: String): io.github.ahmetdurmus1218.jarvis.ui.WebFetch = run {
+        val failed = io.github.ahmetdurmus1218.jarvis.ui.WebFetch::Failed
+        if (!io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.allowed(url)) return@run failed("İzin verilmeyen web isteği")
+        refresh()
+        if (_state.value !is DownloadState.Ready) return@run failed("Rick Kapı yüklü değil (rick-kapi.apk)")
+        val (service, conn) = withTimeoutOrNull(BIND_TIMEOUT_MS) { bind() } ?: return@run failed("Kapı servisine bağlanılamadı")
+        val result = CompletableDeferred<io.github.ahmetdurmus1218.jarvis.ui.WebFetch>()
+        val replies = Messenger(object : Handler(Looper.getMainLooper()) {
+            override fun handleMessage(msg: Message) {
+                val data = msg.data
+                when (msg.what) {
+                    GateProtocol.MSG_QUERY_DONE -> result.complete(
+                        io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Ok(
+                            data.getString(GateProtocol.KEY_TEXT).orEmpty(),
+                            data.getString(GateProtocol.KEY_HOST) ?: io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.HOST,
+                            data.getLong(GateProtocol.KEY_BYTES),
+                        ),
+                    )
+                    GateProtocol.MSG_ERROR -> result.complete(failed(data.getString(GateProtocol.KEY_MESSAGE) ?: "Bilinmeyen hata"))
+                }
+            }
+        })
+        try {
+            service.send(Message.obtain(null, GateProtocol.MSG_QUERY).apply {
+                replyTo = replies
+                data = Bundle().apply { putString(GateProtocol.KEY_URL, url) }
+            })
+            withTimeoutOrNull(QUERY_TIMEOUT_MS) { result.await() }
+                ?: failed("Kapı cevap vermedi. Rick Kapı'nın son sürümünü (rick-kapi.apk) kurun.")
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            failed(e.message ?: "Kapı hatası")
+        } finally {
+            Handler(Looper.getMainLooper()).post { runCatching { context.unbindService(conn) } }
         }
     }
 

@@ -321,4 +321,89 @@ class JarvisControllerTest {
         assertTrue(c.turns.value[1].done)
         scope.cancel()
     }
+
+    // ---- offers ----
+
+    private class WebBridge(tts: Tts, val body: String) : PlatformBridgeDelegate(Bridge(tts)) {
+        val fetched = mutableListOf<String>()
+        var closed = 0
+        override val web = object : WebGate {
+            override suspend fun fetch(url: String): WebFetch { fetched += url; return WebFetch.Ok(body, "tr.wikipedia.org", body.length.toLong()) }
+            override suspend fun done() { closed++ }
+        }
+    }
+
+    /** Forwards everything to [b]; tests override single members. */
+    private open class PlatformBridgeDelegate(val b: Bridge) : PlatformBridge by b
+
+    @Test
+    fun aNeedIsOfferedAndDoneOnlyAfterYes() = runTest {
+        val scope = controllerScope()
+        val (c, bridge, tts) = setup(scope = scope)
+        c.send("Burası çok karanlık")
+        advanceUntilIdle()
+        assertEquals("Feneri açayım mı?", c.turns.value.last().scenes.single().sahne.ses)
+        assertTrue(bridge.executed.isEmpty(), "nothing happens before the answer")
+        c.send("evet")
+        advanceUntilIdle()
+        assertEquals(1, bridge.executed.size)
+        assertEquals(true, c.turns.value[0].offerAnswer)
+        assertTrue(tts.spoken.last().contains("Fener"), tts.spoken.last())
+        // A "no" does nothing, and a new question just moves on.
+        c.send("Ben artık yatıyorum")
+        advanceUntilIdle()
+        c.send("hayır")
+        advanceUntilIdle()
+        assertEquals(1, bridge.executed.size)
+        assertEquals("Peki, yapmıyorum.", c.turns.value.last().scenes.single().sahne.ses)
+        scope.cancel()
+    }
+
+    @Test
+    fun anApprovedWebSearchSendsOnlyTheQueryAndIsLogged() = runTest {
+        val scope = controllerScope()
+        val tts = Tts()
+        val body = """{"query":{"pages":[{"title":"Atatürk","index":1,"extract":"Mustafa Kemal Atatürk, Türkiye Cumhuriyeti'nin kurucusudur. 1881'de doğdu."}]}}"""
+        val bridge = WebBridge(tts, body)
+        val memory = InMemoryMemoryStore()
+        val assistant = Assistant(MockLlmEngine(tokenDelayMs = 0), DefaultTools.create(memory, now), memory, now, webOffer = { true })
+        val files = Files()
+        val log = NetworkLogStore(files)
+        val c = JarvisController(scope, bridge, assistant, memory, SettingsStore(files), netLog = log)
+        c.send("Atatürk kimdir?")
+        advanceUntilIdle()
+        val offerTurn = c.turns.value.last()
+        assertTrue(offerTurn.offer is io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.WebLookup)
+        assertTrue(bridge.fetched.isEmpty())
+        c.answerOffer(offerTurn.id, true)
+        advanceUntilIdle()
+        assertEquals(1, bridge.fetched.size)
+        assertEquals("Atatürk", io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.queryOf(bridge.fetched.single()))
+        assertEquals(1, bridge.closed, "the gate is closed after the search")
+        val answer = c.turns.value.last()
+        assertTrue(answer.scenes.single().sahne.ses.startsWith("Mustafa Kemal Atatürk"), answer.scenes.single().sahne.ses)
+        assertEquals("web", answer.kaynaklar.single().tur)
+        assertEquals("tamam", log.events.value.single().result)
+        scope.cancel()
+    }
+
+    @Test
+    fun fullOfflineModeNeverGoesOut() = runTest {
+        val scope = controllerScope()
+        val tts = Tts()
+        val bridge = WebBridge(tts, "{}")
+        val memory = InMemoryMemoryStore()
+        val assistant = Assistant(MockLlmEngine(tokenDelayMs = 0), DefaultTools.create(memory, now), memory, now, webOffer = { true })
+        val files = Files()
+        val settings = SettingsStore(files)
+        settings.update { it.copy(fullOffline = true) }
+        val c = JarvisController(scope, bridge, assistant, memory, settings)
+        c.send("Atatürk kimdir?")
+        advanceUntilIdle()
+        c.send("evet bak")
+        advanceUntilIdle()
+        assertTrue(bridge.fetched.isEmpty())
+        assertTrue(c.turns.value.last().scenes.single().sahne.ses.contains("çevrimdışı"))
+        scope.cancel()
+    }
 }

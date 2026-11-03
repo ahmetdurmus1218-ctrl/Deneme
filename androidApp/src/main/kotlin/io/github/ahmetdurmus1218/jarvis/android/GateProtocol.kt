@@ -15,6 +15,9 @@ object GateProtocol {
     const val MSG_DONE = 5
     const val MSG_ERROR = 6
     const val MSG_CANCEL = 7
+    /** One approved Wikipedia search (since 1.1): KEY_URL in, MSG_QUERY_DONE with KEY_TEXT out. */
+    const val MSG_QUERY = 8
+    const val MSG_QUERY_DONE = 9
 
     const val KEY_ITEM_ID = "itemId"
     const val KEY_URL = "url"
@@ -29,4 +32,5 @@ object GateProtocol {
     const val KEY_HOST = "host"
     const val KEY_MESSAGE = "message"
     const val KEY_VERSION = "version"
+    const val KEY_TEXT = "text"
 }

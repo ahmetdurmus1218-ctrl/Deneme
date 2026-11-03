@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
@@ -36,6 +37,8 @@ class LlamaServerClient(private val baseUrl: String, private val http: HttpClien
 
     fun requestBody(messages: List<ChatMessage>, config: GenerationConfig): String = buildJsonObject {
         put("stream", true)
+        // Reuse the unchanged start of the prompt (instructions, tools) between questions.
+        put("cache_prompt", true)
         put("max_tokens", config.maxTokens)
         put("temperature", config.temperature.toDouble())
         put("messages", buildJsonArray {
@@ -177,6 +180,13 @@ class LlamaServerEngine(
         }
         client = c
         c
+    }
+
+    private val warmScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
+
+    /** Starts llama-server when the app opens, so the first question does not wait for the model to load. */
+    override fun warmUp() {
+        if (client == null) warmScope.launch { runCatching { ensureStarted() } }
     }
 
     override fun stream(messages: List<ChatMessage>, config: GenerationConfig): Flow<String> = flow {

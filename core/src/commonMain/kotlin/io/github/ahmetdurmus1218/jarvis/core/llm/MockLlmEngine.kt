@@ -45,9 +45,9 @@ class MockLlmEngine(private val tokenDelayMs: Long = 12, private val chunkSize: 
             Regex("^(merhaba|selam|gunaydin|iyi aksamlar|hey (?:rick|rik|jarvis))").containsMatchIn(n) ->
                 reply(Sahne("Merhaba efendim, ben Rick. Her şey hazır.", Gorsel(GorselTip.BASLIK, baslik = "Merhaba")))
             Regex("^(nasilsin|naber)").containsMatchIn(n) ->
-                reply(Sahne("Teşekkür ederim efendim, sistemlerim çalışıyor."))
+                reply(Sahne("İyiyim, sorduğunuz için sağ olun. Siz nasılsınız, bugün ne yapalım?"))
             Regex("\\b(tesekkur|sagol|eyvallah)").containsMatchIn(n) ->
-                reply(Sahne("Rica ederim efendim."))
+                reply(Sahne("Ne demek, her zaman."))
             Regex("\\b(hatirla|unutma|aklinda tut)\\b").containsMatchIn(n) -> {
                 val fact = text.replace(Regex("(?i)(bunu |şunu )?(hatırla|unutma|aklında tut)[:,]?"), "").trim().trimEnd('.')
                 toolCall("hafiza_ekle", "{\"bilgi\":${quote(fact)}}")
@@ -65,8 +65,8 @@ class MockLlmEngine(private val tokenDelayMs: Long = 12, private val chunkSize: 
                     Sahne("Wikipedia paketi kurulduğunda bu soruyu kaynağıyla cevaplayabilirim."),
                 )
             else -> reply(
-                Sahne("Bunu cevaplamak için dil modelimi kurmanız gerekiyor efendim.", Gorsel(GorselTip.BASLIK, baslik = "Dil modeli gerekli")),
-                Sahne("Sohbet ekranındaki düğmeyle tek dokunuşta kurabilirsiniz."),
+                Sahne("Bu konuda sohbet edebilmem için dil modelimi kurmamız lazım.", Gorsel(GorselTip.BASLIK, baslik = "Dil modeli gerekli")),
+                Sahne("Aşağıdaki düğmeyle tek dokunuşta kurulur; sonra internetsiz konuşuruz."),
                 detay = "Dil modeli kurulmadan da çalışanlar: saat, tarih, alarm, zamanlayıcı, hesap, birim çevirme, fener, ses, müzik, " +
                     "arama ve mesaj hazırlama, ayar panelleri, yapılacaklar, kitaplık, ev, brifing ve kaynaklı Wikipedia / belge cevapları.",
             )

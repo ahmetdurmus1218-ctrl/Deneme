@@ -52,6 +52,9 @@ interface PlatformBridge {
     val downloader: Downloader
     val models: ModelStorage
 
+    /** One approved Wikipedia web search through the gate; null when this device has no gate. */
+    val web: WebGate? get() = null
+
     /** Executes a quick command on the device. Returns an error message, or null on success. */
     suspend fun execute(command: QuickCommand): String?
 }
@@ -136,6 +139,9 @@ interface SpeechOutput {
 
     /** Lock-file group of the assistant's own voice (Piper) while it is not installed; null otherwise. */
     val ownModelGroup: String? get() = null
+
+    /** Something the voice did by itself that the user should know (e.g. "medya sesi kapalıydı, açtım"), once. */
+    fun takeNotice(): String? = null
 }
 
 enum class ApprovalMethod(val label: String) {
@@ -150,6 +156,22 @@ sealed interface ApprovalResult {
 }
 
 /** Strong user confirmation: BiometricPrompt on Android, confirmation (UAC in v0.5) on desktop. */
+/**
+ * The way out for one approved web search (Turkish Wikipedia only): the Android gate app or the
+ * PC's rick-kapi. Rick itself never opens a connection.
+ */
+interface WebGate {
+    /** Fetches [url], which must pass OnlineWikipedia.allowed; the gate checks it again. */
+    suspend fun fetch(url: String): WebFetch
+    /** Called after every fetch: closes what the approval opened (the PC's firewall gate). */
+    suspend fun done() {}
+}
+
+sealed interface WebFetch {
+    data class Ok(val body: String, val host: String, val bytes: Long) : WebFetch
+    data class Failed(val message: String) : WebFetch
+}
+
 interface Approver {
     suspend fun confirm(title: String, subtitle: String): ApprovalResult
 }
