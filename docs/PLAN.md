@@ -99,9 +99,19 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [~] İnternet gerektirenler bilinçli olarak yok: haber brifingi, piyasa, hava durumu, YouTube, Home Assistant, ElevenLabs, ikinci cihazı kamera yapma (D32).
 - [~] Kamerada kitaplığa uzanıp kitabı "çekme" AR animasyonu yok; raf fotoğraftan okunuyor.
 
+## v1.0 — Rick
+- [x] Ad: Jarvis → Rick (R.I.C.K), güncelleme eski uygulamanın üstüne kurulur, veriler kalır (D33).
+- [x] Sesli cevap gelmiyorsa nedeni ve tek dokunuşla Piper sesi; model sesinin olduğunu biliyor.
+- [x] Dar / büyük yazılı telefon ekranında sohbet çubuğu ve başlık taşmıyor.
+- [x] İndirmeden önce cihazda arama (PC: eski klasör, İndirilenler, HF/LM Studio/Ollama, eklenen klasörler; telefon: seçilen klasör), SHA-256 ile (D34).
+- [x] Modeli beklemeden cihaz komutları: fener, ses, müzik, ayar panelleri, pil, arama/mesaj hazırlama, yol tarifi; PC'de ses/medya tuşları, ayar sayfaları, Başlat menüsünden program açma, alarm ve zamanlayıcı (D35).
+- [x] "Deneme modu" kaldırıldı; dil modeli yoksa sohbette "Rick'in beynini kur" (D36).
+- [ ] `v1.0.0` yayımlanacak.
+
 ## Kaldığım yer
-Oturum 2 (2026-11-03): v0.3 (Wikipedia, belgeler, araçlar), kamera, v0.4 (Piper, şifreli hafıza,
-bilgi çıkarımı), v0.5 (güvenlik duvarı, jarvis-kapi.exe, Mark 2) ve halilozat/jarvis özelliklerinin
-internetsiz karşılıkları, temalar, yapılacaklar ve günlük brifing yazıldı, testlendi; v0.5.0 yayımlandı. Sıradaki: gerçek cihaz geri
-bildirimi (Gemma 4 / Qwen performansı, alkış eşiği, Piper sesi), kullanıcı internetli özellikleri
-isterse onay akışıyla Kapı üzerinden nasıl yapılacağına karar.
+Oturum 2 (2026-11-03): v0.3–v0.5 ve halilozat özellikleri yayımlandı (v0.5.0). Ardından kullanıcının telefon
+denemesine göre v1.0: ad Rick, sesli cevap, küçük ekran, indirmeden önce cihazda arama, modelsiz cihaz
+komutları, deneme modunun kaldırılması. Sıradaki: v1.0.0 yayını ve gerçek cihaz geri bildirimi (Gemma 4 /
+Qwen hızı, alkış eşiği, Piper sesi, yeni cihaz komutları). Ayrıca araştırılan: kullanıcı verisiyle LoRA
+eğitimi henüz llama.cpp'ye girmedi; önerilen yerel öğrenme (düzeltmelerden öğrenme, boşta araştırma defteri)
+kullanıcı onaylarsa yapılacak.

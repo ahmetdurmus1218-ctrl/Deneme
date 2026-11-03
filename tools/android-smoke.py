@@ -285,7 +285,7 @@ def main():
     adb("shell", "am", "start", "-W", "-n", f"{KALE}/.android.MainActivity")
     wait_for(text_is("Kurulum sihirbazı"), "wizard")
     shot("01-kale-sihirbaz")
-    tap(wait_for(text_is("Şimdilik atla (deneme modu)"), "skip button"))
+    tap(wait_for(text_is("Sonra kur"), "skip button"))
 
     step("quick command")
     type_into(lambda n: n.get("class") == "android.widget.EditText", "saat kac")
@@ -293,6 +293,13 @@ def main():
     answer = wait_for(text_re(r"^Saat \d\d:\d\d\.$"), "time answer")
     print("answer:", label(answer))
     shot("02-kale-saat")
+
+    step("device command without the model: battery")
+    type_into(lambda n: n.get("class") == "android.widget.EditText", "pil yuzde kac")
+    tap(wait_for(text_is("Gönder"), "send button"))
+    answer = wait_for(text_re(r"^Pil yüzde \d+"), "battery answer")
+    print("answer:", label(answer))
+    check_no_crash()
 
     step("microphone: tap → permission → visible feedback (never silent)")
     mic_feedback()

@@ -1,5 +1,6 @@
 package io.github.ahmetdurmus1218.jarvis.ui
 
+import io.github.ahmetdurmus1218.jarvis.core.models.LockedItem
 import io.github.ahmetdurmus1218.jarvis.core.AssistantName
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -113,12 +114,8 @@ class AppGraph(
             wiki = bridge.zim?.let { Wikipedia(it) },
             documents = documents,
             library = library,
-            // Device actions for the model; the PC has no alarms or app launching.
-            extra = if (bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.ANDROID) {
-                io.github.ahmetdurmus1218.jarvis.core.tools.ActionTools { bridge.execute(it) }.all()
-            } else {
-                emptyList()
-            },
+            // Device actions for the model (alarm, timer, opening apps) on both platforms.
+            extra = io.github.ahmetdurmus1218.jarvis.core.tools.ActionTools { bridge.execute(it) }.all(),
         ),
         memory,
         home = home,
@@ -138,7 +135,15 @@ class AppGraph(
         },
     )
     val installer = ModelInstaller(bridge, registry, settings, netLog)
-    val engineLabel: String get() = engine.id.let { if (it == "mock") "sahte model (gerçek model kurulu değil)" else it }
+    val engineLabel: String get() = engine.id.let { if (it == "mock") "temel komutlar · dil modeli kurulu değil" else it }
+
+    /** The recommended language model (and on the PC its llama.cpp) while none is installed; null once one is. */
+    fun brainItems(): List<LockedItem>? {
+        if (engine.current.id != "mock") return null
+        val p = bridge.platform
+        val llm = registry.recommendedBundle(p, bridge.deviceInfo().totalRamGb).filter { it.kind == "llm" }
+        return registry.withRuntime(llm, p).filterNot { bridge.models.isInstalled(it) }.takeIf { it.isNotEmpty() }
+    }
 }
 
 /** Mark 2 around the chat: real numbers refreshed every few seconds. */
@@ -281,6 +286,15 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                             }
                                     }
                                 }
+                                val brainOffer = remember(installed) {
+                                    graph.brainItems()?.let {
+                                        SpeechModelOffer(
+                                            it, graph.installer, what = "Dil modeli",
+                                            reason = "Dil modeli: ${AssistantName.SHORT}'in düşünen beyni (${it.first().title}). Kurulduktan sonra her soruya internetsiz cevap verir.",
+                                            button = "🧠 ${AssistantName.SHORT}'in beynini kur",
+                                        )
+                                    }
+                                }
                                 val vision = VisionActions(
                                     // The phone opens its camera; the PC opens hand control as a demo.
                                     openCamera = { cameraOpen = true },
@@ -291,7 +305,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                 )
                                 val chat: @Composable () -> Unit = {
                                     ChatScreen(
-                                        controller, graph.engineLabel, stt != null, offer, vision, voiceOffer,
+                                        controller, graph.engineLabel, stt != null, offer, vision, voiceOffer, brainOffer,
                                         menu = listOf(
                                             "☀ Günlük brifing" to { controller.send("Rick, brifing ver") },
                                             "✅ Yapılacaklar" to { todoOpen = true },

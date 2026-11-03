@@ -28,6 +28,8 @@ sealed interface QuickCommand {
     data object Sleep : QuickCommand
     /** In-app: opens / closes hand control (the camera with effects). */
     data class HandControl(val on: Boolean) : QuickCommand
+    /** The device itself: torch, volume, music, setting panels, battery, call / message, directions. */
+    data class Device(val action: io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction) : QuickCommand
 }
 
 /**
@@ -78,6 +80,7 @@ object QuickCommandRouter {
         PLANET.matchEntire(n)?.let { m -> io.github.ahmetdurmus1218.jarvis.core.vision.PlanetKind.fromSpeech(m.groupValues[1])?.let { return QuickCommand.ShowPlanet(it) } }
         if (SLEEP.matches(n)) return QuickCommand.Sleep
         HAND.matchEntire(n)?.let { m -> return QuickCommand.HandControl(m.groupValues[1] == "ac") }
+        io.github.ahmetdurmus1218.jarvis.core.device.DeviceCommands.parse(text, n.replace(Regex("[?.!]+$"), "").trim())?.let { return QuickCommand.Device(it) }
         io.github.ahmetdurmus1218.jarvis.core.home.HomeCommands.parse(text)?.let { return QuickCommand.Home(it) }
         val nd = TurkishNumbers.wordsToDigits(n)
         timer(nd)?.let { return it }

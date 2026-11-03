@@ -46,6 +46,42 @@ object Turkish {
         return sb.toString().replace(Regex("\\s+"), " ").trim().trimEnd('.', ',', ':').trim()
     }
 
+    /**
+     * The words of [raw] that [normalizedPart] (a piece of normalize(raw)) came from, in the user's own
+     * spelling: "Ahmet'i ara" + "ahmet" → "Ahmet". The last word may be cut where the piece ends.
+     */
+    fun cutOriginal(raw: String, normalizedPart: String): String {
+        fun bare(s: String) = normalize(s).trimEnd(',', '.', ':', ';')
+        val words = raw.split(Regex("\\s+")).filter { it.isNotEmpty() }
+        val norms = words.map(::bare)
+        val target = normalizedPart.split(' ').filter { it.isNotEmpty() }.map { it.trimEnd(',', '.', ':', ';') }
+        if (target.isEmpty()) return normalizedPart
+        for (i in words.indices) {
+            if (i + target.size > words.size) break
+            val fits = target.indices.all { k ->
+                val w = norms[i + k]
+                w == target[k] || (k == target.lastIndex && w.startsWith(target[k]))
+            }
+            if (!fits) continue
+            val out = words.subList(i, i + target.size).toMutableList()
+            val lastNorm = norms[i + target.lastIndex]
+            val want = target.last()
+            if (lastNorm != want) {
+                // Keep raw characters until as many normalized letters as wanted were produced.
+                val w = out.last()
+                var produced = 0
+                var cut = 0
+                while (cut < w.length && produced < want.length) {
+                    produced += normalize(w[cut].toString()).length
+                    cut++
+                }
+                out[out.lastIndex] = w.substring(0, cut)
+            }
+            return out.joinToString(" ")
+        }
+        return normalizedPart
+    }
+
     private val MONTHS = listOf(
         "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
         "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",

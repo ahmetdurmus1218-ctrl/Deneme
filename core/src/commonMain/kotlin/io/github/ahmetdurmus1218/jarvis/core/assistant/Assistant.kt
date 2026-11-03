@@ -352,6 +352,7 @@ object QuickResponder {
         is QuickCommand.Todo -> Sahne("")
         QuickCommand.Sleep -> Sahne("Uyku moduna geçiyorum. İki alkışla uyandırabilirsiniz.")
         is QuickCommand.HandControl -> Sahne(if (cmd.on) "El kontrolü açılıyor." else "El kontrolü kapatıldı.")
+        is QuickCommand.Device -> Sahne(io.github.ahmetdurmus1218.jarvis.core.device.DeviceCommands.describe(cmd.action))
         is QuickCommand.Calculate -> try {
             val r = io.github.ahmetdurmus1218.jarvis.core.tools.Calculator.format(
                 io.github.ahmetdurmus1218.jarvis.core.tools.Calculator.evaluate(cmd.expression),

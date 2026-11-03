@@ -65,9 +65,10 @@ class MockLlmEngine(private val tokenDelayMs: Long = 12, private val chunkSize: 
                     Sahne("Wikipedia paketi kurulduğunda bu soruyu kaynağıyla cevaplayabilirim."),
                 )
             else -> reply(
-                Sahne("Şu an deneme modundayım efendim; gerçek dil modeli kurulu değil.", Gorsel(GorselTip.BASLIK, baslik = "Deneme modu")),
-                Sahne("Söylediğinizi duydum: ${text.take(120)}"),
-                detay = "Gerçek modeli **Modeller** ekranından indirebilirsiniz. Saat, tarih, alarm, zamanlayıcı, hesaplama, birim çevirme ve Wikipedia araması şimdiden gerçek.",
+                Sahne("Bunu cevaplamak için dil modelimi kurmanız gerekiyor efendim.", Gorsel(GorselTip.BASLIK, baslik = "Dil modeli gerekli")),
+                Sahne("Sohbet ekranındaki düğmeyle tek dokunuşta kurabilirsiniz."),
+                detay = "Dil modeli kurulmadan da çalışanlar: saat, tarih, alarm, zamanlayıcı, hesap, birim çevirme, fener, ses, müzik, " +
+                    "arama ve mesaj hazırlama, ayar panelleri, yapılacaklar, kitaplık, ev, brifing ve kaynaklı Wikipedia / belge cevapları.",
             )
         }
     }

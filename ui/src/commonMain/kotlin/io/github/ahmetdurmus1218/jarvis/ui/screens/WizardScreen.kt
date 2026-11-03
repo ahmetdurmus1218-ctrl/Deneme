@@ -74,7 +74,7 @@ fun WizardScreen(
                 Info("İndirme yolu", when (val g = gate) { is DownloadState.Ready -> g.label; DownloadState.Unavailable -> installer.gateMissingText() })
                 device.notes.forEach { Text("• $it", color = JarvisColors.TextDim) }
                 Button(onClick = { step = Step.BUNDLE }) { Text("Devam") }
-                TextButton(onClick = onFinish) { Text("Şimdilik atla (deneme modu)") }
+                TextButton(onClick = onFinish) { Text("Sonra kur") }
             }
             Step.BUNDLE -> {
                 Text("2/4 · Önerilen paket", color = JarvisColors.TextDim)

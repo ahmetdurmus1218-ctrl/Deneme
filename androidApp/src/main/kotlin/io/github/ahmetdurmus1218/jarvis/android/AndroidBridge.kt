@@ -16,6 +16,10 @@ import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction
+import io.github.ahmetdurmus1218.jarvis.core.device.MediaKey
+import io.github.ahmetdurmus1218.jarvis.core.device.SettingsPanel
+import io.github.ahmetdurmus1218.jarvis.core.device.VolumeChange
 import io.github.ahmetdurmus1218.jarvis.core.models.Platform
 import io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand
 import io.github.ahmetdurmus1218.jarvis.core.text.Turkish
@@ -164,7 +168,130 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
             "Zamanlayıcı uygulaması bulunamadı",
         )
         is QuickCommand.OpenApp -> openApp(command.appName)
+        is QuickCommand.Device -> device(command.action)
         else -> null
+    }
+
+    /**
+     * The phone itself, with plain system calls (no permission) and Intents. Calls and messages are
+     * only prepared: the dialer / composer opens with the number and text, and the user presses call
+     * or send there. Rick has neither CALL_PHONE nor SEND_SMS.
+     */
+    private suspend fun device(a: DeviceAction): String? = try {
+        val audio = app.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+        when (a) {
+            is DeviceAction.Torch -> {
+                val cm = app.getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
+                val id = cm.cameraIdList.firstOrNull { cm.getCameraCharacteristics(it).get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true }
+                if (id == null) "Bu telefonda fener yok." else { cm.setTorchMode(id, a.on); null }
+            }
+            is DeviceAction.Volume -> {
+                val s = android.media.AudioManager.STREAM_MUSIC
+                val ui = android.media.AudioManager.FLAG_SHOW_UI
+                when (a.change) {
+                    VolumeChange.UP -> repeat(2) { audio.adjustStreamVolume(s, android.media.AudioManager.ADJUST_RAISE, if (it == 1) ui else 0) }
+                    VolumeChange.DOWN -> repeat(2) { audio.adjustStreamVolume(s, android.media.AudioManager.ADJUST_LOWER, if (it == 1) ui else 0) }
+                    VolumeChange.MUTE -> audio.adjustStreamVolume(s, android.media.AudioManager.ADJUST_MUTE, ui)
+                    VolumeChange.MAX -> {
+                        audio.adjustStreamVolume(s, android.media.AudioManager.ADJUST_UNMUTE, 0)
+                        audio.setStreamVolume(s, audio.getStreamMaxVolume(s), ui)
+                    }
+                    VolumeChange.SILENT_PHONE -> audio.ringerMode = android.media.AudioManager.RINGER_MODE_VIBRATE
+                }
+                null
+            }
+            is DeviceAction.Media -> {
+                val code = when (a.key) {
+                    MediaKey.PLAY -> android.view.KeyEvent.KEYCODE_MEDIA_PLAY
+                    MediaKey.PAUSE -> android.view.KeyEvent.KEYCODE_MEDIA_PAUSE
+                    MediaKey.NEXT -> android.view.KeyEvent.KEYCODE_MEDIA_NEXT
+                    MediaKey.PREVIOUS -> android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS
+                }
+                audio.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, code))
+                audio.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, code))
+                if (a.key == MediaKey.PLAY && !audio.isMusicActive) {
+                    kotlinx.coroutines.delay(700)
+                    // Nothing was paused to resume: open the music app instead.
+                    if (!audio.isMusicActive) openApp("muzik")?.let { "Çalan bir şey yoktu; müzik uygulaması açılamadı." } ?: "Müzik uygulamasını açtım; bir şarkı seçin."
+                    else null
+                } else null
+            }
+            is DeviceAction.Panel -> start(
+                Intent(
+                    when (a.panel) {
+                        SettingsPanel.WIFI -> Settings.Panel.ACTION_WIFI
+                        SettingsPanel.INTERNET -> Settings.Panel.ACTION_INTERNET_CONNECTIVITY
+                        SettingsPanel.SOUND -> Settings.Panel.ACTION_VOLUME
+                        SettingsPanel.BLUETOOTH -> Settings.ACTION_BLUETOOTH_SETTINGS
+                        SettingsPanel.LOCATION -> Settings.ACTION_LOCATION_SOURCE_SETTINGS
+                        SettingsPanel.AIRPLANE -> Settings.ACTION_AIRPLANE_MODE_SETTINGS
+                        SettingsPanel.DISPLAY -> Settings.ACTION_DISPLAY_SETTINGS
+                        SettingsPanel.BATTERY_SAVER -> Settings.ACTION_BATTERY_SAVER_SETTINGS
+                        SettingsPanel.DND -> Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS
+                    },
+                ),
+                "Bu ayar ekranı bu telefonda yok",
+            )
+            DeviceAction.Battery -> batteryPercent()?.let { p ->
+                val charging = (app.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager)?.isCharging == true
+                "Pil yüzde $p" + if (charging) ", şarj oluyor." else "."
+            } ?: "Pil durumunu okuyamadım."
+            is DeviceAction.Call -> {
+                val number = if (a.target.any { it.isDigit() } && a.target.all { it.isDigit() || it == '+' }) a.target else contactNumber(a.target)
+                when (number) {
+                    null -> "Rehberde \"${a.target}\" adında birini bulamadım."
+                    "" -> "Rehbere bakmak için izin gerekli."
+                    else -> start(Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:" + android.net.Uri.encode(number))), "Telefon uygulaması bulunamadı")
+                }
+            }
+            is DeviceAction.Message -> {
+                val number = a.target?.let { t -> if (t.all { it.isDigit() || it == '+' || it == ' ' }) t.filterNot { it == ' ' } else contactNumber(t) }
+                when {
+                    a.target != null && number == null -> "Rehberde \"${a.target}\" adında birini bulamadım."
+                    number == "" -> "Rehbere bakmak için izin gerekli."
+                    else -> start(
+                        Intent(Intent.ACTION_SENDTO, android.net.Uri.parse("smsto:" + (number?.let(android.net.Uri::encode) ?: ""))).putExtra("sms_body", a.text),
+                        "Mesaj uygulaması bulunamadı",
+                    )
+                }
+            }
+            is DeviceAction.Navigate -> start(
+                Intent(Intent.ACTION_VIEW, android.net.Uri.parse("geo:0,0?q=" + android.net.Uri.encode(a.place))),
+                "Harita uygulaması bulunamadı",
+            )
+        }
+    } catch (e: SecurityException) {
+        "Telefon buna izin vermedi: ${e.message ?: "güvenlik"}"
+    } catch (e: Exception) {
+        "Yapamadım: ${e.message ?: e.javaClass.simpleName}"
+    }
+
+    /**
+     * The phone number of the contact whose name best matches [name] (read on the device, nothing
+     * leaves it). Null: no such contact; "": the contacts permission was refused.
+     */
+    private suspend fun contactNumber(name: String): String? {
+        val act = activity ?: return ""
+        if (!act.ensurePermission(android.Manifest.permission.READ_CONTACTS)) return ""
+        return withContext(Dispatchers.IO) {
+            val want = Turkish.normalize(name)
+            val phone = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+            val cols = arrayOf(
+                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER,
+            )
+            val all = mutableListOf<Pair<String, String>>()
+            app.contentResolver.query(phone, cols, null, null, null)?.use { c ->
+                while (c.moveToNext()) {
+                    val n = c.getString(0) ?: continue
+                    val num = c.getString(1) ?: continue
+                    all += Turkish.normalize(n) to num
+                }
+            }
+            all.firstOrNull { it.first == want }?.second
+                ?: all.firstOrNull { it.first.split(' ').any { w -> w == want } }?.second
+                ?: all.firstOrNull { it.first.startsWith(want) || (want.length >= 4 && it.first.contains(want)) }?.second
+        }
     }
 
     private fun start(intent: Intent, notFound: String): String? {

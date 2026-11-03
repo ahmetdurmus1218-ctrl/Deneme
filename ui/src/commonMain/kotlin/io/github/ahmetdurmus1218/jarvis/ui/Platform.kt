@@ -22,6 +22,9 @@ interface PlatformBridge {
     /** Battery level in percent, or null when the device does not say (a desktop PC). */
     fun batteryPercent(): Int? = null
 
+    /** Timers and alarms the app rings itself (the PC; the phone uses its clock app): the sentence to say. */
+    val reminders: kotlinx.coroutines.flow.Flow<String> get() = kotlinx.coroutines.flow.emptyFlow()
+
     /** Memory used by Rick in MB (Mark 2's session panel), null if unknown. */
     fun memoryUsedMb(): Long? = null
 

@@ -87,6 +87,12 @@ class JarvisController(
 
     init {
         scope.launch {
+            bridge.reminders.collect { text ->
+                _partial.value = "⏰ $text"
+                say(text)
+            }
+        }
+        scope.launch {
             for (text in speechQueue) {
                 val tts = bridge.speechOutput
                 if (tts != null && settings.state.value.voiceEnabled && text.isNotBlank()) {

@@ -8,10 +8,11 @@ anahtarı ya da reklam yoktur.
 > indirdiğiniz modeller, hafıza ve ayarlar yerinde kalır; bilgisayarda `%LOCALAPPDATA%\Jarvis` klasörü
 > ilk açılışta kendiliğinden `%LOCALAPPDATA%\Rick` olur. "Hey Jarvis" demeye devam ederseniz de anlar.
 
-> **Durum:** v0.5.1. Bütün aşamalar tamam: gerçek yapay zekâ (telefonda Gemma 4, PC'de Qwen 3.5 9B), Rick'in kendi
+> **Durum:** v1.0.0. Bütün aşamalar tamam: gerçek yapay zekâ (telefonda Gemma 4, PC'de Qwen 3.5 9B), Rick'in kendi
 > ses tanıması (Whisper) ve kendi Türkçe sesi (Piper), internetsiz Wikipedia ve belgeleriniz, şifreli hafıza, kamera
 > ile el kontrolü ve efektler, ev simülasyonu, kitaplık, alkışla uyanma, Mark 2 ekran, bilgisayarda güvenlik duvarı.
-> Model indirilmeden önce Rick "sahte model" ile deneme modunda cevap verir. Ayrıntılar: [`docs/PLAN.md`](docs/PLAN.md).
+> Dil modeli kurulmadan da hazır komutlar (saat, alarm, hesap, fener, ses, müzik, arama/mesaj hazırlama…) ve kaynaklı
+> Wikipedia cevapları çalışır; serbest sohbet için sohbet ekranındaki **"🧠 Rick'in beynini kur"** düğmesine basın. Ayrıntılar: [`docs/PLAN.md`](docs/PLAN.md).
 
 ---
 
@@ -39,11 +40,16 @@ GitHub'da bu sayfanın sağındaki **Releases** bölümüne girin, en üstteki s
    - **tek onay** ister: onay ekranında ne indirileceği, hangi siteden, boyutu ve beklenen parmak izi yazar;
      "Onayla"dan sonra parmak izi / yüz tanıma ya da ekran kilidi PIN'iniz istenir,
    - indirir, her dosyanın SHA-256 özetini doğrular ve "Merhaba efendim, Rick hazır." der.
-   - İsterseniz "Şimdilik atla" ile indirmeden deneme modunda kullanabilirsiniz.
+   - İsterseniz **"Sonra kur"** deyip modelleri daha sonra sohbet ya da Modeller ekranından kurabilirsiniz.
 
 **Kullanım:** alttaki mikrofon tuşuna **basılı tutup** konuşun, bırakınca Rick cevap verir. Ya da yazın.
 Örnekler: "Saat kaç?", "Yarın sabah 7'de alarm kur", "5 dakikalık zamanlayıcı", "Kamerayı aç",
 "12 artı 30 kaç eder", "5 km kaç mil", "Sus".
+
+**Anında yapılanlar (dil modeli gerekmez):** "feneri aç", "sesi kıs", "müziği durdur", "sonraki şarkı",
+"Wi-Fi aç" (panel açılır), "şarjım kaç?", "annemi ara", "Ahmet'e mesaj at: geliyorum", "Ankara'ya yol tarifi".
+Arama ve mesajda Rick yalnızca ekranı hazırlar; aramayı ya da göndermeyi siz yaparsınız. Bilgisayarda:
+"Spotify'ı aç", "not defterini aç", "sesi aç", "10 dakikalık zamanlayıcı" (Rick açıkken çalar).
 
 ## 3. Bilgisayara (Windows 10/11) kurulum
 

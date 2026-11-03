@@ -220,3 +220,49 @@ kullanıyor. Bunlar bölüm 1'in "varsayılan tamamen offline" ilkesiyle çeliş
 olanların hepsi eklendi (el efektleri, yüz kilidi, kahve falı, ev simülasyonu, uyku/alkış, kitaplık,
 Mark 2 — gün doğumu/batımı internetsiz hesaplanır, hava/piyasa "yok" yazar). İnternetli özellikler
 istenirse ancak Kapı + her istekte onay ile ve izin listesi genişletilerek yapılabilir.
+
+## D33 — Asistanın adı "Rick"
+Kullanıcı, Jarvis adının kaldırılıp başka bir isim verilmesini istedi ve "Rick" adını seçti. Kullanıcının
+gördüğü ve söylediği her yer değişti: uygulama adları, HUD (R.I.C.K), prompt'lar, cümleler, uyandırma sözü
+ve Release dosya adları (`rick.apk`, `rick-kapi.apk`, `Rick-Setup-x.y.z.msi`, `rick-kapi.exe`). Ad tek yerde,
+`core/AssistantName.kt` içinde tutulur. Paket adı (`io.github.ahmetdurmus1218.jarvis`), Android
+applicationId, modül ve sınıf adları **değişmedi**: değişseydi güncelleme eski uygulamanın üstüne
+kurulamaz ve modeller, hafıza ve ayarlar silinirdi. "Jarvis/Cervis" demeye devam eden de anlaşılır. PC'de
+`%LOCALAPPDATA%\Jarvis` ilk açılışta `Rick` olarak taşınır, eski güvenlik duvarı kuralları yenileri
+kurulurken silinir; MSI'ın upgrade UUID'si aynı kaldığı için yeni MSI eskisinin yerine geçer. Türkçe ekler
+değişmez: Jarvis ve Rick'in son ünlüsü (i) ve son ünsüzü (sert) aynıdır ("Rick'e", "Rick'in", "Rick'ten").
+Piper "ck"yi "k" okur.
+
+## D34 — İndirmeden önce cihazda ara
+Güncellemeden ya da yeniden kurulumdan sonra modellerin tekrar indirilmemesi için yükleyici her
+indirmeden önce aynı dosyayı cihazda arar. Eşleşme dosya adı (Ollama için `sha256-<özet>`) ve boyutla
+bulunur, ama dosya **yalnızca SHA-256 özeti kilit listesiyle aynıysa** alınır; ağ isteği olmadığından onay
+istenmez. PC'de bakılan yerler: eski `Jarvis` klasörü, İndirilenler, Masaüstü, Belgeler, Hugging Face /
+LM Studio / Ollama klasörleri ve kullanıcının "Klasörde bul" ile eklediği klasörler (hatırlanır). Aynı
+diskte dosya sabit bağlantıyla (hard link) alınır, yer kaplamaz; başka diskte kopyalanır ve kopya bir kez
+daha doğrulanır. Telefonda depolama izni istenmez: kullanıcı bir klasörü (ör. Download) sistem seçicisiyle
+bir kez seçer (SAF, kalıcı okuma izni), dosyalar oradan kopyalanırken doğrulanır.
+
+## D35 — Modeli beklemeden cihaz komutları
+Kullanıcı "her istediğimizi hızlıca yapabilmeli" dedi. Yaygın cihaz istekleri dil modeline gitmeden,
+hazır komut olarak anında yapılır: fener, ses aç/kıs/kapat/en yüksek, telefonu titreşime alma, müzik
+çal/durdur/sonraki/önceki, Wi-Fi / Bluetooth / mobil veri / konum / uçak modu / parlaklık / pil tasarrufu /
+rahatsız etmeyin ayar panelleri, pil durumu, numara ya da rehberdeki kişiyi arama, mesaj yazma, yol
+tarifi. Android uygulamaların Wi-Fi'yi kendisi açıp kapatmasına izin vermez; bu yüzden sistem paneli açılır
+(tek dokunuş). Arama ve SMS **yalnızca hazırlanır**: arama ekranı / mesaj ekranı numara ve metinle açılır,
+aramayı ya da gönderimi kullanıcı yapar. Rick'te CALL_PHONE ve SEND_SMS izni yoktur; bölüm 3.3 / 5.2'deki
+"riskli işlemlerde onay" bu sistem ekranlarıyla sağlanır. Kişi adından numara bulmak için READ_CONTACTS
+eklendi, yalnızca kullanıcı bir kişiyi aramak/mesaj atmak istediğinde sorulur; rehber cihazdan çıkmaz.
+"X ara" hem "aramak" hem "telefon etmek" demek olduğundan, yer ya da kaynak bildiren cümleler
+("Wikipedia'da kedi ara", "Ankara'da otel ara", "belgelerimde vergi ara") telefon araması sayılmaz. PC'de
+ses ve medya tuşları Windows Script Host ile, ayar sayfaları `ms-settings:` ile açılır; programlar Başlat
+menüsü kısayollarından bulunur; alarm ve zamanlayıcı Rick açıkken uygulama içinde çalar (önceden PC'de
+desteklenmiyordu). Dil modelinin araçları (alarm, zamanlayıcı, uygulama açma) artık PC'de de var.
+
+## D36 — "Deneme modu" yok
+Kullanıcı ürünün deneme sürümü gibi görünmemesini istedi. Dil modeli kurulu değilken uygulama "sahte
+model / deneme modu" demez: hazır komutlar, cihaz komutları ve kaynaklı Wikipedia / belge cevapları
+çalışır, serbest soruda dürüstçe dil modelinin gerektiği söylenir ve sohbet ekranında tek dokunuşla
+"Rick'in beynini kur" düğmesi çıkar. Sihirbazdaki "Şimdilik atla (deneme modu)" → "Sonra kur". Bütün
+aşamalar tamamlandığı için sürüm 1.0.0 oldu.
+

@@ -111,6 +111,8 @@ fun ChatScreen(
     vision: VisionActions? = null,
     /** The assistant's own voice (Piper), offered when an answer could not be heard. */
     voiceModel: SpeechModelOffer? = null,
+    /** The language model, offered while none is installed. */
+    brainModel: SpeechModelOffer? = null,
     /** The ☰ menu: Ev, Kitaplık, Yapılacaklar, Brifing… */
     menu: List<Pair<String, () -> Unit>> = emptyList(),
 ) {
@@ -169,6 +171,10 @@ fun ChatScreen(
         } else if (speechModel != null && partial.isNotBlank() && mode != CoreMode.LISTENING) {
             SpeechModelBar(speechModel) { ok ->
                 if (ok) controller.showNotice("Ses tanıma hazır. Mikrofona dokunun ve konuşun; susunca ${AssistantName.SHORT} kendisi durur.")
+            }
+        } else if (brainModel != null && mode == CoreMode.IDLE) {
+            SpeechModelBar(brainModel) { ok ->
+                if (ok) controller.showNotice("Dil modeli hazır. Artık her soruya cevap verebilirim.")
             }
         }
         InputBar(

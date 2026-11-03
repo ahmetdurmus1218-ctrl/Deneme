@@ -191,9 +191,33 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
         }
     }
 
-    override suspend fun execute(command: QuickCommand): String? = when (command) {
-        is QuickCommand.SetAlarm, is QuickCommand.StartTimer -> "Alarm ve zamanlayıcı bu sürümde yalnızca telefonda çalışıyor."
-        is QuickCommand.OpenApp -> "Bilgisayarda uygulama açma henüz desteklenmiyor."
-        else -> null
+    private val _reminders = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 8)
+    override val reminders: kotlinx.coroutines.flow.Flow<String> = _reminders
+
+    /** Volume, media keys, settings pages, programs, timers and alarms on the PC. */
+    val actions = DesktopActions(
+        onReminder = { text ->
+            runCatching { java.awt.Toolkit.getDefaultToolkit().beep() }
+            _reminders.tryEmit(text)
+        },
+    )
+
+    override fun batteryPercent(): Int? = actions.batteryCached()
+
+    override suspend fun execute(command: QuickCommand): String? = withContext(Dispatchers.IO) {
+        when (command) {
+            is QuickCommand.SetAlarm -> {
+                val minutes = actions.setAlarm(command.hour, command.minute)
+                val t = "${command.hour.toString().padStart(2, '0')}:${command.minute.toString().padStart(2, '0')}"
+                "Alarm $t için kuruldu (${minutes / 60} saat ${minutes % 60} dakika sonra). Rick açık kaldığı sürece çalar."
+            }
+            is QuickCommand.StartTimer -> {
+                actions.startTimer(command.seconds, "Zamanlayıcı")
+                null
+            }
+            is QuickCommand.OpenApp -> actions.openApp(command.appName)
+            is QuickCommand.Device -> actions.device(command.action)
+            else -> null
+        }
     }
 }
