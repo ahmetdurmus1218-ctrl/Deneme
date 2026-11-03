@@ -216,4 +216,27 @@ class GateDownloaderTest {
             assertTrue(Pins.pinner.findMatchingPins(host).isNotEmpty(), "no pins for $host")
         }
     }
+
+    /**
+     * Against the real tr.wikipedia.org (CI machines have internet): the pins accept Wikimedia's
+     * actual chain and the API answers in the format Rick reads. Skipped only when there is no
+     * network at all; a pinning or format problem fails.
+     */
+    @Test
+    fun liveWikipediaSearchThroughThePins() {
+        val url = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.searchUrl("Atatürk")
+        val r = try {
+            GateQuery().fetch(url)
+        } catch (e: GateException) {
+            throw e
+        } catch (e: java.io.IOException) {
+            if (e is SSLPeerUnverifiedException || e is javax.net.ssl.SSLHandshakeException) throw e
+            println("live Wikipedia test skipped: ${e.javaClass.simpleName} ${e.message}")
+            return
+        }
+        val pages = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.parse(r.body)
+        assertTrue(pages.isNotEmpty(), r.body.take(300))
+        assertTrue(pages.any { "Atatürk" in it.title }, pages.map { it.title }.toString())
+        println("live Wikipedia: ${r.bytes} bytes, first: ${pages.first().title}: ${pages.first().text.take(80)}")
+    }
 }

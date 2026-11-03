@@ -193,4 +193,22 @@ class DesktopKapiTest {
         assertEquals(io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("HTTP 503"), fail)
         assertIs<io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed>(io.github.ahmetdurmus1218.jarvis.desktop.kapi.KapiProcessDownloader.parseQuery(emptyList()))
     }
+
+    /** The real tr.wikipedia.org through rick-kapi's pinning (skipped only without any network). */
+    @Test
+    fun liveWikipediaSearchThroughThePins() {
+        val url = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.searchUrl("Atatürk")
+        when (val r = DesktopKapi(Files.createTempDirectory("kapi").toFile()).query(url)) {
+            is io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Ok -> {
+                val pages = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.parse(r.body)
+                assertTrue(pages.any { "Atatürk" in it.title }, r.body.take(300))
+                println("live Wikipedia (PC): ${r.bytes} bytes, ${pages.first().title}")
+            }
+            is io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed -> {
+                val offline = listOf("ConnectException", "UnknownHost", "timed out", "HttpTimeout", "Network is unreachable", "Tunnel failed").any { it in r.message }
+                if (!offline) error("live Wikipedia search failed: ${r.message}")
+                println("live Wikipedia test skipped: ${r.message}")
+            }
+        }
+    }
 }
