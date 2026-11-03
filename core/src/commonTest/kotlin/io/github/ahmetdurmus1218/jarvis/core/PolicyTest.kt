@@ -81,4 +81,19 @@ class PolicyTest {
         assertEquals(listOf("b", "w"), reg.recommendedBundle(Platform.ANDROID, 8.0).map { it.id })
         assertEquals("w", reg.bySha256("C".repeat(64))?.id)
     }
+
+    @Test
+    fun pcDownloadsBringTheirRuntime() {
+        val reg = io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled
+        val desktop = io.github.ahmetdurmus1218.jarvis.core.models.Platform.DESKTOP
+        val android = io.github.ahmetdurmus1218.jarvis.core.models.Platform.ANDROID
+        val wiki = reg.forPlatform(desktop).filter { it.group == "wiki-tr" }
+        assertEquals(setOf("wiki-tr", "bin-kiwix"), reg.withRuntime(wiki, desktop).map { it.group }.toSet())
+        val qwen = reg.forPlatform(desktop).filter { it.group == "llm-desktop-qwen" }
+        assertEquals(setOf("llm-desktop-qwen", "bin-llama"), reg.withRuntime(qwen, desktop).map { it.group }.toSet())
+        val whisper = reg.forPlatform(desktop).filter { it.group == "stt-whisper-small" }
+        assertEquals(whisper, reg.withRuntime(whisper, desktop))
+        val phoneWiki = reg.forPlatform(android).filter { it.group == "wiki-tr" }
+        assertEquals(phoneWiki, reg.withRuntime(phoneWiki, android), "the phone reads ZIMs itself")
+    }
 }

@@ -15,6 +15,7 @@ androidx-fragment = "1.9.1"
 androidx-lifecycle = "2.11.0"
 okhttp = "5.5.1"
 litertlm = "0.19.0"
+libkiwix = "2.7.0"
 # GitHub release asset of k2-fsa/sherpa-onnx (not on Maven); SHA-256 pinned in androidApp/build.gradle.kts
 sherpa-onnx = "2.0.1"
 android-compileSdk = "37"
@@ -39,6 +40,7 @@ androidx-fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidx-lifecycle" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 litertlm-android = { module = "com.google.ai.edge.litertlm:litertlm-android", version.ref = "litertlm" }
+kiwix-libkiwix = { module = "org.kiwix:libkiwix", version.ref = "libkiwix" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 
 [plugins]

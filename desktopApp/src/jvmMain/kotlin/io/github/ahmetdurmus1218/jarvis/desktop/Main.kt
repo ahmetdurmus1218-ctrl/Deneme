@@ -23,6 +23,7 @@ fun main() {
             onCloseRequest = {
                 graph.bridge.speechOutput?.stop()
                 llm.close()
+                bridge.zim.close()
                 exitApplication()
             },
             title = "Jarvis",

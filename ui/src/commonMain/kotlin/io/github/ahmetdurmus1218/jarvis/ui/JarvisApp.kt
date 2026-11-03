@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.sp
 import io.github.ahmetdurmus1218.jarvis.core.assistant.Assistant
 import io.github.ahmetdurmus1218.jarvis.core.assistant.DefaultTools
+import io.github.ahmetdurmus1218.jarvis.core.knowledge.Wikipedia
 import io.github.ahmetdurmus1218.jarvis.core.llm.EngineSelector
 import io.github.ahmetdurmus1218.jarvis.core.llm.LlmEngine
 import io.github.ahmetdurmus1218.jarvis.core.llm.MockLlmEngine
@@ -66,7 +67,7 @@ class AppGraph(
     val netLog = NetworkLogStore(bridge.files)
     val memory: MemoryStore = InMemoryMemoryStore { NowProvider.System.now().epochMillis }
     val engine = EngineSelector(fallback) { realEngine?.invoke(this) }
-    val assistant = Assistant(engine, DefaultTools.create(memory), memory)
+    val assistant = Assistant(engine, DefaultTools.create(memory, wiki = bridge.zim?.let { Wikipedia(it) }), memory)
     val installer = ModelInstaller(bridge, registry, settings, netLog)
     val engineLabel: String get() = engine.id.let { if (it == "mock") "sahte model (gerçek model kurulu değil)" else it }
 }

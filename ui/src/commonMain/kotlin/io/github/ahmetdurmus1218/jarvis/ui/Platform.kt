@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.StateFlow
 
 /** Everything the shared UI needs from the host platform (Android "Kale" or Windows desktop). */
 interface PlatformBridge {
+    /** Offline Wikipedia (ZIM) access; null where the platform has none. */
+    val zim: io.github.ahmetdurmus1218.jarvis.core.knowledge.ZimBackend? get() = null
     val platform: Platform
     val appVersion: String
     fun deviceInfo(): DeviceInfo

@@ -162,6 +162,10 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
     override val files: AppFiles = DesktopFiles(File(root, "app"))
     override val models: ModelStorage = DesktopModelStorage(File(root, "models"), partial)
     override val downloader = DesktopKapi(partial)
+    /** Offline Wikipedia through a local kiwix-serve, once the ZIM and kiwix-tools are installed. */
+    override val zim = io.github.ahmetdurmus1218.jarvis.desktop.knowledge.KiwixServe.forInstalled(
+        models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, File(root, "bin"),
+    )
     /** Jarvis's own Whisper; until its files are installed, the chat offers the download. */
     override val speechInput: SpeechInput = io.github.ahmetdurmus1218.jarvis.desktop.stt.DesktopWhisperSpeechInput(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled)
     override val speechOutput: SpeechOutput? = WindowsSapiSpeech.availableOrNull()

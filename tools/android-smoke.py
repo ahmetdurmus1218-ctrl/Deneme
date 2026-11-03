@@ -153,6 +153,26 @@ def step(msg):
     print(f"\n=== {msg}", flush=True)
 
 
+PROBES = "io.github.ahmetdurmus1218.jarvis.test/io.github.ahmetdurmus1218.jarvis.probe.Probes"
+
+# A real (English, 14 MB) Wikipedia ZIM from openzim's test suite, pinned by SHA-256.
+TEST_ZIM_URL = "https://raw.githubusercontent.com/openzim/zim-testing-suite/main/data/withns/wikipedia_en_climate_change_mini_2024-06.zim"
+TEST_ZIM_SHA = "72db7ae7708d3a4cff918495078901ec027b14b427433a2328286ec130d1c43b"
+
+
+def fetch_test_zim():
+    import hashlib
+    import tempfile
+    import urllib.request
+    path = os.path.join(tempfile.gettempdir(), "test.zim")
+    if not (os.path.isfile(path) and hashlib.sha256(open(path, "rb").read()).hexdigest() == TEST_ZIM_SHA):
+        urllib.request.urlretrieve(TEST_ZIM_URL, path)
+    got = hashlib.sha256(open(path, "rb").read()).hexdigest()
+    if got != TEST_ZIM_SHA:
+        raise SystemExit(f"test ZIM SHA-256 mismatch: {got}")
+    return path
+
+
 def scroll_find(pred, what, tries=12):
     """Swipes up until a node matching pred is fully visible above the bottom navigation."""
     for _ in range(tries):
@@ -337,11 +357,18 @@ def main():
 
         step("Whisper decodes Turkish ON the device with the installed files (same code path as the mic)")
         adb("install", "-r", find_apk(apk_dir, "androidApp-release-androidTest.apk"))
-        out = adb("shell", "am", "instrument", "-w",
-                  f"{KALE}.test/io.github.ahmetdurmus1218.jarvis.probe.WhisperProbe", check=False)
+        out = adb("shell", "am", "instrument", "-w", "-e", "probe", "whisper", PROBES, check=False)
         print(out)
         if "INSTRUMENTATION_RESULT: result=PASS" not in out:
             raise SystemExit("Whisper probe failed")
+
+        step("offline Wikipedia ON the device: libzim search + read on a real Wikipedia ZIM")
+        zim = fetch_test_zim()
+        adb("push", zim, "/data/local/tmp/test.zim")
+        out = adb("shell", "am", "instrument", "-w", "-e", "probe", "wiki", "-e", "zim", "/data/local/tmp/test.zim", PROBES, check=False)
+        print(out)
+        if "INSTRUMENTATION_RESULT: result=PASS" not in out:
+            raise SystemExit("Wikipedia probe failed")
 
         step("mic with Whisper installed: tap → listening → feedback")
         adb("shell", "am", "start", "-W", "-n", f"{KALE}/.android.MainActivity")

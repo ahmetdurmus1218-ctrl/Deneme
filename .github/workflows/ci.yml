@@ -146,7 +146,14 @@ jobs:
           key: whisper-${{ hashFiles('models.lock.json') }}
       - shell: bash
         run: python tools/fetch-models.py "$RUNNER_TEMP/whisper" stt-whisper-small
-      - name: Desktop tests on Windows (Whisper with the Windows DLLs) and MSI
+      - name: kiwix-tools (locked Windows build) and a small real Wikipedia ZIM for the kiwix-serve test
+        shell: bash
+        run: |
+          python tools/fetch-models.py "$RUNNER_TEMP/kiwix" bin-kiwix
+          python tools/fetch-test-zim.py "$RUNNER_TEMP/kiwix/test.zim"
+          echo "JARVIS_KIWIX_ZIP=$(ls "$RUNNER_TEMP"/kiwix/kiwix-tools_*.zip)" >> "$GITHUB_ENV"
+          echo "JARVIS_TEST_ZIM=$RUNNER_TEMP/kiwix/test.zim" >> "$GITHUB_ENV"
+      - name: Desktop tests on Windows (Whisper with the Windows DLLs, real kiwix-serve) and MSI
         shell: bash
         env:
           JARVIS_WHISPER_DIR: ${{ runner.temp }}/whisper
@@ -154,7 +161,7 @@ jobs:
       - name: Desktop test output (Windows)
         if: always()
         shell: bash
-        run: grep -h "Whisper (PC path)" desktopApp/build/test-results/jvmTest/*.xml || true
+        run: grep -h "Whisper (PC path)\|kiwix-serve" desktopApp/build/test-results/jvmTest/*.xml || true
       - name: jpackage logs
         if: failure()
         shell: bash

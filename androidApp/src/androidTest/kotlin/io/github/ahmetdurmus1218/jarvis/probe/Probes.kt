@@ -3,7 +3,12 @@ package io.github.ahmetdurmus1218.jarvis.probe
 import android.app.Activity
 import android.app.Instrumentation
 import android.os.Bundle
+import android.os.ParcelFileDescriptor
+import kotlinx.coroutines.runBlocking
+import java.io.File
 import io.github.ahmetdurmus1218.jarvis.android.AndroidModelStorage
+import io.github.ahmetdurmus1218.jarvis.android.AndroidZim
+import io.github.ahmetdurmus1218.jarvis.core.knowledge.Wikipedia
 import io.github.ahmetdurmus1218.jarvis.android.WhisperSpeechInput
 import io.github.ahmetdurmus1218.jarvis.android.WhisperTranscriber
 import io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry
@@ -15,16 +20,22 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * On-device check of Jarvis's own speech recognition, run by the CI emulator test after the Whisper
- * files were downloaded through Kapı:
- *   adb shell am instrument -w io.github.ahmetdurmus1218.jarvis.test/io.github.ahmetdurmus1218.jarvis.probe.WhisperProbe
- * A Turkish recording ("Merhaba Jarvis, bugün hava nasıl?", 0.8 s noise before, 2 s after) goes through
- * the SAME capture loop (end-of-speech detection) and the SAME Whisper decoder the microphone uses,
- * with the model files the app installed and verified. No test framework is needed.
+ * On-device checks run by the CI emulator test (no test framework needed):
+ *   adb shell am instrument -w -e probe whisper io.github.ahmetdurmus1218.jarvis.test/io.github.ahmetdurmus1218.jarvis.probe.Probes
+ *   adb shell am instrument -w -e probe wiki -e zim /data/local/tmp/test.zim io.github.ahmetdurmus1218.jarvis.test/...Probes
+ *
+ * whisper: a Turkish recording ("Merhaba Jarvis, bugün hava nasıl?", 0.8 s noise before, 2 s after)
+ *   goes through the SAME capture loop and Whisper decoder the microphone uses, with the model files
+ *   the app installed and verified through Kapı.
+ * wiki: a real Wikipedia ZIM is opened with the app's AndroidZim (libzim on the device) and searched
+ *   and read through the shared core Wikipedia logic, as wiki_ara / wiki_oku do.
  */
-class WhisperProbe : Instrumentation() {
+class Probes : Instrumentation() {
+    private var args: Bundle = Bundle()
+
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
+        args = arguments ?: Bundle()
         start()
     }
 
@@ -32,7 +43,11 @@ class WhisperProbe : Instrumentation() {
         super.onStart()
         val out = Bundle()
         val ok = try {
-            run(out)
+            when (val probe = args.getString("probe") ?: "whisper") {
+                "whisper" -> whisper(out)
+                "wiki" -> wiki(out)
+                else -> error("unknown probe $probe")
+            }
         } catch (t: Throwable) {
             out.putString("error", t.stackTraceToString().take(3000))
             false
@@ -41,7 +56,7 @@ class WhisperProbe : Instrumentation() {
         finish(if (ok) Activity.RESULT_OK else Activity.RESULT_CANCELED, out)
     }
 
-    private fun run(out: Bundle): Boolean {
+    private fun whisper(out: Bundle): Boolean {
         val app = targetContext
         val storage = AndroidModelStorage(app) { null }
         val paths = WhisperSpeechInput(storage, ModelRegistry.bundled) { true }.installedFiles()
@@ -81,6 +96,30 @@ class WhisperProbe : Instrumentation() {
         val n = Turkish.normalize(text)
         val stoppedAfterSpeech = utterance.decision == SpeechEndpointer.Decision.END && samples.size < pcm.size
         return "merhaba" in n && "hava" in n && "nasil" in n && stoppedAfterSpeech
+    }
+
+    private fun wiki(out: Bundle): Boolean = runBlocking {
+        val src = args.getString("zim") ?: error("-e zim <path> missing")
+        // The shell (not the app) can read /data/local/tmp: stream the file through it into the app's cache.
+        val dst = File(targetContext.cacheDir, "probe.zim")
+        ParcelFileDescriptor.AutoCloseInputStream(uiAutomation.executeShellCommand("cat $src")).use { input ->
+            dst.outputStream().use { input.copyTo(it) }
+        }
+        out.putString("zim_bytes", dst.length().toString())
+        val wiki = Wikipedia(AndroidZim { dst.absolutePath })
+        val t0 = System.nanoTime()
+        val hits = wiki.search("Greenhouse gas emissions nedir?")
+        val t1 = System.nanoTime()
+        out.putString("search_ms", ((t1 - t0) / 1_000_000).toString())
+        out.putString("hits", hits.joinToString(" | ") { it.title })
+        val titleHit = wiki.search("global warming").firstOrNull()
+        out.putString("title_hit", titleHit?.title ?: "-")
+        val article = hits.firstOrNull()?.let { wiki.read(it.path) }
+        out.putString("article_title", article?.title ?: "-")
+        out.putString("article_start", article?.text?.take(200) ?: "-")
+        hits.any { it.title == "Greenhouse gas emissions" } &&
+            titleHit?.title?.contains("global warming", ignoreCase = true) == true &&
+            article != null && "greenhouse" in article.text.lowercase() && "<" !in article.text.take(500)
     }
 
     /** Minimal RIFF reader: finds the "data" chunk of a 16-bit mono 16 kHz WAV. */

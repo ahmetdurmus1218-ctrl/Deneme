@@ -60,7 +60,7 @@ android {
         versionCode = project.extra["jarvisVersionCode"] as Int
         versionName = project.version.toString()
         // On-device probes run by the CI emulator test (no test framework needed), see src/androidTest.
-        testInstrumentationRunner = "io.github.ahmetdurmus1218.jarvis.probe.WhisperProbe"
+        testInstrumentationRunner = "io.github.ahmetdurmus1218.jarvis.probe.Probes"
     }
     // The probe APK targets the release app that the emulator test installs.
     testBuildType = "release"
@@ -103,6 +103,9 @@ android {
     packaging {
         resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
         jniLibs.pickFirsts += setOf("**/libc++_shared.so")
+        // Only the ZIM reader of java-libkiwix is used (AndroidZim loads c++_shared, zim, zim_wrapper);
+        // the Kiwix server libraries would add ~30 MB per CPU type.
+        jniLibs.excludes += setOf("**/libkiwix.so", "**/libkiwix_wrapper.so")
         // Compressed native libraries: a much smaller download; Android unpacks them once at install.
         jniLibs.useLegacyPackaging = true
     }
@@ -123,5 +126,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.litertlm.android)
+    implementation(libs.kiwix.libkiwix)
     implementation(files(sherpaAar).builtBy(fetchSherpaAar))
 }

@@ -50,6 +50,20 @@ class ModelRegistry(val lock: ModelLock) {
      * Recommended first-run bundle (LLM + STT + TTS + Wikipedia).
      * Android: Gemma 4 E4B when the device has >= 12 GB RAM, otherwise E2B.
      */
+    /**
+     * [group] plus the program that runs it on [p]: on the PC a Wikipedia ZIM needs kiwix-tools and a
+     * GGUF model needs llama.cpp. One download button then installs everything that is needed.
+     */
+    fun withRuntime(group: List<LockedItem>, p: Platform): List<LockedItem> {
+        if (p != Platform.DESKTOP) return group
+        val items = forPlatform(p)
+        val runtimeGroups = buildSet {
+            if (group.any { it.kind == "zim" }) add("bin-kiwix")
+            if (group.any { it.kind == "llm" && it.fileName.endsWith(".gguf") }) add("bin-llama")
+        }
+        return (group + items.filter { it.group in runtimeGroups }).distinctBy { it.id }
+    }
+
     fun recommendedBundle(p: Platform, ramGb: Double): List<LockedItem> {
         val items = forPlatform(p)
         val llmGroup = when (p) {

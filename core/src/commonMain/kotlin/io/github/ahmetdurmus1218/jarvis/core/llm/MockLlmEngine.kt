@@ -60,14 +60,14 @@ class MockLlmEngine(private val tokenDelayMs: Long = 12, private val chunkSize: 
                 toolCall("hesapla", "{\"ifade\":${quote(expr)}}")
             }
             messages.any { it.role == Role.TOOL && it.toolName == "wiki_ara" } || Regex("\\b(kimdir|nedir|ne zaman|nerede|nufusu|baskenti|kac yilinda)\\b").containsMatchIn(n) ->
-                reply(
+                fromWikipedia(messages) ?: reply(
                     Sahne("Bu bilgi kütüphanemde yok.", Gorsel(GorselTip.BASLIK, baslik = "Kaynak bulunamadı")),
                     Sahne("Wikipedia paketi kurulduğunda bu soruyu kaynağıyla cevaplayabilirim."),
                 )
             else -> reply(
-                Sahne("Şu an deneme modundayım efendim; gerçek dil modeli bir sonraki sürümde gelecek.", Gorsel(GorselTip.BASLIK, baslik = "Deneme modu")),
+                Sahne("Şu an deneme modundayım efendim; gerçek dil modeli kurulu değil.", Gorsel(GorselTip.BASLIK, baslik = "Deneme modu")),
                 Sahne("Söylediğinizi duydum: ${text.take(120)}"),
-                detay = "**Jarvis v0.1** sahte bir dil modeliyle çalışıyor. Saat, tarih, alarm, zamanlayıcı, hesaplama ve birim çevirme komutları şimdiden gerçek.",
+                detay = "Gerçek modeli **Modeller** ekranından indirebilirsiniz. Saat, tarih, alarm, zamanlayıcı, hesaplama, birim çevirme ve Wikipedia araması şimdiden gerçek.",
             )
         }
     }
@@ -96,11 +96,29 @@ class MockLlmEngine(private val tokenDelayMs: Long = 12, private val chunkSize: 
                 if (items.isEmpty()) reply(Sahne("Hafızamda henüz bir şey yok efendim."))
                 else reply(Sahne("Hafızamda ${items.size} kayıt var.", Gorsel(GorselTip.LISTE, ogeler = items.take(10))))
             }
-            else -> reply(
+            else -> fromWikipedia(messages) ?: reply(
                 Sahne("Bu bilgi kütüphanemde yok.", Gorsel(GorselTip.BASLIK, baslik = "Kaynak bulunamadı")),
                 Sahne("Wikipedia paketi kurulduğunda bu soruyu kaynağıyla cevaplayabilirim."),
             )
         }
+    }
+
+    /** Demo answer from the article wiki_ara read: its first real sentence, with the source. */
+    private fun fromWikipedia(messages: List<ChatMessage>): String? {
+        val msg = messages.lastOrNull { it.role == Role.TOOL && it.toolName == "wiki_ara" } ?: return null
+        val body = msg.content.substringAfter('>').substringBeforeLast("</arac_ciktisi").trim()
+        val json = runCatching { SceneJson.parseToJsonElement(body.substring(body.indexOf('{'))).jsonObject }.getOrNull() ?: return null
+        val article = json["ilk_makale"] as? JsonObject ?: return null
+        val title = article["baslik"]?.jsonPrimitive?.contentOrNull ?: return null
+        val path = article["yol"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        val textBody = article["metin"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        val para = textBody.lines().firstOrNull { !it.startsWith("## ") && it.trim() != title && it.length >= 40 } ?: return null
+        val cut = Regex("[.!?](\\s|$)").findAll(para).map { it.range.first + 1 }.firstOrNull { it >= 30 } ?: para.length
+        val sentence = para.take(minOf(cut, 220)).trim()
+        return reply(
+            Sahne(sentence, Gorsel(GorselTip.KAYNAK_KARTI, baslik = title, kaynak = "Wikipedia", konum = path)),
+            kaynaklar = listOf(Kaynak(title, "wikipedia", path)),
+        )
     }
 
     private fun reply(vararg scenes: Sahne, detay: String? = null, kaynaklar: List<Kaynak> = emptyList()): String =

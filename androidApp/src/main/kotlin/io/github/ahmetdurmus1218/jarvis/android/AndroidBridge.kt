@@ -52,6 +52,7 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
     override val files: AppFiles = AndroidFiles(app)
     override val models = AndroidModelStorage(app) { activity?.pickDocument() }
     override val downloader = GateClient(app, models)
+    override val zim = AndroidZim { AndroidZim.installedZim(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled) }
     private val micPermission: suspend () -> Boolean = { activity?.ensurePermission(android.Manifest.permission.RECORD_AUDIO) ?: false }
     /** Whisper (Jarvis's own, hash-verified model) when installed, else the phone's on-device recognizer. */
     override val speechInput = PreferWhisperSpeechInput(

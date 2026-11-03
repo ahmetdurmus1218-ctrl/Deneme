@@ -84,13 +84,15 @@ fun ModelsScreen(bridge: PlatformBridge, registry: ModelRegistry, installer: Mod
             // One button per group: Whisper needs encoder + decoder + tokens together.
             val installedFlags = group.map { item -> remember(version, item.id) { bridge.models.isInstalled(item) } }
             group.forEachIndexed { i, item -> ItemRow(item, status[item.id], installedFlags[i]) }
-            val missing = group.filterIndexed { i, _ -> !installedFlags[i] }
+            val groupMissing = group.filterIndexed { i, _ -> !installedFlags[i] }
+            // On the PC the program that runs the file (kiwix-tools, llama.cpp) comes along in the same download.
+            val missing = if (groupMissing.isEmpty()) emptyList() else registry.withRuntime(group, bridge.platform).filter { !bridge.models.isInstalled(it) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (missing.isEmpty()) {
+                if (groupMissing.isEmpty()) {
                     TextButton(enabled = !busy, onClick = { group.forEach { installer.delete(it) } }) { Text("Sil") }
                 } else {
-                    val label = if (group.size > 1) "İndir (${missing.size} dosya, ${formatBytes(missing.sumOf { it.size })})" else "İndir"
-                    TextButton(enabled = !busy, onClick = { installer.installInBackground(group, "Kullanıcı isteği: ${group.first().title}") }) { Text(label) }
+                    val label = if (missing.size > 1) "İndir (${missing.size} dosya, ${formatBytes(missing.sumOf { it.size })})" else "İndir"
+                    TextButton(enabled = !busy, onClick = { installer.installInBackground(missing, "Kullanıcı isteği: ${group.first().title}") }) { Text(label) }
                 }
             }
         }
