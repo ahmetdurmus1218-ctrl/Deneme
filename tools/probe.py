@@ -62,6 +62,12 @@ GOOGLE_COORDS = [
     "androidx.test.ext:junit",
     "com.google.ai.edge.litertlm:litertlm-android",
     "com.google.ai.edge.litert:litert",
+    "androidx.camera:camera-core",
+    "androidx.camera:camera-camera2",
+    "androidx.camera:camera-lifecycle",
+    "androidx.camera:camera-view",
+    "com.google.mediapipe:tasks-vision",
+    "androidx.security:security-crypto",
 ]
 CENTRAL_COORDS = [
     "org.jetbrains.kotlin:kotlin-gradle-plugin",
@@ -77,6 +83,9 @@ CENTRAL_COORDS = [
     "org.kiwix:libkiwix",
     "org.kiwix.kiwixlib:kiwixlib",
     "com.k2fsa.sherpa.onnx:sherpa-onnx",
+    "com.google.mediapipe:tasks-vision",
+    "net.zetetic:sqlcipher-android",
+    "androidx.sqlite:sqlite",
 ]
 PORTAL_COORDS = [
     "org.jetbrains.compose:org.jetbrains.compose.gradle.plugin",
