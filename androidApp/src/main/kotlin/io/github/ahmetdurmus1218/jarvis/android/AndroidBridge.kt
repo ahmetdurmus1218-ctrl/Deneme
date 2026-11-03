@@ -70,6 +70,7 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
         AndroidSpeechInput(app, ensureMicPermission = micPermission, launch = { block -> activity?.launchOnUi(block) }),
     )
     override val micStream = AndroidMicStream(micPermission)
+    override val cipher = KeystoreCipher()
     override fun keepScreenOn(on: Boolean) {
         val act = activity ?: return
         act.runOnUiThread {

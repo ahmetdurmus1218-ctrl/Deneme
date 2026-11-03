@@ -44,6 +44,8 @@ class JarvisController(
     private val assistant: Assistant,
     val memory: MemoryStore,
     val settings: SettingsStore,
+    /** The real local model for background fact extraction; null = patterns only. */
+    private val factModel: () -> io.github.ahmetdurmus1218.jarvis.core.llm.LlmEngine? = { null },
 ) {
     private val _appCommands = kotlinx.coroutines.flow.MutableSharedFlow<QuickCommand>(extraBufferCapacity = 8)
     /** Commands for the app itself (hand control, planets), handled by the screens. */
@@ -205,8 +207,11 @@ class JarvisController(
                 updateTurn(id) { it.copy(scenes = it.scenes + ev.scene) }
                 say(ev.scene.sahne.ses)
             }
-            is AssistantEvent.Completed -> updateTurn(id) {
-                it.copy(scenes = ev.reply.scenes, detay = ev.reply.detay, kaynaklar = ev.reply.kaynaklar, done = true, assistantText = ev.assistantText)
+            is AssistantEvent.Completed -> {
+                updateTurn(id) {
+                    it.copy(scenes = ev.reply.scenes, detay = ev.reply.detay, kaynaklar = ev.reply.kaynaklar, done = true, assistantText = ev.assistantText)
+                }
+                _turns.value.firstOrNull { it.id == id }?.let { learnFrom(it.user) }
             }
             is AssistantEvent.Failed -> updateTurn(id) { it.copy(done = true, error = ev.message) }
         }
@@ -260,6 +265,24 @@ class JarvisController(
     }
 
     fun speakTest(text: String) = say(text)
+
+    /**
+     * Section 5.5: lasting facts from the user's own words, in the background after the answer
+     * (patterns always, the local model when one is installed). Never from tool output.
+     */
+    private fun learnFrom(userText: String) {
+        scope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            if (!memory.enabled()) return@launch
+            val facts = io.github.ahmetdurmus1218.jarvis.core.memory.FactExtractor.byRules(userText) +
+                (factModel()?.let { io.github.ahmetdurmus1218.jarvis.core.memory.FactExtractor.byModel(it, userText) } ?: emptyList())
+            val added = facts.filter { memory.add(it) }
+            if (added.isNotEmpty()) _learned.value = added
+        }
+    }
+
+    private val _learned = MutableStateFlow<List<String>>(emptyList())
+    /** Facts just added to memory (shown briefly). */
+    val learned: StateFlow<List<String>> = _learned.asStateFlow()
 
     /** Replaces the caption above the input row (e.g. "Ses tanıma hazır" after Whisper is installed). */
     fun showNotice(text: String) {

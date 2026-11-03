@@ -33,7 +33,7 @@ import io.github.ahmetdurmus1218.jarvis.core.knowledge.Wikipedia
 import io.github.ahmetdurmus1218.jarvis.core.llm.EngineSelector
 import io.github.ahmetdurmus1218.jarvis.core.llm.LlmEngine
 import io.github.ahmetdurmus1218.jarvis.core.llm.MockLlmEngine
-import io.github.ahmetdurmus1218.jarvis.core.memory.InMemoryMemoryStore
+import io.github.ahmetdurmus1218.jarvis.core.memory.PersistentMemoryStore
 import io.github.ahmetdurmus1218.jarvis.core.memory.MemoryStore
 import io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry
 import io.github.ahmetdurmus1218.jarvis.core.time.NowProvider
@@ -76,17 +76,24 @@ class AppGraph(
     realEngine: ((AppGraph) -> LlmEngine?)? = null,
 ) {
     val registry: ModelRegistry = ModelRegistry.bundled
-    val settings = SettingsStore(bridge.files)
-    val netLog = NetworkLogStore(bridge.files)
-    val memory: MemoryStore = InMemoryMemoryStore { NowProvider.System.now().epochMillis }
+    /** Everything the app writes, sealed with the platform's key (plain only where no cipher exists, e.g. tests). */
+    val files: AppFiles = bridge.cipher?.let { EncryptedFiles(bridge.files, it) } ?: bridge.files
+    val settings = SettingsStore(files)
+    val netLog = NetworkLogStore(files)
+    val memory: MemoryStore = PersistentMemoryStore(
+        object : TextStore {
+            override fun read(name: String) = files.read(name)
+            override fun write(name: String, text: String) = files.write(name, text)
+        },
+    ) { NowProvider.System.now().epochMillis }
     val engine = EngineSelector(fallback) { realEngine?.invoke(this) }
     /** The simulated home (lights, coffee machines) behind the home voice commands and the Ev panel. */
     val home = io.github.ahmetdurmus1218.jarvis.core.home.SmartHome()
     /** The user's own documents (PDF/TXT/MD), searched with BM25 by belge_ara. */
     val documents = DocumentIndex(
         object : TextStore {
-            override fun read(name: String) = bridge.files.read(name)
-            override fun write(name: String, text: String) = bridge.files.write(name, text)
+            override fun read(name: String) = files.read(name)
+            override fun write(name: String, text: String) = files.write(name, text)
         },
     ) { NowProvider.System.now().epochMillis }
     val assistant = Assistant(
@@ -113,7 +120,7 @@ class AppGraph(
 fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
     JarvisTheme {
         val scope = rememberCoroutineScope()
-        val controller = remember { JarvisController(scope, graph.bridge, graph.assistant, graph.memory, graph.settings) }
+        val controller = remember { JarvisController(scope, graph.bridge, graph.assistant, graph.memory, graph.settings) { graph.engine.current.takeIf { it.id != "mock" } } }
         val settings by graph.settings.state.collectAsState()
         val approval by graph.installer.approval.collectAsState()
         val netEvents by graph.netLog.events.collectAsState()
@@ -147,6 +154,8 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                 }
             }
         }
+        val learned by controller.learned.collectAsState()
+        LaunchedEffect(learned) { if (learned.isNotEmpty()) notice = "🧠 HAFIZAYA EKLENDİ · " + learned.joinToString(" · ") }
         LaunchedEffect(notice) {
             if (notice != null) { kotlinx.coroutines.delay(3_500); notice = null }
         }
@@ -235,7 +244,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
             }
             notice?.let { n ->
                 Text(
-                    "🏠 $n", color = JarvisColors.Amber, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 12.sp,
+                    if (n.startsWith("🧠")) n else "🏠 $n", color = JarvisColors.Amber, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 12.sp,
                     modifier = Modifier.align(Alignment.TopCenter).padding(top = 56.dp)
                         .background(JarvisColors.Surface.copy(alpha = 0.92f), androidx.compose.foundation.shape.RoundedCornerShape(50))
                         .border(1.dp, JarvisColors.Amber.copy(alpha = 0.6f), androidx.compose.foundation.shape.RoundedCornerShape(50))

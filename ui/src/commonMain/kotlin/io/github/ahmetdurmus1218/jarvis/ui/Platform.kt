@@ -13,6 +13,9 @@ interface PlatformBridge {
     /** Live camera with hand and face tracking (the phone); null where there is none. */
     val camera: VisionCamera? get() = null
 
+    /** Encrypts the app's files at rest (Android Keystore / Windows DPAPI-protected key); null = plain. */
+    val cipher: FileCipher? get() = null
+
     /** Keeps the screen from turning off (sleep mode waits for claps). */
     fun keepScreenOn(on: Boolean) {}
 
