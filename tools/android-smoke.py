@@ -367,7 +367,7 @@ def main():
         check_no_crash()
 
         step("approved web search: not in the library → 'Evet' → PIN → Kapı → tr.wikipedia.org (pinned) → sourced answer")
-        type_into(lambda n: n.get("class") == "android.widget.EditText", "Ataturk kimdir")
+        type_into(lambda n: n.get("class") == "android.widget.EditText", "Ankara nedir")
         tap(wait_for(text_is("Gönder"), "send button"))
         wait_for(text_has("internette, Wikipedia'da bakayım"), "web offer")
         shot("08c-web-teklif")
@@ -376,10 +376,10 @@ def main():
         shot("08d-web-pin")
         adb("shell", "input", "text", PIN)
         adb("shell", "input", "keyevent", "66")
-        wait_for(text_has("Wikipedia (internet)"), "answer with its web source", timeout=120)
+        wait_for(text_has("Web: Ankara"), "answer with its web source chip", timeout=120)
         shot("08e-web-cevap")
         tap(wait_for(tab("Ağ"), "network tab"))
-        wait_for(text_has('Wikipedia araması: "Ataturk"'), "web search in the network log")
+        wait_for(text_has('Wikipedia araması: "Ankara"'), "web search in the network log")
         shot("08f-web-ag-kaydi")
         check_no_crash()
 

@@ -440,7 +440,7 @@ class JarvisController(
                     }
                     is WebFetch.Ok -> {
                         netLog?.record(io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent(now, result.host, result.bytes, what, approval.method.label, "tamam"))
-                        val pages = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.parse(result.body)
+                        val pages = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.parse(result.body, offer.query)
                         assistant.answerFromWeb(offer.question, pages, history()).collect { ev -> handle(id, ev) }
                     }
                 }

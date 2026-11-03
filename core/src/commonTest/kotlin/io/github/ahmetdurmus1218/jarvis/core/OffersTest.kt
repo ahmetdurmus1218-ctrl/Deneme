@@ -77,6 +77,7 @@ class OffersTest {
         val pages = OnlineWikipedia.parse(json)
         assertEquals(listOf("Çanakkale Savaşı", "Çanakkale (il)"), pages.map { it.title })
         assertEquals("https://tr.wikipedia.org/wiki/%C3%87anakkale_Sava%C5%9F%C4%B1", pages[0].url)
+        assertEquals(listOf("Çanakkale (il)", "Çanakkale Savaşı"), OnlineWikipedia.parse(json, "Çanakkale").map { it.title }, "exact title first")
         assertTrue(OnlineWikipedia.parse("<html>").isEmpty())
         assertTrue(OnlineWikipedia.parse("""{"batchcomplete":true}""").isEmpty())
     }

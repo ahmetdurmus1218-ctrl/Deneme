@@ -122,8 +122,19 @@ object OnlineWikipedia {
 
     fun pageUrl(title: String) = "https://$HOST/wiki/" + encode(title.replace(' ', '_'))
 
-    /** Pages of an API answer, best match first; empty when nothing was found or the text is not the API's. */
-    fun parse(json: String): List<WebPage> {
+    /**
+     * Pages of an API answer, best match first: a title that is exactly the searched words, then
+     * the search engine's own order. Empty when nothing was found or the text is not the API's.
+     */
+    fun parse(json: String, query: String = ""): List<WebPage> {
+        val q = io.github.ahmetdurmus1218.jarvis.core.text.Turkish.normalize(query).trim()
+        val pages = parseRaw(json)
+        if (q.isEmpty()) return pages
+        fun exact(p: WebPage) = io.github.ahmetdurmus1218.jarvis.core.text.Turkish.normalize(p.title).substringBefore(" (").trim() == q
+        return pages.sortedBy { if (exact(it)) 0 else 1 }
+    }
+
+    private fun parseRaw(json: String): List<WebPage> {
         val root = runCatching { io.github.ahmetdurmus1218.jarvis.core.scene.SceneJson.parseToJsonElement(json) }.getOrNull()
             as? kotlinx.serialization.json.JsonObject ?: return emptyList()
         val pages = (root["query"] as? kotlinx.serialization.json.JsonObject)?.get("pages") as? kotlinx.serialization.json.JsonArray ?: return emptyList()
