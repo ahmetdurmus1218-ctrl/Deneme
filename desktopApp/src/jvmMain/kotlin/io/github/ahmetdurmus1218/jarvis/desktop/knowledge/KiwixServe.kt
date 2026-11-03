@@ -85,12 +85,7 @@ class KiwixServe(
     }
 
     private fun executable(zip: File): File {
-        val target = File(binDir, zip.nameWithoutExtension).apply { mkdirs() }
-        val marker = File(target, ".extracted")
-        if (!marker.isFile) {
-            LlamaServerEngine.extractZip(zip, target)
-            marker.writeText(zip.name)
-        }
+        val target = LlamaServerEngine.unpackOnce(zip, binDir)
         return target.walkTopDown().firstOrNull { it.isFile && (it.name == "kiwix-serve.exe" || it.name == "kiwix-serve") }
             ?.also { it.setExecutable(true) }
             ?: error("kiwix-serve bulunamadı (${zip.name})")

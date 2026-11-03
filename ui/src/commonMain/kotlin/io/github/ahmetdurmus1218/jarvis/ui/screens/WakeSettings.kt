@@ -145,3 +145,21 @@ fun WakeSettings(bridge: PlatformBridge, settings: SettingsStore) {
         }
     }
 }
+
+/** Settings → Güvenlik duvarı (installed Windows app): status, re-create the rules, remove them. */
+@Composable
+fun FirewallSettings(bridge: PlatformBridge) {
+    val fw = bridge.firewall ?: return
+    val scope = rememberCoroutineScope()
+    var status by remember { mutableStateOf(fw.status()) }
+    var busy by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Güvenlik duvarı", fontWeight = FontWeight.SemiBold)
+        Text(status, color = if (status.startsWith("Açık")) JarvisColors.Green else JarvisColors.Amber, fontSize = 12.sp)
+        Text("İndirmeler yalnızca jarvis-kapi.exe ile, her seferinde UAC onayıyla ve en fazla 10 dakika açılan bir kapıdan yapılır.", color = JarvisColors.TextDim, fontSize = 12.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(enabled = !busy, onClick = { scope.launch { busy = true; fw.install(); status = fw.status(); busy = false } }) { Text("Kuralları kur (UAC)", fontSize = 12.sp) }
+            OutlinedButton(enabled = !busy, onClick = { scope.launch { busy = true; fw.remove(); status = fw.status(); busy = false } }) { Text("Kuralları kaldır", fontSize = 12.sp) }
+        }
+    }
+}

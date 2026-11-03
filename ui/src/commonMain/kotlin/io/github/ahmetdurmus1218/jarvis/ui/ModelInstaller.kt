@@ -178,8 +178,15 @@ class ModelInstaller(
         }
         pending.forEach { setStatus(it.id, ItemStatus.Waiting) }
         var allOk = true
-        for (item in pending) {
-            if (!downloadOne(item, method)) allOk = false
+        try {
+            for (item in pending) {
+                if (!downloadOne(item, method)) allOk = false
+            }
+        } finally {
+            // Close the session (the PC's firewall gate) whatever happened, even on cancel.
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                runCatching { bridge.downloader.endSession(pending.filter { bridge.models.isInstalled(it) }.map { bridge.models.pathOf(it) }) }
+            }
         }
         _installedVersion.value++
         return allOk

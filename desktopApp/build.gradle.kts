@@ -84,7 +84,7 @@ kotlin {
 compose.desktop {
     application {
         mainClass = "io.github.ahmetdurmus1218.jarvis.desktop.MainKt"
-        jvmArgs += listOf("-Djarvis.version=${project.version}", "-Dfile.encoding=UTF-8")
+        jvmArgs += listOf("-Djarvis.version=${project.version}", "-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8")
         nativeDistributions {
             targetFormats(TargetFormat.Msi)
             packageName = "Jarvis"
@@ -106,5 +106,28 @@ compose.desktop {
                 upgradeUuid = "6a0f0c4e-1d43-4a5e-9f0b-3c1d6f2b7a91"
             }
         }
+    }
+}
+
+// Section 4: a second launcher, jarvis-kapi.exe, is the only Jarvis program the firewall lets out
+// (during an approved download). jpackage launchers read app/<launcher name>.cfg, so a copy of the
+// launcher with its own .cfg (another main class) is a separate program with its own firewall rule.
+// packageMsi builds the MSI from this app image.
+tasks.matching { it.name == "createDistributable" }.configureEach {
+    doLast {
+        val image = layout.buildDirectory.dir("compose/binaries/main/app/Jarvis").get().asFile
+        val exe = File(image, "Jarvis.exe")
+        val cfg = File(image, "app/Jarvis.cfg")
+        if (!exe.isFile || !cfg.isFile) {
+            logger.lifecycle("jarvis-kapi: no Windows launcher in ${image.path}, skipped")
+            return@doLast
+        }
+        exe.copyTo(File(image, "jarvis-kapi.exe"), overwrite = true)
+        val kapiCfg = cfg.readLines().map { line ->
+            if (line.startsWith("app.mainclass=")) "app.mainclass=io.github.ahmetdurmus1218.jarvis.desktop.kapi.KapiProcessKt" else line
+        }
+        check(kapiCfg.any { it == "app.mainclass=io.github.ahmetdurmus1218.jarvis.desktop.kapi.KapiProcessKt" }) { "Jarvis.cfg has no app.mainclass" }
+        File(image, "app/jarvis-kapi.cfg").writeText(kapiCfg.joinToString("\r\n", postfix = "\r\n"))
+        logger.lifecycle("jarvis-kapi launcher added to ${image.path}")
     }
 }

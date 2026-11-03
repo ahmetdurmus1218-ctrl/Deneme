@@ -1,0 +1,143 @@
+package io.github.ahmetdurmus1218.jarvis.desktop.firewall
+
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.Base64
+import java.util.concurrent.TimeUnit
+
+/**
+ * Jarvis's outbound firewall on Windows (section 4): block rules for Jarvis.exe, jarvis-kapi.exe,
+ * llama-server.exe and kiwix-serve.exe, made once with the user's UAC approval. For a download the
+ * kapi rule alone is switched off — again only with a UAC approval — and switched back on when the
+ * download session ends or after at most [GATE_MINUTES] minutes, whichever comes first. The
+ * elevated helper that holds the gate open also blocks newly unpacked programs before it closes.
+ */
+class WindowsFirewall(
+    val prefix: String = "Jarvis",
+    private val shell: (String) -> ShellResult = ::powershell,
+) {
+    data class Rule(val name: String, val program: File)
+    data class ShellResult(val exit: Int, val out: String)
+
+    fun displayName(r: Rule) = "$prefix - ${r.name}"
+
+    private fun q(s: String) = "'" + s.replace("'", "''") + "'"
+
+    /** Rule name → enabled, for the rules that exist (reading rules needs no elevation). */
+    fun state(): Map<String, Boolean> {
+        val r = shell("Get-NetFirewallRule -DisplayName ${q("$prefix - *")} -ErrorAction SilentlyContinue | ForEach-Object { \$_.DisplayName + \"`t\" + \$_.Enabled }")
+        return r.out.lines().mapNotNull { l -> l.split('\t').takeIf { it.size == 2 }?.let { it[0].trim() to it[1].trim().equals("True", true) } }.toMap()
+    }
+
+    fun isInstalled(rules: List<Rule>): Boolean {
+        val s = state()
+        return rules.all { s[displayName(it)] == true }
+    }
+
+    fun installScript(rules: List<Rule>): String = buildString {
+        appendLine("\$ErrorActionPreference = 'Stop'")
+        for (r in rules) {
+            appendLine("Remove-NetFirewallRule -DisplayName ${q(displayName(r))} -ErrorAction SilentlyContinue")
+            appendLine("New-NetFirewallRule -DisplayName ${q(displayName(r))} -Direction Outbound -Action Block -Profile Any -Program ${q(r.program.absolutePath)} | Out-Null")
+        }
+    }
+
+    /** One UAC prompt; true when every rule exists and is on afterwards. */
+    suspend fun install(rules: List<Rule>): Boolean = withContext(Dispatchers.IO) {
+        val r = elevated(installScript(rules), wait = true)
+        r.exit == 0 && isInstalled(rules)
+    }
+
+    suspend fun uninstall(): Boolean = withContext(Dispatchers.IO) {
+        elevated("Remove-NetFirewallRule -DisplayName ${q("$prefix - *")} -ErrorAction SilentlyContinue", wait = true)
+        state().isEmpty()
+    }
+
+    fun gateScript(rule: Rule, dir: File, seconds: Int): String {
+        val open = File(dir, "gate.open").absolutePath
+        val done = File(dir, "gate.done").absolutePath
+        val closed = File(dir, "gate.closed").absolutePath
+        val name = displayName(rule)
+        return """
+            ${'$'}ErrorActionPreference = 'Stop'
+            Remove-Item ${q(closed)} -ErrorAction SilentlyContinue
+            Set-NetFirewallRule -DisplayName ${q(name)} -Enabled False
+            Set-Content -Path ${q(open)} -Value 'open'
+            ${'$'}end = (Get-Date).AddSeconds($seconds)
+            try {
+              while ((Get-Date) -lt ${'$'}end -and -not (Test-Path ${q(done)})) { Start-Sleep -Milliseconds 500 }
+              if (Test-Path ${q(done)}) {
+                foreach (${'$'}line in Get-Content ${q(done)}) {
+                  ${'$'}p = ${'$'}line -split "`t"
+                  if (${'$'}p.Length -eq 3 -and ${'$'}p[0] -eq 'BLOCK' -and ${'$'}p[1].StartsWith(${q("$prefix - ")})) {
+                    Remove-NetFirewallRule -DisplayName ${'$'}p[1] -ErrorAction SilentlyContinue
+                    New-NetFirewallRule -DisplayName ${'$'}p[1] -Direction Outbound -Action Block -Profile Any -Program ${'$'}p[2] | Out-Null
+                  }
+                }
+              }
+            } finally {
+              Set-NetFirewallRule -DisplayName ${q(name)} -Enabled True
+              Remove-Item ${q(open)}, ${q(done)} -ErrorAction SilentlyContinue
+              Set-Content -Path ${q(closed)} -Value 'closed'
+            }
+        """.trimIndent()
+    }
+
+    /**
+     * Opens the gate for [rule] (UAC). Returns false if the user declined or it did not open within
+     * [waitMs]. The helper keeps running elevated until [closeGate] or the time limit.
+     */
+    suspend fun openGate(rule: Rule, dir: File, seconds: Int = GATE_MINUTES * 60, waitMs: Long = 120_000): Boolean = withContext(Dispatchers.IO) {
+        dir.mkdirs()
+        listOf("gate.open", "gate.done", "gate.closed").forEach { File(dir, it).delete() }
+        val start = elevated(gateScript(rule, dir, seconds), wait = false)
+        if (start.exit != 0) return@withContext false
+        val deadline = System.currentTimeMillis() + waitMs
+        while (System.currentTimeMillis() < deadline) {
+            if (File(dir, "gate.open").isFile) return@withContext true
+            delay(250)
+        }
+        false
+    }
+
+    /** Ends the session: the helper blocks [newPrograms], switches the kapi rule back on and exits. */
+    suspend fun closeGate(dir: File, newPrograms: List<Rule> = emptyList(), waitMs: Long = 30_000): Boolean = withContext(Dispatchers.IO) {
+        if (!File(dir, "gate.open").isFile) return@withContext true
+        File(dir, "gate.done").writeText(newPrograms.joinToString("\n") { "BLOCK\t${displayName(it)}\t${it.program.absolutePath}" })
+        val deadline = System.currentTimeMillis() + waitMs
+        while (System.currentTimeMillis() < deadline) {
+            if (File(dir, "gate.closed").isFile) return@withContext true
+            delay(200)
+        }
+        false
+    }
+
+    /** Runs [script] elevated through UAC; [wait] = until it ends (its exit code is returned). */
+    private fun elevated(script: String, wait: Boolean): ShellResult {
+        val encoded = Base64.getEncoder().encodeToString(script.toByteArray(Charsets.UTF_16LE))
+        val args = "'-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-EncodedCommand','$encoded'"
+        val outer = if (wait) {
+            "\$p = Start-Process powershell.exe -Verb RunAs -WindowStyle Hidden -PassThru -Wait -ArgumentList $args; exit \$p.ExitCode"
+        } else {
+            "Start-Process powershell.exe -Verb RunAs -WindowStyle Hidden -ArgumentList $args"
+        }
+        return shell(outer)
+    }
+
+    companion object {
+        const val GATE_MINUTES = 10
+
+        fun powershell(command: String): ShellResult {
+            val p = ProcessBuilder("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command)
+                .redirectErrorStream(true).start()
+            p.outputStream.close()
+            val out = p.inputStream.readBytes().decodeToString()
+            if (!p.waitFor(15, TimeUnit.MINUTES)) { p.destroyForcibly(); return ShellResult(-1, out) }
+            return ShellResult(p.exitValue(), out)
+        }
+
+        val isWindows: Boolean get() = System.getProperty("os.name").orEmpty().startsWith("Windows")
+    }
+}

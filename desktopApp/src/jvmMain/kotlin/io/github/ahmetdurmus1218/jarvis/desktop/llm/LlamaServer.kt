@@ -147,12 +147,7 @@ class LlamaServerEngine(
     }
 
     private fun serverExecutable(): File {
-        val target = File(binDir, serverZip.nameWithoutExtension).apply { mkdirs() }
-        val marker = File(target, ".extracted")
-        if (!marker.isFile) {
-            extractZip(serverZip, target)
-            marker.writeText(serverZip.name)
-        }
+        val target = unpackOnce(serverZip, binDir)
         return target.walkTopDown().firstOrNull { it.isFile && (it.name == "llama-server.exe" || it.name == "llama-server") }
             ?.also { it.setExecutable(true) }
             ?: error("llama-server bulunamadı (${serverZip.name})")
@@ -206,6 +201,17 @@ class LlamaServerEngine(
     private suspend fun kotlinx.coroutines.flow.FlowCollector<String>.emitAll(f: Flow<String>) = f.collect { emit(it) }
 
     companion object {
+        /** Unpacks a verified program zip into binDir/<zip name> once; returns that folder. */
+        fun unpackOnce(zip: File, binDir: File): File {
+            val target = File(binDir, zip.nameWithoutExtension).apply { mkdirs() }
+            val marker = File(target, ".extracted")
+            if (!marker.isFile || marker.readText() != zip.name) {
+                extractZip(zip, target)
+                marker.writeText(zip.name)
+            }
+            return target
+        }
+
         /** Extracts [zip] into [target]; entries that would land outside [target] ("zip slip") are refused. */
         fun extractZip(zip: File, target: File) {
             val root = target.canonicalPath + File.separator

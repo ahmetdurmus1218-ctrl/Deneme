@@ -16,6 +16,9 @@ interface PlatformBridge {
     /** Encrypts the app's files at rest (Android Keystore / Windows DPAPI-protected key); null = plain. */
     val cipher: FileCipher? get() = null
 
+    /** The PC's outbound firewall rules (Windows, installed app); null elsewhere. */
+    val firewall: FirewallControl? get() = null
+
     /** Keeps the screen from turning off (sleep mode waits for claps). */
     fun keepScreenOn(on: Boolean) {}
 
@@ -56,6 +59,15 @@ interface AppFiles {
     fun read(name: String): String?
     fun write(name: String, text: String)
     fun append(name: String, line: String)
+}
+
+/** Jarvis's outbound block rules in the Windows firewall. */
+interface FirewallControl {
+    fun status(): String
+    fun installed(): Boolean
+    /** One UAC prompt. */
+    suspend fun install(): Boolean
+    suspend fun remove(): Boolean
 }
 
 /** The microphone as a stream of 16 kHz mono samples (−1..1), only while started; nothing is stored. */
@@ -140,6 +152,8 @@ interface Downloader {
     fun refresh()
     suspend fun download(item: LockedItem, onProgress: (DownloadProgress) -> Unit): DownloadOutcome
     fun cancel()
+    /** One approved download session has ended (the PC closes its firewall gate); [installedPaths] = newly installed files. */
+    suspend fun endSession(installedPaths: List<String>) {}
 }
 
 sealed interface ImportOutcome {

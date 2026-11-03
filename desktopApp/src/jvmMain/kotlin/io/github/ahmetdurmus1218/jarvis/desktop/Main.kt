@@ -17,6 +17,8 @@ fun main() {
     val bridge = DesktopBridge(version)
     val llm = DesktopLlm(bridge.models, File(dataDir(), "bin"))
     val graph = AppGraph(bridge, realEngine = { g -> llm.pick(g.registry, g.settings.state.value.llmId) })
+    // First start of the installed app: block Jarvis's programs in the Windows firewall (one UAC prompt).
+    kotlin.concurrent.thread(isDaemon = true, name = "jarvis-firewall") { kotlinx.coroutines.runBlocking { runCatching { bridge.firstRunFirewall() } } }
     val fmt = SimpleDateFormat("d MMM yyyy HH:mm:ss", Locale.forLanguageTag("tr-TR"))
     application {
         Window(

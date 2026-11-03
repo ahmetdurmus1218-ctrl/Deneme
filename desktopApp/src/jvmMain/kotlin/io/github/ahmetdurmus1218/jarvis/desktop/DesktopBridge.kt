@@ -161,7 +161,63 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
     override val platform = Platform.DESKTOP
     override val files: AppFiles = DesktopFiles(File(root, "app"))
     override val models: ModelStorage = DesktopModelStorage(File(root, "models"), partial)
-    override val downloader = DesktopKapi(partial)
+    /** The installed launcher (jpackage sets this); null when run from Gradle or in tests. */
+    private val appExe: File? = System.getProperty("jpackage.app-path")?.let(::File)?.takeIf { it.isFile }
+    private val kapiExe: File? = appExe?.let { File(it.parentFile, "jarvis-kapi.exe") }?.takeIf { it.isFile }
+    private val gateDir = File(root, "gate")
+    /** Windows firewall automation, only for the installed app (it needs the two launchers' paths). */
+    val windowsFirewall: io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall? =
+        if (io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall.isWindows && kapiExe != null) io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall() else null
+    private val kapiRule get() = io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall.Rule("jarvis-kapi.exe", kapiExe!!)
+
+    /** Every program Jarvis runs: the app itself, the download launcher and the unpacked servers. */
+    fun firewallRules(): List<io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall.Rule> {
+        val app = appExe ?: return emptyList()
+        val kapi = kapiExe ?: return emptyList()
+        val bins = File(root, "bin").walkTopDown().filter { it.isFile && it.name.endsWith(".exe", ignoreCase = true) }
+            .map { io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall.Rule("bin " + it.relativeTo(File(root, "bin")).path.replace('\\', '/'), it) }
+        return listOf(
+            io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall.Rule("Jarvis.exe", app),
+            io.github.ahmetdurmus1218.jarvis.desktop.firewall.WindowsFirewall.Rule("jarvis-kapi.exe", kapi),
+        ) + bins
+    }
+
+    override val downloader: io.github.ahmetdurmus1218.jarvis.ui.Downloader = if (kapiExe != null) {
+        io.github.ahmetdurmus1218.jarvis.desktop.kapi.KapiProcessDownloader(kapiExe, partial) { installed ->
+            // Unpack downloaded programs now, so the gate helper blocks them before it closes.
+            val fw = windowsFirewall
+            installed.filter { it.endsWith(".zip", ignoreCase = true) }.forEach { zip ->
+                runCatching { io.github.ahmetdurmus1218.jarvis.desktop.llm.LlamaServerEngine.unpackOnce(File(zip), File(root, "bin")) }
+            }
+            if (fw != null) fw.closeGate(gateDir, firewallRules().drop(2))
+        }
+    } else {
+        DesktopKapi(partial)
+    }
+
+    override val firewall: io.github.ahmetdurmus1218.jarvis.ui.FirewallControl? = windowsFirewall?.let { fw ->
+        object : io.github.ahmetdurmus1218.jarvis.ui.FirewallControl {
+            override fun status(): String {
+                val state = fw.state()
+                val rules = firewallRules()
+                val on = rules.count { state[fw.displayName(it)] == true }
+                return if (on == rules.size) "Açık: Jarvis ve kullandığı ${rules.size} programın internete çıkışı engelli." else "Eksik: ${rules.size} kuraldan $on tanesi etkin."
+            }
+            override fun installed(): Boolean = fw.isInstalled(firewallRules())
+            override suspend fun install(): Boolean = fw.install(firewallRules())
+            override suspend fun remove(): Boolean = fw.uninstall()
+        }
+    }
+
+    /** First start of the installed app: one UAC prompt to put the block rules in place. */
+    suspend fun firstRunFirewall() {
+        val fw = firewall ?: return
+        val asked = File(root, "app/firewall.asked")
+        if (asked.isFile) return
+        asked.parentFile.mkdirs()
+        asked.writeText("1")
+        if (!fw.installed()) fw.install()
+    }
     override suspend fun pickDocument(): io.github.ahmetdurmus1218.jarvis.ui.DocumentPick = DesktopDocuments.pick()
     override suspend fun screenshotJpeg(): ByteArray? = DesktopVision.screenshot()
     override suspend fun pickImageJpeg(): ByteArray? = DesktopVision.pickImage()
@@ -195,7 +251,17 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
 
     /** v0.1: a native confirmation dialog. v0.5: UAC-elevated firewall rule for jarvis-kapi. */
     override val approver = object : Approver {
-        override suspend fun confirm(title: String, subtitle: String): ApprovalResult = suspendCancellableCoroutine { cont ->
+        override suspend fun confirm(title: String, subtitle: String): ApprovalResult {
+            // With the firewall in place the approval IS the UAC prompt that opens the kapi gate.
+            val fw = windowsFirewall
+            if (fw != null && kapiExe != null && fw.state()[fw.displayName(kapiRule)] == true) {
+                return if (fw.openGate(kapiRule, gateDir)) ApprovalResult.Approved(ApprovalMethod.UAC)
+                else ApprovalResult.Rejected("UAC onayı verilmedi")
+            }
+            return dialog(title, subtitle)
+        }
+
+        private suspend fun dialog(title: String, subtitle: String): ApprovalResult = suspendCancellableCoroutine { cont ->
             SwingUtilities.invokeLater {
                 val r = JOptionPane.showConfirmDialog(null, "$subtitle\n\nBu tek seferlik izni veriyor musunuz?", title, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE)
                 if (cont.isActive) cont.resume(if (r == JOptionPane.YES_OPTION) ApprovalResult.Approved(ApprovalMethod.DIALOG) else ApprovalResult.Rejected("Reddedildi"))

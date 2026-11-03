@@ -159,11 +159,25 @@ jobs:
         env:
           JARVIS_WHISPER_DIR: ${{ runner.temp }}/whisper
           JARVIS_PIPER_ARCHIVE: ${{ runner.temp }}/whisper/vits-piper-tr_TR-dfki-medium.tar.bz2
+          JARVIS_FIREWALL_TEST: "1"
         run: ./gradlew --no-daemon :desktopApp:jvmTest :desktopApp:packageMsi
+      - name: jarvis-kapi.exe from the app image downloads a locked file by itself; the MSI contains it
+        shell: bash
+        run: |
+          app=desktopApp/build/compose/binaries/main/app/Jarvis
+          ls "$app" "$app/app" | head -40
+          "$app/jarvis-kapi.exe" --item stt-whisper-small-tokens --partial "$RUNNER_TEMP/kapi" | tee kapi.out | tail -3
+          grep -q "^DONE " kapi.out
+          "$app/jarvis-kapi.exe" --item not-in-the-lock --partial "$RUNNER_TEMP/kapi" | grep "kilit dosyasında olmayan" || exit 1
+          msi=$(ls desktopApp/build/compose/binaries/main/msi/*.msi)
+          msiexec //a "$(cygpath -w "$msi")" //qn TARGETDIR="$(cygpath -w "$RUNNER_TEMP/msi-x")"
+          sleep 5
+          find "$RUNNER_TEMP/msi-x" -iname "jarvis-kapi*" | tee found.txt
+          grep -qi "jarvis-kapi.exe" found.txt && grep -qi "jarvis-kapi.cfg" found.txt
       - name: Desktop test output (Windows)
         if: always()
         shell: bash
-        run: grep -h "Whisper (PC path)\|kiwix-serve\|Piper:\|Whisper heard" desktopApp/build/test-results/jvmTest/*.xml || true
+        run: grep -h "Whisper (PC path)\|kiwix-serve\|Piper:\|Whisper heard\|firewall\|DPAPI" desktopApp/build/test-results/jvmTest/*.xml || true
       - name: jpackage logs
         if: failure()
         shell: bash
