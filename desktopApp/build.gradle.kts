@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.io.File
 import java.net.URI
 import java.security.MessageDigest
+import java.util.zip.ZipFile
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -156,7 +157,7 @@ val jarvisMsiWithKapi = tasks.register("jarvisMsiWithKapi") {
             val dir = ownWix.get().dir("unpacked").asFile
             if (!File(dir, "candle.exe").isFile) {
                 dir.mkdirs()
-                java.util.zip.ZipFile(zip).use { z ->
+                ZipFile(zip).use { z ->
                     for (e in z.entries()) {
                         val out = File(dir, e.name).canonicalFile
                         require(out.path.startsWith(dir.canonicalPath + File.separator)) { "bad zip entry ${e.name}" }
