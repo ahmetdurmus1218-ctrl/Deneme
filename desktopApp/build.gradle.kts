@@ -112,7 +112,8 @@ compose.desktop {
 // Section 4: a second launcher, jarvis-kapi.exe, is the only Jarvis program the firewall lets out
 // (during an approved download). jpackage launchers read app/<launcher name>.cfg, so a copy of the
 // launcher with its own .cfg (another main class) is a separate program with its own firewall rule.
-// packageMsi builds the MSI from this app image.
+// Compose's packageMsi builds from its own inputs, not from this image, so jarvisMsiWithKapi runs
+// jpackage once more on the image (with the WiX that Compose downloaded) and replaces the MSI.
 tasks.matching { it.name == "createDistributable" }.configureEach {
     doLast {
         val image = layout.buildDirectory.dir("compose/binaries/main/app/Jarvis").get().asFile
@@ -131,3 +132,36 @@ tasks.matching { it.name == "createDistributable" }.configureEach {
         logger.lifecycle("jarvis-kapi launcher added to ${image.path}")
     }
 }
+
+val isWindowsHost = System.getProperty("os.name").orEmpty().startsWith("Windows")
+val jarvisMsiWithKapi = tasks.register("jarvisMsiWithKapi") {
+    description = "Rebuilds the MSI from the app image that contains jarvis-kapi.exe."
+    dependsOn("createDistributable")
+    val image = layout.buildDirectory.dir("compose/binaries/main/app/Jarvis")
+    val msiDir = layout.buildDirectory.dir("compose/binaries/main/msi")
+    val wixRoot = rootProject.layout.buildDirectory.dir("wixToolset")
+    val version = project.version.toString().substringBefore('-')
+    onlyIf { isWindowsHost }
+    doLast {
+        val img = image.get().asFile
+        check(File(img, "jarvis-kapi.exe").isFile) { "jarvis-kapi.exe missing from ${img.path}" }
+        val candle = wixRoot.get().asFile.walkTopDown().firstOrNull { it.name.equals("candle.exe", ignoreCase = true) }
+            ?: throw GradleException("WiX (candle.exe) not found under ${wixRoot.get().asFile}")
+        val dest = msiDir.get().asFile.apply { mkdirs() }
+        dest.listFiles()?.filter { it.name.endsWith(".msi") }?.forEach { it.delete() }
+        val jpackage = File(System.getProperty("java.home"), "bin/jpackage.exe")
+        val pb = ProcessBuilder(
+            jpackage.path, "--type", "msi", "--app-image", img.path, "--dest", dest.path,
+            "--name", "Jarvis", "--app-version", version,
+            "--description", "Jarvis - offline Turkish personal assistant", "--vendor", "Jarvis", "--copyright", "Jarvis",
+            "--win-menu", "--win-menu-group", "Jarvis", "--win-shortcut", "--win-per-user-install",
+            "--win-upgrade-uuid", "6a0f0c4e-1d43-4a5e-9f0b-3c1d6f2b7a91",
+        ).redirectErrorStream(true)
+        pb.environment()["PATH"] = candle.parentFile.path + File.pathSeparator + (System.getenv("PATH") ?: "")
+        val proc = pb.start()
+        val out = proc.inputStream.readBytes().decodeToString()
+        if (proc.waitFor() != 0) throw GradleException("jpackage failed:\n$out")
+        logger.lifecycle("MSI with jarvis-kapi.exe: ${dest.listFiles()?.joinToString { it.name }}")
+    }
+}
+tasks.matching { it.name == "packageMsi" }.configureEach { finalizedBy(jarvisMsiWithKapi) }
