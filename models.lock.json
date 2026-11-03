@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-02T11:45:41Z",
+  "generatedAt": "2026-11-03T05:05:12Z",
   "generator": "tools/lock-models.py",
   "items": [
     {
@@ -31,12 +31,12 @@
       "group": "llm-android-e2b",
       "minRamGb": 6,
       "license": "apache-2.0",
-      "url": "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/1caa527c1e88b55f046fcd8d2b4265606680663d/gemma-4-E2B-it.litertlm",
+      "url": "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/cbb97a3e73fd566bd089ca762461458c78ed4761/gemma-4-E2B-it.litertlm",
       "fileName": "gemma-4-E2B-it.litertlm",
       "size": 2588147712,
       "sha256": "181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c",
-      "revision": "1caa527c1e88b55f046fcd8d2b4265606680663d",
-      "origin": "hf:litert-community/gemma-4-E2B-it-litert-lm@1caa527c1e88b55f046fcd8d2b4265606680663d/gemma-4-E2B-it.litertlm",
+      "revision": "cbb97a3e73fd566bd089ca762461458c78ed4761",
+      "origin": "hf:litert-community/gemma-4-E2B-it-litert-lm@cbb97a3e73fd566bd089ca762461458c78ed4761/gemma-4-E2B-it.litertlm",
       "host": "huggingface.co"
     },
     {
@@ -173,12 +173,12 @@
       "title": "llama.cpp llama-server (Windows, Vulkan)",
       "group": "bin-llama",
       "license": "mit",
-      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12038/llama-b12038-bin-win-vulkan-x64.zip",
-      "fileName": "llama-b12038-bin-win-vulkan-x64.zip",
-      "size": 37523405,
-      "sha256": "32cb894e0d3c7a042876f97315f427fd9a60fbe60f3cfaa20bb1626fed24cd08",
-      "revision": "b12038",
-      "origin": "github:ggml-org/llama.cpp@b12038/llama-b12038-bin-win-vulkan-x64.zip",
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12063/llama-b12063-bin-win-vulkan-x64.zip",
+      "fileName": "llama-b12063-bin-win-vulkan-x64.zip",
+      "size": 37554348,
+      "sha256": "7f2b50e5aa9b84b1fdf2a77790ac899a2a7d21160f8f806eefd6d177fa81bae0",
+      "revision": "b12063",
+      "origin": "github:ggml-org/llama.cpp@b12063/llama-b12063-bin-win-vulkan-x64.zip",
       "host": "github.com"
     },
     {
@@ -231,6 +231,40 @@
       "revision": "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
       "origin": "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
       "host": "storage.googleapis.com"
+    },
+    {
+      "id": "vision-qwen35-mmproj",
+      "kind": "mmproj",
+      "platforms": [
+        "desktop"
+      ],
+      "title": "Qwen 3.5 9B görme eklentisi (mmproj)",
+      "group": "vision-desktop-qwen",
+      "license": "apache-2.0",
+      "url": "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/3885219b6810b007914f3a7950a8d1b469d598a5/mmproj-F16.gguf",
+      "fileName": "mmproj-F16.gguf",
+      "size": 918166080,
+      "sha256": "f70dc3509053962b0d0d3ee8a7eacebf5d60aa560cad78254ae8698516ae029f",
+      "revision": "3885219b6810b007914f3a7950a8d1b469d598a5",
+      "origin": "hf:unsloth/Qwen3.5-9B-GGUF@3885219b6810b007914f3a7950a8d1b469d598a5/mmproj-F16.gguf",
+      "host": "huggingface.co"
+    },
+    {
+      "id": "vision-gemma4-e4b-mmproj",
+      "kind": "mmproj",
+      "platforms": [
+        "desktop"
+      ],
+      "title": "Gemma 4 E4B görme eklentisi (mmproj)",
+      "group": "vision-desktop-gemma",
+      "license": "gemma",
+      "url": "https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/a69f018d7678a2b9f5e705f8903d6fb29b9b25dc/mmproj-gemma-4-E4B-it-BF16.gguf",
+      "fileName": "mmproj-gemma-4-E4B-it-BF16.gguf",
+      "size": 991552256,
+      "sha256": "f77995e4b6a569ab8f0d1bfdb7e8da4a0fa5b9e6f309b9bf3bdb76164d75e29f",
+      "revision": "a69f018d7678a2b9f5e705f8903d6fb29b9b25dc",
+      "origin": "hf:ggml-org/gemma-4-E4B-it-GGUF@a69f018d7678a2b9f5e705f8903d6fb29b9b25dc/mmproj-gemma-4-E4B-it-BF16.gguf",
+      "host": "huggingface.co"
     }
   ]
 }
