@@ -168,7 +168,10 @@ jobs:
           ls "$app" "$app/app" | head -40
           "$app/jarvis-kapi.exe" --item stt-whisper-small-tokens --partial "$RUNNER_TEMP/kapi" | tee kapi.out | tail -3
           grep -q "^DONE " kapi.out
-          "$app/jarvis-kapi.exe" --item not-in-the-lock --partial "$RUNNER_TEMP/kapi" | grep "kilit dosyasında olmayan" || exit 1
+          # Refusing is an error exit by design; only its message is checked.
+          refused=$("$app/jarvis-kapi.exe" --item not-in-the-lock --partial "$RUNNER_TEMP/kapi" || true)
+          echo "$refused"
+          echo "$refused" | grep -q "kilit dosyasında olmayan"
           msi=$(ls desktopApp/build/compose/binaries/main/msi/*.msi)
           msiexec //a "$(cygpath -w "$msi")" //qn TARGETDIR="$(cygpath -w "$RUNNER_TEMP/msi-x")"
           sleep 5
