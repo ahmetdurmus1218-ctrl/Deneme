@@ -56,10 +56,10 @@ class FirewallTest {
         val rule = WindowsFirewall.Rule("curl", curl)
         val gate = File(dir, "gate")
         try {
-            assertTrue(fw.install(listOf(rule)), "rules installed")
+            assertTrue(fw.install(listOf(rule)), "rules installed: ${fw.lastOutput} · state ${fw.state()}")
             assertFalse(reach(curl), "blocked by the rule")
 
-            assertTrue(fw.openGate(rule, gate), "gate opened")
+            assertTrue(fw.openGate(rule, gate), "gate opened: ${fw.lastOutput}")
             assertTrue(reach(curl), "allowed while the gate is open")
             assertTrue(fw.closeGate(gate, listOf(WindowsFirewall.Rule("new-program", curl2))), "gate closed")
             assertFalse(reach(curl), "blocked again after the session")

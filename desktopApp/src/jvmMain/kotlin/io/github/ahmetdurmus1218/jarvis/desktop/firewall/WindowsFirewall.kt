@@ -114,16 +114,26 @@ class WindowsFirewall(
         false
     }
 
-    /** Runs [script] elevated through UAC; [wait] = until it ends (its exit code is returned). */
+    /** Output of the last elevated run (for Settings and test diagnostics). */
+    @Volatile var lastOutput: String = ""
+        private set
+
+    /**
+     * Runs [script] elevated through UAC; [wait] = until it ends (its exit code is returned). When
+     * Jarvis already runs as administrator there is nothing to elevate and no prompt is shown.
+     */
     private fun elevated(script: String, wait: Boolean): ShellResult {
         val encoded = Base64.getEncoder().encodeToString(script.toByteArray(Charsets.UTF_16LE))
         val args = "'-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-EncodedCommand','$encoded'"
+        val isAdmin = "([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)"
         val outer = if (wait) {
-            "\$p = Start-Process powershell.exe -Verb RunAs -WindowStyle Hidden -PassThru -Wait -ArgumentList $args; exit \$p.ExitCode"
+            "if ($isAdmin) { & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand $encoded; exit \$LASTEXITCODE } " +
+                "else { \$p = Start-Process powershell.exe -Verb RunAs -WindowStyle Hidden -PassThru -Wait -ArgumentList $args; exit \$p.ExitCode }"
         } else {
-            "Start-Process powershell.exe -Verb RunAs -WindowStyle Hidden -ArgumentList $args"
+            "if ($isAdmin) { Start-Process powershell.exe -WindowStyle Hidden -ArgumentList $args } " +
+                "else { Start-Process powershell.exe -Verb RunAs -WindowStyle Hidden -ArgumentList $args }"
         }
-        return shell(outer)
+        return shell(outer).also { lastOutput = "exit ${it.exit}: ${it.out.take(2_000)}" }
     }
 
     companion object {
