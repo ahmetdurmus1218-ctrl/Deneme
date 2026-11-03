@@ -84,6 +84,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Ayrı `jarvis-kapi.exe` başlatıcısı (yalnızca kilit kimliği kabul eder), MSI'da olduğu CI'da denetleniyor.
 - [x] HUD: Mark 1 / Mark 2 (yoğun HUD, gerçek sayılar, çevrimdışı gün doğumu/batımı).
 - [x] Belgelerin son hali (README, değişiklik notu).
+- [x] `v0.5.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v0.5.0 (jarvis.apk 80 MB, jarvis-kapi.apk 8 MB, Jarvis-Setup-0.5.0.msi 110 MB — içinde jarvis-kapi.exe, models.lock.json, SHA256SUMS.txt).
 
 ## Ek — halilozat/jarvis özellikleri (internetsiz karşılıkları)
 - [x] El kontrolü: ateş + kıvılcım, iki elde mühür halkaları, çimdikle gezegen (Satürn, Dünya, Mars, Jüpiter, Ay, Güneş; taşınır, eğilir, bırakınca süzülür/fırlar, iki elle büyür), yumruk→açık el patlatma ve enerji dalgası + ekran sarsıntısı, iki işaret parmağı arasında şimşek, tek parmakla ışık izi; basılı tutma halkalı kontroller (👍 dinle ya da Türk kahvesi, ✌️ bu ne?, ✊ sus); efektler tek tek kapatılabilir; kamerasız demo; "Jarvis, Mars yap".
@@ -101,6 +102,6 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 ## Kaldığım yer
 Oturum 2 (2026-11-03): v0.3 (Wikipedia, belgeler, araçlar), kamera, v0.4 (Piper, şifreli hafıza,
 bilgi çıkarımı), v0.5 (güvenlik duvarı, jarvis-kapi.exe, Mark 2) ve halilozat/jarvis özelliklerinin
-internetsiz karşılıkları yazıldı, testlendi; v0.5.0 yayımlanıyor. Sıradaki: gerçek cihaz geri
+internetsiz karşılıkları, temalar, yapılacaklar ve günlük brifing yazıldı, testlendi; v0.5.0 yayımlandı. Sıradaki: gerçek cihaz geri
 bildirimi (Gemma 4 / Qwen performansı, alkış eşiği, Piper sesi), kullanıcı internetli özellikleri
 isterse onay akışıyla Kapı üzerinden nasıl yapılacağına karar.
