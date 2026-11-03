@@ -56,6 +56,8 @@ class Assistant(
     private val tools: ToolRegistry,
     private val memory: MemoryStore,
     private val now: NowProvider = NowProvider.System,
+    /** The simulated home answered by home quick commands (null: not available). */
+    private val home: io.github.ahmetdurmus1218.jarvis.core.home.SmartHome? = null,
 ) {
     companion object {
         const val MAX_TOOL_ROUNDS = 5
@@ -68,7 +70,13 @@ class Assistant(
     fun ask(userText: String, history: List<ChatMessage> = emptyList()): Flow<AssistantEvent> = flow {
         val route = Router.route(userText)
         if (route is Route.Quick) {
-            emit(AssistantEvent.Quick(route.command, VerifiedScene(QuickResponder.respond(route.command, now.now()))))
+            val cmd = route.command
+            val scene = if (cmd is QuickCommand.Home) {
+                Sahne(home?.apply(cmd.action, now.now().epochMillis) ?: "Ev cihazları bu cihazda yok.")
+            } else {
+                QuickResponder.respond(cmd, now.now())
+            }
+            emit(AssistantEvent.Quick(cmd, VerifiedScene(scene)))
             return@flow
         }
         val budget: Budget
@@ -289,6 +297,7 @@ object QuickResponder {
         is QuickCommand.OpenApp -> Sahne("${cmd.appName.replaceFirstChar { it.uppercase() }} açılıyor.", Gorsel(GorselTip.BASLIK, baslik = cmd.appName))
         QuickCommand.StopSpeaking -> Sahne("", Gorsel(GorselTip.YOK))
         is QuickCommand.ShowPlanet -> Sahne("${cmd.kind.label} geliyor efendim.", Gorsel(GorselTip.BASLIK, baslik = cmd.kind.label))
+        is QuickCommand.Home -> Sahne("")
         is QuickCommand.HandControl -> Sahne(if (cmd.on) "El kontrolü açılıyor." else "El kontrolü kapatıldı.")
         is QuickCommand.Calculate -> try {
             val r = io.github.ahmetdurmus1218.jarvis.core.tools.Calculator.format(

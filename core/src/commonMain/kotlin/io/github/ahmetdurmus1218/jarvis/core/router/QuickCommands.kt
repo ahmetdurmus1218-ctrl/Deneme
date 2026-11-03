@@ -17,6 +17,8 @@ sealed interface QuickCommand {
     data class ConvertUnit(val value: Double, val from: String, val to: String) : QuickCommand
     /** In-app: the planet between the fingers in hand control ("Mars yap", "Jüpiter'e çevir"). */
     data class ShowPlanet(val kind: io.github.ahmetdurmus1218.jarvis.core.vision.PlanetKind) : QuickCommand
+    /** In-app: the simulated home (lights, coffee machines). */
+    data class Home(val action: io.github.ahmetdurmus1218.jarvis.core.home.HomeAction) : QuickCommand
     /** In-app: opens / closes hand control (the camera with effects). */
     data class HandControl(val on: Boolean) : QuickCommand
 }
@@ -67,6 +69,7 @@ object QuickCommandRouter {
         if (STOP.matches(n)) return QuickCommand.StopSpeaking
         PLANET.matchEntire(n)?.let { m -> io.github.ahmetdurmus1218.jarvis.core.vision.PlanetKind.fromSpeech(m.groupValues[1])?.let { return QuickCommand.ShowPlanet(it) } }
         HAND.matchEntire(n)?.let { m -> return QuickCommand.HandControl(m.groupValues[1] == "ac") }
+        io.github.ahmetdurmus1218.jarvis.core.home.HomeCommands.parse(text)?.let { return QuickCommand.Home(it) }
         val nd = TurkishNumbers.wordsToDigits(n)
         timer(nd)?.let { return it }
         if (ALARM.containsMatchIn(nd)) alarm(nd)?.let { return it }

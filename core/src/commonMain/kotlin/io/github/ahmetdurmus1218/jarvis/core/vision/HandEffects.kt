@@ -76,6 +76,8 @@ data class EffectSettings(
     val faceLock: Boolean = true,
     /** null: every pinch brings the next planet; otherwise always this one. */
     val fixedPlanet: PlanetKind? = null,
+    /** Holding 👍 orders a Turkish coffee (as in the original), instead of starting to listen. */
+    val thumbCoffee: Boolean = false,
 )
 
 /**

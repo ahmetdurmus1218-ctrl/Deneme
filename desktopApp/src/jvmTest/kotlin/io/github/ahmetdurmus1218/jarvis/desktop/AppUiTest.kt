@@ -185,12 +185,28 @@ class AppUiTest {
         waitForText("Sonuç: reddedildi", substring = true)
         shot("07-ag-kayit-defteri")
 
-        // 5. Hand control by voice command: the PC has no tracking camera, so it opens the demo.
+        // 5. Smart home by voice: the coffee machine starts, a notice appears; the Ev panel shows it.
         rule.onNodeWithText("Sohbet").performClick()
         waitForText("Gönder")
-        ask("Jarvis, el kontrolünü aç")
-        waitForText("J.A.R.V.I.S · EL KONTROLÜ")
+        ask("Jarvis, bana bol köpüklü bir Türk kahvesi yap")
+        waitForText("Hemen efendim.", substring = true)
+        waitForText("TÜRK KAHVESİ · PİŞİYOR", substring = true)
+        shot("08a-ev-kahve")
+        click("🏠")
+        waitForText("SİMÜLASYON")
+        waitForText("Hazırlanıyor…", substring = true)
+        shot("08b-ev-paneli")
+        click("KAPAT")
+
+        // 6. Hand control by voice command: the PC has no tracking camera, so it opens the demo.
+        // The clock is stepped by hand from here, so the effects (endless animations) run in the test.
         rule.mainClock.autoAdvance = false
+        ask("Jarvis, el kontrolünü aç")
+        for (i in 0 until 100) {
+            if (rule.onAllNodesWithText("J.A.R.V.I.S · EL KONTROLÜ").fetchSemanticsNodes().isNotEmpty()) break
+            rule.mainClock.advanceTimeBy(100)
+        }
+        waitForText("J.A.R.V.I.S · EL KONTROLÜ")
         for ((ms, name) in listOf(1_500L to "09-el-ates", 3_500L to "10-el-muhur", 4_000L to "11-el-gezegen", 3_500L to "12-el-iki-elle", 2_400L to "13-el-patlama", 2_600L to "14-el-simsek", 3_000L to "15-el-isik-izi")) {
             rule.mainClock.advanceTimeBy(ms)
             shot(name)
@@ -203,7 +219,7 @@ class AppUiTest {
         click("← GERİ")
         waitForText("Gönder")
 
-        // 6. Settings
+        // 7. Settings
         rule.onNodeWithText("Ayarlar").performClick()
         waitForText("Tam offline mod (tüm indirmeler kapalı)")
         shot("08-ayarlar")

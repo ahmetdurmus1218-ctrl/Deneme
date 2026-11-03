@@ -1,6 +1,7 @@
 package io.github.ahmetdurmus1218.jarvis.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
@@ -20,7 +21,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.ahmetdurmus1218.jarvis.core.assistant.Assistant
 import io.github.ahmetdurmus1218.jarvis.core.assistant.DefaultTools
@@ -36,6 +39,8 @@ import io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry
 import io.github.ahmetdurmus1218.jarvis.core.time.NowProvider
 import io.github.ahmetdurmus1218.jarvis.ui.screens.ApprovalScreen
 import io.github.ahmetdurmus1218.jarvis.ui.screens.CameraScreen
+import io.github.ahmetdurmus1218.jarvis.ui.screens.HomePanel
+import io.github.ahmetdurmus1218.jarvis.ui.screens.notice
 import io.github.ahmetdurmus1218.jarvis.ui.screens.VisionActions
 import io.github.ahmetdurmus1218.jarvis.ui.screens.SpeechModelOffer
 import io.github.ahmetdurmus1218.jarvis.ui.screens.ChatScreen
@@ -71,6 +76,8 @@ class AppGraph(
     val netLog = NetworkLogStore(bridge.files)
     val memory: MemoryStore = InMemoryMemoryStore { NowProvider.System.now().epochMillis }
     val engine = EngineSelector(fallback) { realEngine?.invoke(this) }
+    /** The simulated home (lights, coffee machines) behind the home voice commands and the Ev panel. */
+    val home = io.github.ahmetdurmus1218.jarvis.core.home.SmartHome()
     /** The user's own documents (PDF/TXT/MD), searched with BM25 by belge_ara. */
     val documents = DocumentIndex(
         object : TextStore {
@@ -92,6 +99,7 @@ class AppGraph(
             },
         ),
         memory,
+        home = home,
     )
     val installer = ModelInstaller(bridge, registry, settings, netLog)
     val engineLabel: String get() = engine.id.let { if (it == "mock") "sahte model (gerçek model kurulu değil)" else it }
@@ -109,10 +117,19 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         var wizard by remember { mutableStateOf(!settings.wizardDone) }
         var cameraOpen by remember { mutableStateOf(false) }
         // "Jarvis, el kontrolünü aç" (closing is handled by the camera screen itself).
+        var homeOpen by remember { mutableStateOf(false) }
+        var notice by remember { mutableStateOf<String?>(null) }
         LaunchedEffect(controller) {
             controller.appCommands.collect { c ->
-                if (c is io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.HandControl && c.on) cameraOpen = true
+                when (c) {
+                    is io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.HandControl -> if (c.on) cameraOpen = true
+                    is io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.Home -> c.action.notice()?.let { notice = it }
+                    else -> {}
+                }
             }
+        }
+        LaunchedEffect(notice) {
+            if (notice != null) { kotlinx.coroutines.delay(3_500); notice = null }
         }
 
         LaunchedEffect(settings.memoryEnabled) { graph.memory.setEnabled(settings.memoryEnabled) }
@@ -169,7 +186,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                     // The PC has no live camera: it shows the screen or an image instead.
                                     desktop = graph.bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.DESKTOP,
                                 )
-                                ChatScreen(controller, graph.engineLabel, stt != null, offer, vision)
+                                ChatScreen(controller, graph.engineLabel, stt != null, offer, vision, onHome = { homeOpen = true })
                             }
                             Tab.MODELS -> ModelsScreen(graph.bridge, graph.registry, graph.installer)
                             Tab.MEMORY -> MemoryScreen(graph.memory, graph.settings, graph.documents, graph.bridge)
@@ -178,6 +195,16 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                         }
                     }
                 }
+            }
+            if (homeOpen) HomePanel(graph.home) { homeOpen = false }
+            notice?.let { n ->
+                Text(
+                    "🏠 $n", color = JarvisColors.Amber, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 12.sp,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 56.dp)
+                        .background(JarvisColors.Surface.copy(alpha = 0.92f), androidx.compose.foundation.shape.RoundedCornerShape(50))
+                        .border(1.dp, JarvisColors.Amber.copy(alpha = 0.6f), androidx.compose.foundation.shape.RoundedCornerShape(50))
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                )
             }
             approval?.let { req ->
                 val authLabel = when (graph.bridge.platform) {

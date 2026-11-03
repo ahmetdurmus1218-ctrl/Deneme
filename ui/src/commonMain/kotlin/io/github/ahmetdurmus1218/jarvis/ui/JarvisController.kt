@@ -193,7 +193,7 @@ class JarvisController(
                     updateTurn(id) { it.copy(done = true, scenes = listOf(VerifiedScene(Sahne("Tamam, susuyorum.")))) }
                     return
                 }
-                val inApp = ev.command is QuickCommand.ShowPlanet || ev.command is QuickCommand.HandControl
+                val inApp = ev.command is QuickCommand.ShowPlanet || ev.command is QuickCommand.HandControl || ev.command is QuickCommand.Home
                 if (inApp) _appCommands.tryEmit(ev.command)
                 val error = if (inApp) null else bridge.execute(ev.command)
                 val scene = if (error == null) ev.scene else VerifiedScene(Sahne(error))

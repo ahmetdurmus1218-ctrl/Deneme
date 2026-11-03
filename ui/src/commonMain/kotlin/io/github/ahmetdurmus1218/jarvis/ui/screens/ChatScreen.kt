@@ -99,6 +99,7 @@ fun ChatScreen(
     micAvailable: Boolean,
     speechModel: SpeechModelOffer? = null,
     vision: VisionActions? = null,
+    onHome: (() -> Unit)? = null,
 ) {
     val turns by controller.turns.collectAsState()
     val mode by controller.mode.collectAsState()
@@ -174,6 +175,7 @@ fun ChatScreen(
                 ),
             )
             if (vision != null) VisionButton(vision, input, controller) { input = "" }
+            if (onHome != null) TextButton(onClick = onHome) { Text("🏠", fontSize = 20.sp) }
             if (mode == CoreMode.SPEAKING) TextButton(onClick = controller::stopSpeaking) { Text("Sus", color = JarvisColors.Amber) }
             Button(
                 onClick = {

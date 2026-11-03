@@ -80,6 +80,7 @@ private val TIPS = listOf(4, 8, 12, 16, 20)
 const val QUESTION_WHAT = "Bu ne? Gördüğünü kısaca anlat."
 const val QUESTION_READ = "Buradaki yazıyı oku."
 const val QUESTION_FORTUNE = "Bu bir Türk kahvesi fincanı. Telvede gerçekten gördüğün şekillerden esprili, kısa bir kahve falı yorumla; bunun bilim olmadığını bir kez söyle."
+const val THUMB_COFFEE = "Jarvis, bana bol köpüklü bir Türk kahvesi yap"
 const val GESTURE_LEGEND = "✋ ateş · 🤏 gezegen · ✊→✋ patlat · ☝️ iz · ☝️☝️ şimşek · basılı tut: 👍 dinle ✌️ bu ne? ✊ sus"
 
 /**
@@ -145,13 +146,13 @@ fun CameraScreen(
         var frames = 0
         var fpsAt = -1L
         while (isActive) {
-            // UI tests refuse infinite animations while their clock runs by itself: wait and retry.
+            // UI tests refuse endless animations while their clock runs by itself (they step it by hand
+            // to see effects); on a device this never throws.
             val now = try {
                 withInfiniteAnimationFrameMillis { it }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 if (!isActive) throw e
-                kotlinx.coroutines.delay(200)
-                continue
+                return@LaunchedEffect
             }
             if (start < 0) { start = now; fpsAt = now }
             val f = frame
@@ -173,7 +174,7 @@ fun CameraScreen(
                 }
             }
             when (fired) {
-                Gesture.THUMBS_UP -> controller.startListening()
+                Gesture.THUMBS_UP -> if (settings.effects.thumbCoffee) controller.send(THUMB_COFFEE) else controller.startListening()
                 Gesture.VICTORY -> ask(QUESTION_WHAT)
                 Gesture.FIST -> controller.stopSpeaking()
                 else -> {}
@@ -326,6 +327,7 @@ private fun EffectsPanel(e: EffectSettings, name: String, onChange: (EffectSetti
         row("☝️☝️ Şimşek", e.lightning) { onChange(e.copy(lightning = it)) }
         row("☝️ Işık izi", e.trail) { onChange(e.copy(trail = it)) }
         row("👍 ✌️ ✊ Jarvis kontrolleri", e.controls) { onChange(e.copy(controls = it)) }
+        row("👍 basılı: Türk kahvesi yap (kapalıysa: dinle)", e.thumbCoffee) { onChange(e.copy(thumbCoffee = it)) }
         row("Yüz kilidi", e.faceLock) { onChange(e.copy(faceLock = it)) }
         Text("Gezegen", color = JarvisColors.TextDim, fontSize = 12.sp)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
