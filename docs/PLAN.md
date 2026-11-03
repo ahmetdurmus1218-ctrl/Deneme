@@ -108,12 +108,12 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] "Deneme modu" kaldırıldı; dil modeli yoksa sohbette "Rick'in beynini kur" (D36).
 - [x] Alkıştan sonra "uyan": ses tanıma uyurken yüklenir, 9 sn yarışı kalktı, ekranda durum, esnek uyanma sözü.
 - [x] Kendini geliştirme: düzeltmelerden ve 👍/👎'den öğrenme, boştayken internetsiz Wikipedia'dan kaynaklı not defteri, brifingde "okuduklarım", Hafıza ekranında liste ve anahtar (D37).
-- [ ] `v1.0.0` yayımlanacak.
+- [x] `v1.0.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.0.0 (rick.apk 80 MB, rick-kapi.apk 8 MB, Rick-Setup-1.0.0.msi 110 MB, models.lock.json, SHA256SUMS.txt).
 
 ## Kaldığım yer
 Oturum 2 (2026-11-03): v0.3–v0.5 ve halilozat özellikleri yayımlandı (v0.5.0). Ardından kullanıcının telefon
 denemesine göre v1.0: ad Rick, sesli cevap, küçük ekran, indirmeden önce cihazda arama, modelsiz cihaz
-komutları, deneme modunun kaldırılması. Sıradaki: v1.0.0 yayını ve gerçek cihaz geri bildirimi (Gemma 4 /
+komutları, deneme modunun kaldırılması. v1.0.0 yayımlandı. Sıradaki: gerçek cihaz geri bildirimi (Gemma 4 /
 Qwen hızı, alkış eşiği, Piper sesi, yeni cihaz komutları). Ayrıca araştırılan: kullanıcı verisiyle LoRA
 eğitimi henüz llama.cpp'ye girmedi; önerilen yerel öğrenme (düzeltmelerden öğrenme, boşta araştırma defteri)
 kullanıcı onaylarsa yapılacak.
