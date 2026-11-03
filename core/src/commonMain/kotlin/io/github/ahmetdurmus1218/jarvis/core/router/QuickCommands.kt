@@ -19,6 +19,8 @@ sealed interface QuickCommand {
     data class ShowPlanet(val kind: io.github.ahmetdurmus1218.jarvis.core.vision.PlanetKind) : QuickCommand
     /** In-app: the simulated home (lights, coffee machines). */
     data class Home(val action: io.github.ahmetdurmus1218.jarvis.core.home.HomeAction) : QuickCommand
+    /** In-app: the user's library ("kitaplığıma … ekle", "… bitirdim"). */
+    data class Library(val action: io.github.ahmetdurmus1218.jarvis.core.library.LibraryAction) : QuickCommand
     /** In-app: sleep mode ("uyku moduna geç"). */
     data object Sleep : QuickCommand
     /** In-app: opens / closes hand control (the camera with effects). */

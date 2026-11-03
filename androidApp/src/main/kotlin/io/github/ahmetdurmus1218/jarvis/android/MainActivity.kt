@@ -60,6 +60,8 @@ class MainActivity : FragmentActivity() {
 
     suspend fun pickDocument(): Uri? = documentResult.await { documentLauncher.launch(arrayOf("*/*")) }
 
+    suspend fun pickImage(): Uri? = documentResult.await { documentLauncher.launch(arrayOf("image/*")) }
+
     fun launchOnUi(block: suspend () -> Unit) {
         lifecycleScope.launch { block() }
     }

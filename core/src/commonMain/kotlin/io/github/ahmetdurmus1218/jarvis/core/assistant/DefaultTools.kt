@@ -24,6 +24,7 @@ object DefaultTools {
         extra: List<Tool> = emptyList(),
         wiki: Wikipedia? = null,
         documents: DocumentIndex? = null,
+        library: io.github.ahmetdurmus1218.jarvis.core.library.Library? = null,
     ): ToolRegistry =
         ToolRegistry(
             listOf(
@@ -36,6 +37,6 @@ object DefaultTools {
                 HafizaEkleTool(memory),
                 HafizaSilTool(memory),
                 HafizaListeleTool(memory),
-            ) + extra,
+            ) + listOfNotNull(library?.let { io.github.ahmetdurmus1218.jarvis.core.library.KitaplikTool(it) }) + extra,
         )
 }

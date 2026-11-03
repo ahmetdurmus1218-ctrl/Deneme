@@ -74,8 +74,9 @@ internal fun DrawScope.drawEffects(fx: HandEffects, m: ImageMapper, t: Float) {
     // Particles (additive, so fire glows)
     fx.particles.forEach { p ->
         val life = (p.life / p.maxLife).coerceIn(0f, 1f)
-        val r = m.len(p.size) * (if (p.kind == ParticleKind.FIRE) 0.6f + life * 0.8f else 1f)
-        val c = argb(p.color, if (p.kind == ParticleKind.FIRE) life * 0.9f else life)
+        // Flames shrink and fade as they rise; additive blending makes their cores glow.
+        val r = m.len(p.size) * (if (p.kind == ParticleKind.FIRE) 0.4f + life * 0.9f else 1f)
+        val c = argb(p.color, if (p.kind == ParticleKind.FIRE) life * life * 0.7f else life)
         drawCircle(c, radius = r.coerceAtLeast(1f), center = m.o(p.x, p.y), blendMode = BlendMode.Plus)
     }
     // Lightning and sparks between fingertips

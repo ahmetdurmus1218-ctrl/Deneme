@@ -100,6 +100,7 @@ fun ChatScreen(
     speechModel: SpeechModelOffer? = null,
     vision: VisionActions? = null,
     onHome: (() -> Unit)? = null,
+    onLibrary: (() -> Unit)? = null,
 ) {
     val turns by controller.turns.collectAsState()
     val mode by controller.mode.collectAsState()
@@ -176,6 +177,7 @@ fun ChatScreen(
             )
             if (vision != null) VisionButton(vision, input, controller) { input = "" }
             if (onHome != null) TextButton(onClick = onHome) { Text("🏠", fontSize = 20.sp) }
+            if (onLibrary != null) TextButton(onClick = onLibrary) { Text("📚", fontSize = 20.sp) }
             if (mode == CoreMode.SPEAKING) TextButton(onClick = controller::stopSpeaking) { Text("Sus", color = JarvisColors.Amber) }
             Button(
                 onClick = {
@@ -192,8 +194,8 @@ fun ChatScreen(
 }
 
 /**
- * 📷: on the phone opens the camera view; on the PC offers the screen or an image file. A question
- * typed in the input box is used, otherwise "what is this".
+ * 📷: camera / hand control, a photo (what is this, coffee-cup reading) and, on the PC, the screen.
+ * A question typed in the input box is used, otherwise "what is this".
  */
 @Composable
 private fun VisionButton(vision: VisionActions, typed: String, controller: JarvisController, onUsed: () -> Unit) {
@@ -208,7 +210,7 @@ private fun VisionButton(vision: VisionActions, typed: String, controller: Jarvi
         }
     }
     Box {
-        TextButton(onClick = { if (vision.openCamera != null && !vision.desktop) vision.openCamera.invoke() else menu = true }) {
+        TextButton(onClick = { menu = true }) {
             Text("📷", fontSize = 20.sp)
         }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -217,7 +219,7 @@ private fun VisionButton(vision: VisionActions, typed: String, controller: Jarvi
             }
             DropdownMenuItem(text = { Text("Resim seç") }, onClick = { menu = false; ask(QUESTION_WHAT, vision.pickImage) })
             DropdownMenuItem(text = { Text("☕ Kahve falı (fincan fotoğrafı)") }, onClick = { menu = false; ask(QUESTION_FORTUNE, vision.pickImage) })
-            vision.openCamera?.let { open -> DropdownMenuItem(text = { Text(if (vision.desktop) "✋ El kontrolü (demo)" else "Kamera") }, onClick = { menu = false; open() }) }
+            vision.openCamera?.let { open -> DropdownMenuItem(text = { Text(if (vision.desktop) "✋ El kontrolü (demo)" else "Kamera · el kontrolü") }, onClick = { menu = false; open() }) }
         }
     }
 }

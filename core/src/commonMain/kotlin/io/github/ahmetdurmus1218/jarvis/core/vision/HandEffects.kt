@@ -219,7 +219,10 @@ class HandEffects(seed: Int = 7, var settings: EffectSettings = EffectSettings()
             if (g == Gesture.OPEN_PALM && settings.fire && !nearShelfFree(c)) {
                 for (tip in TIPS + listOf(-1)) {
                     val src = if (tip < 0) c else p[tip]
-                    val n = if (tip < 0) 3 else 2
+                    // Time-based rate (≈45/s per fingertip, 70/s for the palm), the same at any frame rate.
+                    val rate = if (tip < 0) 70f else 45f
+                    val want = rate * (if (dt > 0f) dt else 1f / 30f)
+                    val n = want.toInt() + if (rnd.nextFloat() < want - want.toInt()) 1 else 0
                     repeat(n) { spawnFire(src, palm) }
                 }
                 if (rnd.nextFloat() < 0.35f) {
@@ -389,7 +392,7 @@ class HandEffects(seed: Int = 7, var settings: EffectSettings = EffectSettings()
         particles += Particle(
             src.x + (rnd.nextFloat() - 0.5f) * palm * 0.15f, src.y,
             (rnd.nextFloat() - 0.5f) * palm * 0.8f, -palm * (0.8f + rnd.nextFloat() * 1.2f),
-            life, life, palm * (0.06f + rnd.nextFloat() * 0.07f), color, ParticleKind.FIRE,
+            life, life, palm * (0.035f + rnd.nextFloat() * 0.045f), color, ParticleKind.FIRE,
         )
     }
 

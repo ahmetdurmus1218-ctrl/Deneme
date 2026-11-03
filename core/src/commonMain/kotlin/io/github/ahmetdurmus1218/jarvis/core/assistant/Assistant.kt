@@ -58,6 +58,8 @@ class Assistant(
     private val now: NowProvider = NowProvider.System,
     /** The simulated home answered by home quick commands (null: not available). */
     private val home: io.github.ahmetdurmus1218.jarvis.core.home.SmartHome? = null,
+    /** The user's books, for the library commands (null: not available). */
+    private val library: io.github.ahmetdurmus1218.jarvis.core.library.Library? = null,
 ) {
     companion object {
         const val MAX_TOOL_ROUNDS = 5
@@ -68,6 +70,13 @@ class Assistant(
     }
 
     fun ask(userText: String, history: List<ChatMessage> = emptyList()): Flow<AssistantEvent> = flow {
+        library?.let { lib ->
+            io.github.ahmetdurmus1218.jarvis.core.library.LibraryCommands.parse(userText, lib)?.let { action ->
+                val said = io.github.ahmetdurmus1218.jarvis.core.library.LibraryCommands.apply(lib, action)
+                emit(AssistantEvent.Quick(QuickCommand.Library(action), VerifiedScene(Sahne(said))))
+                return@flow
+            }
+        }
         val route = Router.route(userText)
         if (route is Route.Quick) {
             val cmd = route.command
@@ -163,6 +172,27 @@ class Assistant(
      * is a scene reply like any other. Numbers read from a picture cannot be checked against a
      * source, so number cards are turned into titles by the verifier (section 5.4).
      */
+    /** Plain text from the vision model for [prompt] about [jpeg] (shelf reading); null without a seeing model. */
+    suspend fun visionText(prompt: String, jpeg: ByteArray, maxTokens: Int = 1_200): String? {
+        val vision = (engine as? io.github.ahmetdurmus1218.jarvis.core.llm.EngineSelector)?.vision
+            ?: (engine as? io.github.ahmetdurmus1218.jarvis.core.llm.VisionLlm)?.takeIf { it.canSee() }
+            ?: return null
+        val sb = StringBuilder()
+        val stripper = ThinkStripper()
+        vision.streamWithImage(listOf(ChatMessage(Role.USER, prompt)), jpeg, GenerationConfig(maxTokens = maxTokens, temperature = 0.1f)).collect { sb.append(stripper.feed(it)) }
+        return sb.toString()
+    }
+
+    /** Plain text from the local model (book notebook); null when only the mock is installed. */
+    suspend fun plainText(system: String, user: String, maxTokens: Int = 700): String? {
+        val real = (engine as? io.github.ahmetdurmus1218.jarvis.core.llm.EngineSelector)?.current ?: engine
+        if (real.id == "mock") return null
+        val sb = StringBuilder()
+        val stripper = ThinkStripper()
+        real.stream(listOf(ChatMessage(Role.SYSTEM, system), ChatMessage(Role.USER, user)), GenerationConfig(maxTokens = maxTokens, temperature = 0.3f)).collect { sb.append(stripper.feed(it)) }
+        return sb.toString()
+    }
+
     fun askAboutImage(question: String, jpeg: ByteArray): Flow<AssistantEvent> = flow {
         val vision = (engine as? io.github.ahmetdurmus1218.jarvis.core.llm.EngineSelector)?.vision
             ?: (engine as? io.github.ahmetdurmus1218.jarvis.core.llm.VisionLlm)?.takeIf { it.canSee() }
@@ -298,6 +328,7 @@ object QuickResponder {
         QuickCommand.StopSpeaking -> Sahne("", Gorsel(GorselTip.YOK))
         is QuickCommand.ShowPlanet -> Sahne("${cmd.kind.label} geliyor efendim.", Gorsel(GorselTip.BASLIK, baslik = cmd.kind.label))
         is QuickCommand.Home -> Sahne("")
+        is QuickCommand.Library -> Sahne("")
         QuickCommand.Sleep -> Sahne("Uyku moduna geçiyorum. İki alkışla uyandırabilirsiniz.")
         is QuickCommand.HandControl -> Sahne(if (cmd.on) "El kontrolü açılıyor." else "El kontrolü kapatıldı.")
         is QuickCommand.Calculate -> try {

@@ -70,6 +70,22 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
         AndroidSpeechInput(app, ensureMicPermission = micPermission, launch = { block -> activity?.launchOnUi(block) }),
     )
     override val micStream = AndroidMicStream(micPermission)
+
+    /** A photo from the phone's gallery (coffee cup, bookshelf), scaled down and re-encoded as JPEG. */
+    override suspend fun pickImageJpeg(): ByteArray? {
+        val uri = activity?.pickImage() ?: return null
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val src = android.graphics.ImageDecoder.createSource(app.contentResolver, uri)
+                val bmp = android.graphics.ImageDecoder.decodeBitmap(src) { d, info, _ ->
+                    val max = maxOf(info.size.width, info.size.height)
+                    if (max > 1600) d.setTargetSampleSize((max + 1599) / 1600)
+                    d.allocator = android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE
+                }
+                java.io.ByteArrayOutputStream().use { out -> bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 88, out); out.toByteArray() }
+            }.getOrNull()
+        }
+    }
     override val cipher = KeystoreCipher()
     override fun keepScreenOn(on: Boolean) {
         val act = activity ?: return

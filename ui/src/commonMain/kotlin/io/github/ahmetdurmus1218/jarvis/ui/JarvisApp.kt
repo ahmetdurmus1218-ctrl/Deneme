@@ -41,6 +41,7 @@ import kotlinx.coroutines.launch
 import io.github.ahmetdurmus1218.jarvis.ui.screens.ApprovalScreen
 import io.github.ahmetdurmus1218.jarvis.ui.screens.CameraScreen
 import io.github.ahmetdurmus1218.jarvis.ui.screens.HomePanel
+import io.github.ahmetdurmus1218.jarvis.ui.screens.LibraryPanel
 import io.github.ahmetdurmus1218.jarvis.ui.screens.SleepScreen
 import io.github.ahmetdurmus1218.jarvis.ui.screens.WakeSequence
 import io.github.ahmetdurmus1218.jarvis.core.stt.WakePhrase
@@ -87,6 +88,12 @@ class AppGraph(
         },
     ) { NowProvider.System.now().epochMillis }
     val engine = EngineSelector(fallback) { realEngine?.invoke(this) }
+    private val textStore = object : TextStore {
+        override fun read(name: String) = files.read(name)
+        override fun write(name: String, text: String) = files.write(name, text)
+    }
+    /** The user's books (kitaplık), sealed like the rest of the app's data. */
+    val library = io.github.ahmetdurmus1218.jarvis.core.library.Library(textStore) { NowProvider.System.now().epochMillis }
     /** The simulated home (lights, coffee machines) behind the home voice commands and the Ev panel. */
     val home = io.github.ahmetdurmus1218.jarvis.core.home.SmartHome()
     /** The user's own documents (PDF/TXT/MD), searched with BM25 by belge_ara. */
@@ -102,6 +109,7 @@ class AppGraph(
             memory,
             wiki = bridge.zim?.let { Wikipedia(it) },
             documents = documents,
+            library = library,
             // Device actions for the model; the PC has no alarms or app launching.
             extra = if (bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.ANDROID) {
                 io.github.ahmetdurmus1218.jarvis.core.tools.ActionTools { bridge.execute(it) }.all()
@@ -111,6 +119,7 @@ class AppGraph(
         ),
         memory,
         home = home,
+        library = library,
     )
     val installer = ModelInstaller(bridge, registry, settings, netLog)
     val engineLabel: String get() = engine.id.let { if (it == "mock") "sahte model (gerçek model kurulu değil)" else it }
@@ -129,6 +138,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         var cameraOpen by remember { mutableStateOf(false) }
         // "Jarvis, el kontrolünü aç" (closing is handled by the camera screen itself).
         var homeOpen by remember { mutableStateOf(false) }
+        var libraryOpen by remember { mutableStateOf(false) }
         var notice by remember { mutableStateOf<String?>(null) }
         var sleeping by remember { mutableStateOf(false) }
         var waking by remember { mutableStateOf(false) }
@@ -214,7 +224,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                     // The PC has no live camera: it shows the screen or an image instead.
                                     desktop = graph.bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.DESKTOP,
                                 )
-                                ChatScreen(controller, graph.engineLabel, stt != null, offer, vision, onHome = { homeOpen = true })
+                                ChatScreen(controller, graph.engineLabel, stt != null, offer, vision, onHome = { homeOpen = true }, onLibrary = { libraryOpen = true })
                             }
                             Tab.MODELS -> ModelsScreen(graph.bridge, graph.registry, graph.installer)
                             Tab.MEMORY -> MemoryScreen(graph.memory, graph.settings, graph.documents, graph.bridge)
@@ -225,6 +235,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                 }
             }
             if (homeOpen) HomePanel(graph.home) { homeOpen = false }
+            if (libraryOpen) LibraryPanel(graph.library, graph.assistant, pickPhoto = { graph.bridge.pickImageJpeg() }) { libraryOpen = false }
             if (sleeping) {
                 SleepScreen(graph.bridge, settings) { sleeping = false; waking = true }
             } else if (waking) {

@@ -198,6 +198,15 @@ class AppUiTest {
         shot("08b-ev-paneli")
         click("KAPAT")
 
+        // Library by voice, then the panel.
+        ask("Jarvis, kitaplığıma Davranış'ı ekle")
+        waitForText("Tamamdır efendim, Davranış kitaplığınıza eklendi.")
+        click("📚")
+        waitForText("📚 KİTAPLIK")
+        waitForText("okunacak", substring = true)
+        shot("08c-kitaplik")
+        click("KAPAT")
+
         // 6. Hand control by voice command: the PC has no tracking camera, so it opens the demo
         // (the effects themselves are drawn in HandControlUiTest with a stepped clock).
         ask("Jarvis, el kontrolünü aç")

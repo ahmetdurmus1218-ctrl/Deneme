@@ -402,6 +402,7 @@ def main():
         adb("shell", "am", "start", "-W", "-n", f"{KALE}/.android.MainActivity")
         tap(wait_for(tab("Sohbet"), "chat tab"))
         tap(wait_for(text_is("📷"), "camera button"))
+        tap(wait_for(text_is("Kamera · el kontrolü"), "camera menu item"))
         for _ in range(5):
             allow = find(lambda n: label(n) in ("While using the app", "Only this time", "Allow"))
             if allow is not None:
