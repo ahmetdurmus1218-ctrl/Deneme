@@ -25,9 +25,12 @@ class WindowsFirewall(
 
     private fun q(s: String) = "'" + s.replace("'", "''") + "'"
 
-    /** Rule name → enabled, for the rules that exist (reading rules needs no elevation). */
+    /**
+     * Rule name → enabled, for the rules that exist (reading rules needs no elevation). No double
+     * quotes in the command: Java's Windows command line would split the -Command argument on them.
+     */
     fun state(): Map<String, Boolean> {
-        val r = shell("Get-NetFirewallRule -DisplayName ${q("$prefix - *")} -ErrorAction SilentlyContinue | ForEach-Object { \$_.DisplayName + \"`t\" + \$_.Enabled }")
+        val r = shell("Get-NetFirewallRule -DisplayName ${q("$prefix - *")} -ErrorAction SilentlyContinue | ForEach-Object { \$_.DisplayName + [char]9 + \$_.Enabled }")
         return r.out.lines().mapNotNull { l -> l.split('\t').takeIf { it.size == 2 }?.let { it[0].trim() to it[1].trim().equals("True", true) } }.toMap()
     }
 
