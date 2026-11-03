@@ -167,7 +167,8 @@ class AppGraph(
         return a is io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.Torch ||
             a is io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.Call ||
             a is io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.Message ||
-            a is io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.Navigate
+            a is io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.Navigate ||
+            a == io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.Volume(io.github.ahmetdurmus1218.jarvis.core.device.VolumeChange.SILENT_PHONE)
     }
     val installer = ModelInstaller(bridge, registry, settings, netLog)
     val engineLabel: String get() = engine.id.let { if (it == "mock") "temel komutlar · dil modeli kurulu değil" else it }
