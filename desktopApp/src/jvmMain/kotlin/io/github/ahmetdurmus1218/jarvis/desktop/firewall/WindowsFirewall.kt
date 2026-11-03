@@ -36,12 +36,22 @@ class WindowsFirewall(
         return rules.all { s[displayName(it)] == true }
     }
 
+    /** Full long path (no 8.3 short names such as RUNNER~1, which the firewall API rejects). */
+    private fun path(f: File): String = runCatching { f.canonicalPath }.getOrDefault(f.absolutePath)
+
+    /** Text safe inside a PowerShell double-quoted string. */
+    private fun dq(s: String) = s.replace("`", "``").replace("$", "`$").replace("\"", "")
+
+    /** PowerShell lines that (re)create one block rule with netsh, failing loudly. */
+    private fun blockLines(name: String, programExpr: String): String = """
+        netsh advfirewall firewall delete rule "name=$name" | Out-Null
+        netsh advfirewall firewall add rule "name=$name" dir=out action=block "program=$programExpr" enable=yes profile=any | Out-Null
+        if (${'$'}LASTEXITCODE -ne 0) { throw "netsh add rule failed for $name" }
+    """.trimIndent()
+
     fun installScript(rules: List<Rule>): String = buildString {
         appendLine("\$ErrorActionPreference = 'Stop'")
-        for (r in rules) {
-            appendLine("Remove-NetFirewallRule -DisplayName ${q(displayName(r))} -ErrorAction SilentlyContinue")
-            appendLine("New-NetFirewallRule -DisplayName ${q(displayName(r))} -Direction Outbound -Action Block -Profile Any -Program ${q(r.program.absolutePath)} | Out-Null")
-        }
+        for (r in rules) appendLine(blockLines(dq(displayName(r)), dq(path(r.program))))
     }
 
     /** One UAC prompt; true when every rule exists and is on afterwards. */
@@ -51,7 +61,7 @@ class WindowsFirewall(
     }
 
     suspend fun uninstall(): Boolean = withContext(Dispatchers.IO) {
-        elevated("Remove-NetFirewallRule -DisplayName ${q("$prefix - *")} -ErrorAction SilentlyContinue", wait = true)
+        elevated("Get-NetFirewallRule -DisplayName ${q("$prefix - *")} -ErrorAction SilentlyContinue | Remove-NetFirewallRule", wait = true)
         state().isEmpty()
     }
 
@@ -63,7 +73,8 @@ class WindowsFirewall(
         return """
             ${'$'}ErrorActionPreference = 'Stop'
             Remove-Item ${q(closed)} -ErrorAction SilentlyContinue
-            Set-NetFirewallRule -DisplayName ${q(name)} -Enabled False
+            netsh advfirewall firewall set rule "name=${dq(name)}" new enable=no | Out-Null
+            if (${'$'}LASTEXITCODE -ne 0) { throw "could not open the gate" }
             Set-Content -Path ${q(open)} -Value 'open'
             ${'$'}end = (Get-Date).AddSeconds($seconds)
             try {
@@ -72,13 +83,14 @@ class WindowsFirewall(
                 foreach (${'$'}line in Get-Content ${q(done)}) {
                   ${'$'}p = ${'$'}line -split "`t"
                   if (${'$'}p.Length -eq 3 -and ${'$'}p[0] -eq 'BLOCK' -and ${'$'}p[1].StartsWith(${q("$prefix - ")})) {
-                    Remove-NetFirewallRule -DisplayName ${'$'}p[1] -ErrorAction SilentlyContinue
-                    New-NetFirewallRule -DisplayName ${'$'}p[1] -Direction Outbound -Action Block -Profile Any -Program ${'$'}p[2] | Out-Null
+                    ${'$'}n = ${'$'}p[1]; ${'$'}g = ${'$'}p[2]
+                    netsh advfirewall firewall delete rule "name=${'$'}n" | Out-Null
+                    netsh advfirewall firewall add rule "name=${'$'}n" dir=out action=block "program=${'$'}g" enable=yes profile=any | Out-Null
                   }
                 }
               }
             } finally {
-              Set-NetFirewallRule -DisplayName ${q(name)} -Enabled True
+              netsh advfirewall firewall set rule "name=${dq(name)}" new enable=yes | Out-Null
               Remove-Item ${q(open)}, ${q(done)} -ErrorAction SilentlyContinue
               Set-Content -Path ${q(closed)} -Value 'closed'
             }
@@ -105,7 +117,7 @@ class WindowsFirewall(
     /** Ends the session: the helper blocks [newPrograms], switches the kapi rule back on and exits. */
     suspend fun closeGate(dir: File, newPrograms: List<Rule> = emptyList(), waitMs: Long = 30_000): Boolean = withContext(Dispatchers.IO) {
         if (!File(dir, "gate.open").isFile) return@withContext true
-        File(dir, "gate.done").writeText(newPrograms.joinToString("\n") { "BLOCK\t${displayName(it)}\t${it.program.absolutePath}" })
+        File(dir, "gate.done").writeText(newPrograms.joinToString("\n") { "BLOCK\t${displayName(it)}\t${path(it.program)}" })
         val deadline = System.currentTimeMillis() + waitMs
         while (System.currentTimeMillis() < deadline) {
             if (File(dir, "gate.closed").isFile) return@withContext true

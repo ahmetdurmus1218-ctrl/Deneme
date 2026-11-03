@@ -29,8 +29,8 @@ class FirewallTest {
     fun scriptsQuotePathsSafely() {
         val fw = WindowsFirewall("Jarvis") { WindowsFirewall.ShellResult(0, "") }
         val s = fw.installScript(listOf(WindowsFirewall.Rule("x", File("C:\\Users\\O'Brien\\Jarvis.exe"))))
-        assertTrue("O''Brien\\Jarvis.exe'" in s, s) // on Linux the Windows path is relative, so only its end is checked
-        assertTrue("-Direction Outbound -Action Block" in s)
+        assertTrue("O'Brien\\Jarvis.exe\"" in s, s) // on Linux the Windows path is relative, so only its end is checked
+        assertTrue("dir=out action=block" in s && "\"name=Jarvis - x\"" in s, s)
     }
 
     /**
