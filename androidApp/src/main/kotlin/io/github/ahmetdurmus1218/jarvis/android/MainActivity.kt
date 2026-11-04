@@ -35,6 +35,15 @@ class MainActivity : FragmentActivity() {
         val graph = (application as JarvisApplication).graph
         val fmt = SimpleDateFormat("d MMM yyyy HH:mm:ss", Locale.forLanguageTag("tr-TR"))
         setContent { JarvisApp(graph) { fmt.format(Date(it)) } }
+        // The back button closes what is open in Rick first (camera, panels, the approval); only then leaves.
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.backHandler?.invoke() == true) return
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+                isEnabled = true
+            }
+        })
     }
 
     override fun onResume() {

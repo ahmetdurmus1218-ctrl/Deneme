@@ -48,6 +48,8 @@ import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+const val HAND_HELP = "✋ savur ↑↓←→: sayfa / şarkı\n🤏 dokundur: tıkla · 🤏 çek: kaydır\n🤏 bileği çevir: ses\n✋ beklet: dur / devam\n👍 beklet: konuş · ✊ beklet: sus\n✌️ beklet: geri\n👋 salla: her şeyi kapat\n✋✋ iki el: ana ekran"
+
 /** Registers [scroll] as the page a hand swipe turns, while this screen is shown. */
 @Composable
 fun PageScrollOf(scroll: ScrollState) {
@@ -130,6 +132,21 @@ fun HandNavOverlay(camera: VisionCamera, controller: JarvisController, bridge: P
             Box(Modifier.size(84.dp, 112.dp).clip(RoundedCornerShape(12.dp)).border(2.dp, JarvisColors.Amber, RoundedCornerShape(12.dp))) {
                 camera.Preview(Modifier.fillMaxSize(), true) { f -> frame = f }
             }
+            // The gestures, shown for the first seconds (and while the user taps "?").
+            var help by remember { mutableStateOf(true) }
+            LaunchedEffect(Unit) { kotlinx.coroutines.delay(10_000); help = false }
+            if (help) {
+                Text(
+                    HAND_HELP, color = JarvisColors.Text, fontSize = 10.sp,
+                    modifier = Modifier.padding(top = 4.dp).size(width = 190.dp, height = 168.dp)
+                        .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(8.dp)).padding(6.dp),
+                )
+            }
+            Text(
+                "? hareketler", color = JarvisColors.Cyan, fontSize = 10.sp,
+                modifier = Modifier.padding(top = 4.dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(8.dp))
+                    .clickable { help = !help }.padding(horizontal = 6.dp, vertical = 3.dp),
+            )
             Text(
                 if (!tracking) "El takibi kurulu değil" else "✋ El ile yönetim · kapat",
                 color = JarvisColors.Text, fontSize = 10.sp,

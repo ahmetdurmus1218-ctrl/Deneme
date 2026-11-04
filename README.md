@@ -102,7 +102,8 @@ WhatsApp'tan mesaj göndermez, bankaya girmez.
 
 **Rick'i elinizle yönetin:** ☰ → **El ile yönet** (köşede küçük kamera). Açık elinizi savurunca sayfa kayar; müzik
 çalarken sonraki/önceki şarkıya geçer; elinizi açık bekletince durur/devam eder; 🤏 dokundurup bileği çevirince ses
-değişir; 👍 bekletince Rick dinler. Ayarlar → Ekranda Rick → "El hareketleri" ile başka uygulamadayken de çalışır.
+değişir; 👍 bekletince Rick dinler; ✌️ bekletince geri gider; el sallayınca (👋) her şeyi kapatıp ana ekrana döner.
+Sesle de "geri", "kapat", "ana ekran", "aşağı kaydır" diyebilirsiniz; Rick hiçbir yerde takılı kalmaz. Ayarlar → Ekranda Rick → "El hareketleri" ile başka uygulamadayken de çalışır.
 
 Kamerada (📷 → el kontrolü) **elinizle havada** kontrol edebilirsiniz: ☝️ işaret parmağınız imleçtir; başparmakla
 dokundurmak (🤏) ya da parmağı bir düğmede bekletmek tıklar; 🤏 ile çekmek kaydırır, bileği çevirmek döndürür; açık

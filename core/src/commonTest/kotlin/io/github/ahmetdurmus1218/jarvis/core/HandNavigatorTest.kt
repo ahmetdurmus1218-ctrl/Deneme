@@ -55,3 +55,39 @@ class HandNavigatorTest {
         assertTrue(down.count { it == HandCommand.VOLUME_DOWN } >= 2, down.toString())
     }
 }
+
+class HandNavigatorEscapeTest {
+    private fun hand(shape: HandShape, cx: Float, cy: Float): Hand =
+        Hand(DemoHands.hand(shape, cx, cy, 1.4f).points.map { Point(it.x * 1000f, it.y * 1000f) })
+
+    private fun run(ms: Long, second: (Long) -> Hand? = { null }, f: (Long) -> Hand?): List<HandCommand> {
+        val nav = HandNavigator()
+        val out = mutableListOf<HandCommand>()
+        var t = 0L
+        while (t < ms) { out += nav.update(t, f(t), 1000f, 1000f, second = second(t)).commands; t += 33 }
+        return out
+    }
+
+    @Test
+    fun victoryGoesBackAWaveGetsOutBothHandsGoHome() {
+        assertEquals(listOf(HandCommand.BACK), run(1_800) { hand(HandShape.VICTORY, 0.5f, 0.8f) })
+        // A wave: about ±8 % of the width, three times a second.
+        val waved = run(1_500) { t -> hand(HandShape.OPEN, 0.5f + 0.08f * kotlin.math.sin(t / 1_000f * 2f * kotlin.math.PI.toFloat() * 3f), 0.8f) }
+        assertTrue(HandCommand.EXIT in waved, waved.toString())
+        assertTrue(HandCommand.PAUSE_PLAY !in waved, waved.toString())
+        assertEquals(listOf(HandCommand.HOME), run(1_800, second = { hand(HandShape.OPEN, 0.25f, 0.8f) }) { hand(HandShape.OPEN, 0.75f, 0.8f) })
+    }
+}
+
+class NavigationWordsTest {
+    @Test
+    fun backHomeAndPageAreUnderstood() {
+        val r = io.github.ahmetdurmus1218.jarvis.core.router.QuickCommandRouter
+        listOf("Geri", "geri dön", "Kapat", "çık", "Rick, bunu kapat").forEach { assertEquals<Any?>(io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.Back, r.route(it), it) }
+        listOf("Ana ekran", "ana ekrana dön", "sohbete dön").forEach { assertEquals<Any?>(io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.MainScreen, r.route(it), it) }
+        assertEquals<Any?>(io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.Page(1), r.route("aşağı kaydır"))
+        assertEquals<Any?>(io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.Page(-1), r.route("yukarı kaydır"))
+        // Not navigation: other commands keep their meaning.
+        assertEquals<Any?>(io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.Device(io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.Torch(false)), r.route("feneri kapat"))
+    }
+}

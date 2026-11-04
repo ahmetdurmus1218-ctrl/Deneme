@@ -137,6 +137,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] PC'de her zaman üstte küçük yüz penceresi.
 - [x] Günün haberleri: BBC Türkçe RSS, Kapı / rick-kapi üzerinden, her okumada onay, Ağ kaydı; uyanınca teklif.
 - [x] El ile yönetim her yerde: ☰ → El ile yönet (köşede kamera, uygulamada imleç, havada dokunuş, sayfa kaydırma); müzikte şarkı geçirme, durdurma, ses; ekranda Rick ile başka uygulama öndeyken de (D43).
+- [x] Asla takılı kalmamak: ✌️ / "geri" / geri tuşu bir adım geri; 👋 / ✋✋ / "ana ekran" her şeyi kapatır; "aşağı/yukarı kaydır"; uzun düşünme ve açık kalan mikrofon kendiliğinden biter.
 - [x] Hava kontrolü: ☝️ imleç, 🤏 ya da bekleterek tıkla, 🤏↕ kaydır, 🤏⟲ döndür, ✋⇆ savurarak kart değiştir; kamerada Evet/Hayır ve komut düğmeleri (D43).
 - [x] Testler: hava imleci (tıklama, bekletme, kaydırma, döndürme, savurma), havada tıklama kaydı, yüzün her hâlinin ekran görüntüsü; haber ayrıştırma ve tetikleyiciler, denetleyicide haber akışı, Kapı ve PC'de canlı BBC sertifika testi, emülatörde haber (PIN) ve ekranda Rick (pencere, dokunma, basılı tutma).
 

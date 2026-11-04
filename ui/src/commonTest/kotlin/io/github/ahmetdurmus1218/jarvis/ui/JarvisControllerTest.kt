@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -535,6 +536,34 @@ class JarvisControllerTest {
         // Over other apps there is no page: nothing to do.
         assertEquals(null, c.onHand(io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.NEXT, null))
         assertEquals("🔊 Ses +", c.onHand(io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.VOLUME_UP, null))
+        scope.cancel()
+    }
+
+    @Test
+    fun goingBackDoesNotCoverTheAnswerAndNothingStaysStuck() = runTest {
+        val scope = controllerScope()
+        val stuck = object : LlmEngine {
+            override val id = "stuck"
+            override fun stream(messages: List<ChatMessage>, config: GenerationConfig): Flow<String> = flow { delay(10 * 60_000L); emit("{}") }
+        }
+        val (c, _, _) = setup(engine = stuck, scope = scope)
+        val commands = mutableListOf<QuickCommand>()
+        val collector = scope.launch { c.appCommands.collect { commands += it } }
+        c.send("Atatürk kimdir")
+        advanceTimeBy(1_000)
+        assertEquals(CoreMode.THINKING, c.mode.value)
+        // Stuck for minutes: Rick stops by itself and says so.
+        advanceTimeBy(JarvisController.STUCK_THINKING_MS + 1_000)
+        assertEquals(CoreMode.IDLE, c.mode.value)
+        assertTrue(c.partialTranscript.value.contains("uzun sürdü"), c.partialTranscript.value)
+        // "geri" / "ana ekran" move around without a new turn over the answer.
+        val turns = c.turns.value.size
+        c.send("geri")
+        c.send("ana ekran")
+        advanceUntilIdle()
+        assertEquals(turns, c.turns.value.size)
+        assertEquals(listOf<QuickCommand>(QuickCommand.Back, QuickCommand.MainScreen), commands)
+        collector.cancel()
         scope.cancel()
     }
 }

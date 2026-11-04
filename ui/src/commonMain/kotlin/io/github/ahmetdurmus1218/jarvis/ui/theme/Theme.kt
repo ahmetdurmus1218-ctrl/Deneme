@@ -102,6 +102,9 @@ object JarvisUi {
     /** Calmer core and effects (fewer moving parts) for people sensitive to motion, or slow devices. */
     var reduceMotion by mutableStateOf(false)
 
+    /** One step back in Rick's window (the phone's back button asks it first); false: nothing to close. */
+    var backHandler: (() -> Boolean)? = null
+
     /** The scrollable page on screen now, so a hand swipe can turn it (set by the screens themselves). */
     var pageScroll: androidx.compose.foundation.ScrollState? = null
 

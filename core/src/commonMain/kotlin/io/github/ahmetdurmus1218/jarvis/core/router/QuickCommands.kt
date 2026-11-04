@@ -28,6 +28,12 @@ sealed interface QuickCommand {
     data object Sleep : QuickCommand
     /** In-app: opens / closes hand control (the camera with effects). */
     data class HandControl(val on: Boolean) : QuickCommand
+    /** In-app: one step back (close what is open): "geri", "kapat", "çık". */
+    data object Back : QuickCommand
+    /** In-app: close everything, back to the chat: "ana ekran". */
+    data object MainScreen : QuickCommand
+    /** In-app: turn the page on screen ("aşağı kaydır" +1, "yukarı kaydır" -1). */
+    data class Page(val dir: Int) : QuickCommand
     /** The device itself: torch, volume, music, setting panels, battery, call / message, directions. */
     data class Device(val action: io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction) : QuickCommand
 }
@@ -41,6 +47,10 @@ object QuickCommandRouter {
     private const val POLITE = "(?: (?:lutfen|acaba|soyler misin|soyle|soyleyebilir misin|ogrenebilir miyim))*"
     private val TIME = Regex("^(?:simdi )?saat(?:in)? kac(?: oldu)?$POLITE$|^saati (?:soyle|soyler misin)$|^saat ne$")
     private val DATE = Regex("^(?:bugun )?(?:ayin kaci|tarih ne|bugunun tarihi(?: ne)?|ne gun|gunlerden ne|hangi gundeyiz|hangi gun|tarih kac)$POLITE$")
+    private val BACK = Regex("^(?:geri|geri don|geri git|geri gel|bir onceki ekran|onceki ekran|kapat|bunu kapat|ekrani kapat|cik|cikis|disari cik|buradan cik)$")
+    private val HOME = Regex("^(?:ana ekran|ana ekrana don|ana ekrana git|ana sayfa|ana sayfaya don|sohbete don|basa don|en basa don)$")
+    private val PAGE_DOWN = Regex("^(?:asagi|asagi in|asagi kaydir|asagiya kaydir|sayfayi asagi kaydir|kaydir|devamini goster|sayfayi cevir|sonraki sayfa)$")
+    private val PAGE_UP = Regex("^(?:yukari|yukari cik|yukari kaydir|yukariya kaydir|sayfayi yukari kaydir|onceki sayfa)$")
     private val STOP = Regex("^(?:tamam )?(?:sus|dur|sessiz ol|sessize al|yeter|kes|sustur|kapa ceneni)(?: artik)?$")
 
     private const val UNIT_WORD = "(?:saat|dakika|dk|saniye|sn)"
@@ -77,6 +87,10 @@ object QuickCommandRouter {
         if (TIME.matches(n)) return QuickCommand.TimeNow
         if (DATE.matches(n)) return QuickCommand.DateToday
         if (STOP.matches(n)) return QuickCommand.StopSpeaking
+        if (BACK.matches(n)) return QuickCommand.Back
+        if (HOME.matches(n)) return QuickCommand.MainScreen
+        if (PAGE_DOWN.matches(n)) return QuickCommand.Page(1)
+        if (PAGE_UP.matches(n)) return QuickCommand.Page(-1)
         PLANET.matchEntire(n)?.let { m -> io.github.ahmetdurmus1218.jarvis.core.vision.PlanetKind.fromSpeech(m.groupValues[1])?.let { return QuickCommand.ShowPlanet(it) } }
         if (SLEEP.matches(n)) return QuickCommand.Sleep
         HAND.matchEntire(n)?.let { m -> return QuickCommand.HandControl(m.groupValues[1] == "ac") }

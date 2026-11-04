@@ -88,7 +88,7 @@ const val QUESTION_READ = "Buradaki yazıyı oku."
 const val QUESTION_FORTUNE = "Bu bir Türk kahvesi fincanı. Telvede gerçekten gördüğün şekillerden esprili, kısa bir kahve falı yorumla; bunun bilim olmadığını bir kez söyle."
 const val THUMB_COFFEE = "Rick, bana bol köpüklü bir Türk kahvesi yap"
 const val GESTURE_LEGEND = "✋ ateş · 🤏 gezegen · ✊→✋ patlat · ☝️ iz · ☝️☝️ şimşek · basılı tut: 👍 dinle ✌️ bu ne? ✊ sus"
-const val AIR_LEGEND = "☝️ işaret et · 🤏 dokundur ya da ☝️ beklet = tıkla · 🤏↕ kaydır · 🤏⟲ döndür · ✋⇆ savur = sonraki"
+const val AIR_LEGEND = "☝️ işaret et · 🤏 dokundur ya da ☝️ beklet = tıkla · 🤏↕ kaydır · 🤏⟲ döndür · ✋⇆ savur = sonraki · 👋 salla = çık"
 
 /** Commands one click away in the air (the microphone gives every other command). */
 private val AIR_COMMANDS = listOf(
@@ -138,6 +138,8 @@ fun CameraScreen(
     // Air control: the hand as a cursor over everything below that is registered as a target.
     val targets = remember { io.github.ahmetdurmus1218.jarvis.ui.components.AirTargets() }
     val air = remember { io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer() }
+    // Never stuck here either: 👋 a wave or ✋✋ both hands close the effects screen.
+    val escape = remember { io.github.ahmetdurmus1218.jarvis.core.vision.HandNavigator() }
     var airState by remember { mutableStateOf<io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.State?>(null) }
     var airFlash by remember { mutableStateOf(0L) }
     var origin by remember { mutableStateOf(Offset.Zero) }
@@ -209,6 +211,11 @@ fun CameraScreen(
                 } else {
                     faceLabels = emptyList()
                 }
+            }
+            if (!demo && f != null && f.width > 0 && f.height > 0) {
+                val px = f.hands.map { hd -> Hand(hd.points.map { io.github.ahmetdurmus1218.jarvis.core.vision.Point(it.x * canvasW, it.y * canvasH, it.z) }) }
+                val esc = escape.update(now, px.firstOrNull(), canvasW, canvasH, second = px.getOrNull(1)).commands
+                if (io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.EXIT in esc || io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.HOME in esc) onClose()
             }
             // The hand as a cursor (camera only: the demo hands must not click anything).
             if (!demo && settings.effects.air) {

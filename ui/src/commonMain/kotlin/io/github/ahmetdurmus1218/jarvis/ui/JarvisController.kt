@@ -20,6 +20,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -108,6 +109,28 @@ class JarvisController(
     private var correctionFor: Long? = null
 
     init {
+        // Never stuck: an answer that takes far too long, or a microphone left open, is ended by itself.
+        scope.launch {
+            _mode.collectLatest { m ->
+                when (m) {
+                    CoreMode.THINKING -> {
+                        delay(STUCK_THINKING_MS)
+                        if (_mode.value == CoreMode.THINKING) {
+                            stopEverything()
+                            _partial.value = "Bu çok uzun sürdü, durdurdum. İsterseniz tekrar sorun."
+                        }
+                    }
+                    CoreMode.LISTENING -> {
+                        delay(STUCK_LISTENING_MS)
+                        if (_mode.value == CoreMode.LISTENING) {
+                            stopListening()
+                            _partial.value = "Uzun süre ses gelmedi; dinlemeyi kapattım."
+                        }
+                    }
+                    else -> {}
+                }
+            }
+        }
         research?.let { step ->
             scope.launch {
                 while (true) {
@@ -304,6 +327,16 @@ class JarvisController(
             }
         }
         if (learnCorrection(clean)) return
+        // "geri", "ana ekran", "aşağı kaydır": move around without a new answer covering the screen.
+        when (val nav = io.github.ahmetdurmus1218.jarvis.core.router.QuickCommandRouter.route(clean)) {
+            QuickCommand.Back, QuickCommand.MainScreen, is QuickCommand.Page -> {
+                if (nav == QuickCommand.MainScreen) stopEverything()
+                _appCommands.tryEmit(nav)
+                _partial.value = when (nav) { QuickCommand.Back -> "↩ Geri"; QuickCommand.MainScreen -> "🏠 Ana ekran"; else -> "" }
+                return
+            }
+            else -> {}
+        }
         stopSpeaking()
         askJob?.cancel()
         factJob?.cancel()
@@ -336,7 +369,8 @@ class JarvisController(
                     updateTurn(id) { it.copy(done = true, scenes = listOf(VerifiedScene(Sahne("Tamam, susuyorum.")))) }
                     return
                 }
-                val inApp = ev.command is QuickCommand.ShowPlanet || ev.command is QuickCommand.HandControl || ev.command is QuickCommand.Home || ev.command == QuickCommand.Sleep
+                val inApp = ev.command is QuickCommand.ShowPlanet || ev.command is QuickCommand.HandControl || ev.command is QuickCommand.Home ||
+                    ev.command == QuickCommand.Sleep || ev.command == QuickCommand.Back || ev.command == QuickCommand.MainScreen || ev.command is QuickCommand.Page
                 if (inApp) _appCommands.tryEmit(ev.command)
                 val error = if (inApp) null else bridge.execute(ev.command)
                 if (error == null) logHandoff(ev.command)
@@ -722,7 +756,20 @@ class JarvisController(
             HandCommand.QUIET -> { stopSpeaking(); if (music) media(MediaKey.PAUSE); "🤫 Sustum" }
             HandCommand.VOLUME_UP -> { volume(io.github.ahmetdurmus1218.jarvis.core.device.VolumeChange.UP); "🔊 Ses +" }
             HandCommand.VOLUME_DOWN -> { volume(io.github.ahmetdurmus1218.jarvis.core.device.VolumeChange.DOWN); "🔉 Ses −" }
+            HandCommand.BACK -> { _appCommands.tryEmit(QuickCommand.Back); "↩ Geri" }
+            HandCommand.HOME -> { _appCommands.tryEmit(QuickCommand.MainScreen); "🏠 Ana ekran" }
+            HandCommand.EXIT -> { stopEverything(); _appCommands.tryEmit(QuickCommand.MainScreen); "👋 Hepsini kapattım" }
         }
+    }
+
+    /** Never stuck: stops speaking, listening and any answer in progress. */
+    fun stopEverything() {
+        continueAfter = null
+        if (_mode.value == CoreMode.LISTENING) stopListening()
+        stopSpeaking()
+        askJob?.cancel()
+        currentTurnId?.let { id -> updateTurn(id) { if (it.done) it else it.copy(done = true, interrupted = true) } }
+        if (_mode.value == CoreMode.THINKING) _mode.value = CoreMode.IDLE
     }
 
     fun showNotice(text: String) {
@@ -740,6 +787,9 @@ class JarvisController(
         /** How often the idle loop looks, and how long Rick must be left alone before reading. */
         const val IDLE_CHECK_MS = 60_000L
         const val IDLE_BEFORE_RESEARCH_MS = 3 * 60_000L
+        /** Never stuck: the longest Rick may "think" (a slow first model load included) or keep the microphone open. */
+        const val STUCK_THINKING_MS = 240_000L
+        const val STUCK_LISTENING_MS = 60_000L
 
         /** Pause between Rick finishing and listening again, so its own voice is not recorded. */
         const val CONTINUE_DELAY_MS = 350L

@@ -532,6 +532,9 @@ object QuickResponder {
         is QuickCommand.Library -> Sahne("")
         is QuickCommand.Todo -> Sahne("")
         QuickCommand.Sleep -> Sahne("Uyku moduna geçiyorum. İki alkışla uyandırabilirsiniz.")
+        QuickCommand.Back -> Sahne("Geri döndüm.")
+        QuickCommand.MainScreen -> Sahne("Ana ekrandayım.")
+        is QuickCommand.Page -> Sahne("")
         is QuickCommand.HandControl -> Sahne(if (cmd.on) "El kontrolü açılıyor." else "El kontrolü kapatıldı.")
         is QuickCommand.Device -> Sahne(io.github.ahmetdurmus1218.jarvis.core.device.DeviceCommands.describe(cmd.action))
         is QuickCommand.Calculate -> try {

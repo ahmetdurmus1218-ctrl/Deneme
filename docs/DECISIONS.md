@@ -422,4 +422,11 @@ Kullanıcı kamera onu gösterirken elleriyle havada tıklamak, kaydırmak, dön
   `camera` türü, açarken izin istenir); müzik ve ses komutları çalışır, yüz eli izler. Başka uygulamalara
   dokunma / tıklama yoktur (erişilebilirlik izni yok, bankacılık ve mesajlaşma dışarıda). Rick'in penceresi
   öndeyken servis kamerayı bırakır.
+- **Asla takılı kalmamak:** her yerde aynı çıkışlar var. ✌️ bekletmek / "geri" / "kapat" / telefonun geri tuşu:
+  açık olan en üstteki şeyi kapatır (onay ekranı reddedilir, kamera, ev, kitaplık, yapılacaklar, uyku; konuşuyor
+  ya da dinliyorsa durur; sonra Sohbet sekmesi). 👋 el sallamak / ✋✋ iki açık el / "ana ekran": her şeyi kapatır,
+  konuşmayı, dinlemeyi ve süren cevabı durdurur. "aşağı/yukarı kaydır" sesle sayfayı çevirir; bu komutlar
+  ekrandaki cevabın üstüne yeni bir sohbet açmaz. Efekt ekranından da 👋 ile çıkılır. Ayrıca denetleyici kendini
+  korur: 4 dakikadan uzun süren bir "düşünme" ve 1 dakikadan uzun açık kalan mikrofon kendiliğinden kapanır ve
+  nedeni söylenir.
 

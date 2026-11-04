@@ -16,6 +16,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -256,6 +257,32 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         var notice by remember { mutableStateOf<String?>(null) }
         var sleeping by remember { mutableStateOf(false) }
         var waking by remember { mutableStateOf(false) }
+        // Never stuck: one step back (voice "geri", ✌️ held, the phone's back button) …
+        fun goBack(): Boolean = when {
+            approval != null -> { graph.installer.answerApproval(false); true }
+            cameraOpen -> { cameraOpen = false; true }
+            homeOpen -> { homeOpen = false; true }
+            libraryOpen -> { libraryOpen = false; true }
+            todoOpen -> { todoOpen = false; true }
+            sleeping -> { sleeping = false; true }
+            controller.mode.value == CoreMode.LISTENING || controller.mode.value == CoreMode.SPEAKING -> { controller.stopEverything(); true }
+            tab != Tab.CHAT -> { tab = Tab.CHAT; true }
+            else -> false
+        }
+        // … or out of everything at once ("ana ekran", 👋 a wave, ✋✋).
+        fun closeAll() {
+            if (approval != null) graph.installer.answerApproval(false)
+            cameraOpen = false
+            homeOpen = false
+            libraryOpen = false
+            todoOpen = false
+            sleeping = false
+            tab = Tab.CHAT
+        }
+        androidx.compose.runtime.DisposableEffect(Unit) {
+            io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.backHandler = { goBack() }
+            onDispose { io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.backHandler = null }
+        }
         val turnsNow by controller.turns.collectAsState()
         val modeNow by controller.mode.collectAsState()
         // Sleep after a while without use (any question, answer, tab or panel restarts the wait).
@@ -270,6 +297,11 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                 when (c) {
                     is io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.HandControl -> if (c.on) cameraOpen = true
                     is io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.Home -> c.action.notice()?.let { notice = it }
+                    io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.Back -> goBack()
+                    io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.MainScreen -> closeAll()
+                    is io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.Page -> io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.pageScroll?.let { sc ->
+                        scope.launch { sc.animateScrollBy(c.dir * sc.viewportSize * 0.7f) }
+                    }
                     io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand.Sleep -> scope.launch {
                         kotlinx.coroutines.delay(3_500) // let it finish saying so
                         sleeping = true
