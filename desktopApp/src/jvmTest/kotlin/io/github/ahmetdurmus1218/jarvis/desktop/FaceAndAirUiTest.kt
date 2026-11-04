@@ -95,6 +95,30 @@ class FaceAndAirUiTest {
     }
 
     @Test
+    fun everyLookInEveryMood() {
+        rule.mainClock.autoAdvance = false
+        val moods = listOf(CoreMode.IDLE to false, CoreMode.LISTENING to false, CoreMode.SPEAKING to false, CoreMode.IDLE to true)
+        rule.setContent {
+            JarvisTheme {
+                Column(Modifier.background(JarvisColors.Background).testTag("looks")) {
+                    io.github.ahmetdurmus1218.jarvis.ui.components.LOOKS.forEach { (id, _) ->
+                        Row {
+                            moods.forEach { (m, asleep) ->
+                                Box(Modifier.size(150.dp)) { RickFace(m, 0.7f, size = 150.dp, sleeping = asleep, look = id) }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        rule.mainClock.advanceTimeBy(1_300)
+        val img = rule.onNodeWithTag("looks").captureToImage().toAwtImage()
+        val rgb = BufferedImage(img.width, img.height, BufferedImage.TYPE_INT_RGB)
+        rgb.createGraphics().apply { drawImage(img, 0, 0, null); dispose() }
+        ImageIO.write(rgb, "jpg", File(File("build/ui-screens").apply { mkdirs() }, "26-gorunumler.jpg"))
+    }
+
+    @Test
     fun theBubbleFaceIsTheHeadOnly() {
         rule.mainClock.autoAdvance = false
         rule.setContent {

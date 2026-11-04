@@ -35,6 +35,10 @@ class MainActivity : FragmentActivity() {
         val graph = (application as JarvisApplication).graph
         val fmt = SimpleDateFormat("d MMM yyyy HH:mm:ss", Locale.forLanguageTag("tr-TR"))
         setContent { JarvisApp(graph) { fmt.format(Date(it)) } }
+        // Tapjacking guard: a touch that passes through another app's window drawn over Rick (an
+        // invisible overlay tricking the user into "Onayla") is ignored. Rick's own floating face is
+        // the same app and does not count.
+        window.decorView.filterTouchesWhenObscured = true
         // The back button closes what is open in Rick first (camera, panels, the approval); only then leaves.
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {

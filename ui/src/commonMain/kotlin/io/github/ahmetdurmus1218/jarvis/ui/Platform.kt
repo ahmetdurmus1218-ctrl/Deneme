@@ -108,6 +108,13 @@ interface FloatingRick {
     suspend fun start(hands: Boolean = false): String?
     fun stop()
     val running: kotlinx.coroutines.flow.StateFlow<Boolean>
+
+    /** Hand control of other apps (Android accessibility) is switched on in the system. */
+    fun appControlOn(): Boolean = false
+    /** Opens the system screen where it is switched on. */
+    fun openAppControlSettings() {}
+    /** Installed apps the user may pick for hand control (package to name); banks, messengers etc. are never listed. */
+    fun appChoices(): List<Pair<String, String>> = emptyList()
 }
 
 interface MicStream {

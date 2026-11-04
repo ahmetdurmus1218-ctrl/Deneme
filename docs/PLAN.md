@@ -143,7 +143,8 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] `v1.3.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.3.0 (rick.apk 81 MB, rick-kapi.apk 8,6 MB, Rick-Setup-1.3.0.msi 111 MB). CI'nın tamamı yeşil; emülatörde canlı BBC Türkçe başlıkları, El ile yönet katmanı, ekranda Rick (pencere, dokunma, basılı tutma).
 - [x] v1.3.1: yüz yerine tepkilere göre insan gibi hareket eden canlı kıvılcım simgesi, El ile yönet tam ekran (kamera Rick'in arkasında, imleç parmak ucunda), kamera ekranında KONTROL / EFEKTLER kiplerinin ayrılması ve düğmeye yapışan imleç (D44).
 - [x] `v1.3.1` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.3.1 (CI ve emülatör testi yeşil).
-- [ ] Sıradaki (v1.4): PC'de web kamerasıyla el hareketleri (kamera görüntüsü + el modeli ONNX, Hugging Face'ten kilitli); gerçek telefonda el hareketi hassasiyeti geri bildirimi.
+- [x] v1.4.0: diğer uygulamalarda el kontrolü (erişilebilirlik, izin listesi; banka/WhatsApp asla), arama güvenliği, kilit ekranı kuralı, dokunma tuzağı koruması, arka plan kamerasının 10 dk sonra kapanması, 5 seçilebilir görünüm (D45).
+- [ ] Sıradaki (v1.5): PC'de web kamerasıyla el hareketleri (kamera görüntüsü + el modeli ONNX, Hugging Face'ten kilitli); gerçek telefonda el hareketi hassasiyeti geri bildirimi.
 
 ## Kaldığım yer
 Oturum 2 (2026-11-03): v0.3–v0.5 ve halilozat özellikleri yayımlandı (v0.5.0). Ardından kullanıcının telefon

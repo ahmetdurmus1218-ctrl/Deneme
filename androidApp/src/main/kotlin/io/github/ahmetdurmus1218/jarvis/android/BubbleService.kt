@@ -15,6 +15,7 @@ import android.os.IBinder
 import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
+import androidx.compose.foundation.layout.fillMaxSize
 import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -92,6 +93,13 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
     private val handAt = MutableStateFlow<androidx.compose.ui.geometry.Offset?>(null)
     private val handNote = MutableStateFlow<String?>(null)
     private var clapJob: Job? = null
+    /** Full-screen, untouchable layer that shows the hand's cursor over the app being driven. */
+    private var cursorView: ComposeView? = null
+    private val cursor = MutableStateFlow<androidx.compose.ui.geometry.Offset?>(null)
+    /** The camera was switched off after [CAMERA_IDLE_MS] without a hand; a tap switches it on again. */
+    private val cameraResting = MutableStateFlow(false)
+    private var lastHandAt = 0L
+    private var scrollAcc = 0f
 
     private val app get() = application as JarvisApplication
     private val wm get() = getSystemService(WINDOW_SERVICE) as WindowManager
@@ -128,10 +136,14 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
         nm.createNotificationChannel(NotificationChannel(CHANNEL, "Ekrandaki Rick", NotificationManager.IMPORTANCE_LOW))
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_IMMUTABLE)
         val stop = PendingIntent.getService(this, 1, Intent(this, BubbleService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE)
+        val camOn = handsWanted && ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
         val n: Notification = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-            .setContentTitle("Rick ekranda")
-            .setContentText("Dokunun: konuşun · basılı tutun: Rick'i açın · uyurken iki alkış")
+            .setContentTitle(if (camOn) "Rick ekranda · kamera açık (el hareketleri)" else "Rick ekranda")
+            .setContentText(
+                if (camOn) "Görüntü kaydedilmez, telefondan çıkmaz · 10 dk el görmezse kamera kapanır · dokunun: konuşun"
+                else "Dokunun: konuşun · basılı tutun: Rick'i açın · uyurken iki alkış",
+            )
             .setContentIntent(open)
             .addAction(0, "Kapat", stop)
             .setOngoing(true)
@@ -221,6 +233,7 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
 
     private fun tapped() {
         Log.i(TAG, "tap")
+        if (cameraResting.value) { cameraResting.value = false; say("📷 Kamera yeniden açık") }
         val controller = app.graph.sharedController ?: return
         if (sleeping.value) { wake(byClaps = false); return }
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -245,34 +258,132 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
         if (!handsAllowed) return
         val camera = app.bridge.camera as? AndroidCamera ?: return
         val controller = app.graph.sharedController ?: return
+        // The camera rests after a while without a hand (privacy and battery); a tap wakes it.
         scope.launch {
-            appInFront.collect { front ->
+            while (true) {
+                delay(30_000)
+                if (stopCamera != null && !cameraResting.value && android.os.SystemClock.uptimeMillis() - lastHandAt > CAMERA_IDLE_MS) {
+                    cameraResting.value = true
+                    say("📷 Kamerayı kapattım (10 dk el yok). Dokununca açılır.", 6_000)
+                    Log.i(TAG, "camera resting")
+                }
+            }
+        }
+        scope.launch {
+            kotlinx.coroutines.flow.combine(appInFront, cameraResting) { front, resting -> front || resting }.collect { off ->
                 stopCamera?.invoke()
                 stopCamera = null
                 nav.reset()
                 handAt.value = null
-                if (front) return@collect
-                val w = resources.displayMetrics.widthPixels.toFloat()
-                val h = resources.displayMetrics.heightPixels.toFloat()
+                cursor.value = null
+                if (off) return@collect
+                lastHandAt = android.os.SystemClock.uptimeMillis()
+                val size = screenSize()
+                val w = size.first
+                val h = size.second
                 stopCamera = camera.startBackground(this@BubbleService) { f ->
+                    // The inner part of the picture spans the screen: its edges are hard to reach.
                     val hand = f.hands.firstOrNull()?.let { hd ->
-                        io.github.ahmetdurmus1218.jarvis.core.vision.Hand(hd.points.map { p -> io.github.ahmetdurmus1218.jarvis.core.vision.Point(p.x * w, p.y * h, p.z) })
+                        io.github.ahmetdurmus1218.jarvis.core.vision.Hand(
+                            hd.points.map { p ->
+                                io.github.ahmetdurmus1218.jarvis.core.vision.Point(((p.x - 0.12f) / 0.76f).coerceIn(0f, 1f) * w, ((p.y - 0.12f) / 0.76f).coerceIn(0f, 1f) * h, p.z)
+                            },
+                        )
                     }
                     scope.launch {
-                        val r = nav.update(android.os.SystemClock.uptimeMillis(), hand, w, h)
+                        val now = android.os.SystemClock.uptimeMillis()
+                        if (hand != null) lastHandAt = now
+                        val r = nav.update(now, hand, w, h)
                         handAt.value = f.hands.firstOrNull()?.points?.get(9)?.let { androidx.compose.ui.geometry.Offset(it.x * 2f - 1f, it.y * 2f - 1f) }
+                        // The app in front is driven only if the user chose it, it is never a bank / messenger /
+                        // settings app, the accessibility service is on, and the phone is unlocked.
+                        val acc = RickAccessibility.instance
+                        val drive = acc != null && !sleeping.value && !locked() &&
+                            io.github.ahmetdurmus1218.jarvis.core.device.HandApps.allowed(RickAccessibility.front.value, app.graph.settings.state.value.handApps)
+                        if (drive) ensureCursorWindow()
+                        cursor.value = if (drive) nav.pointer.state?.let { androidx.compose.ui.geometry.Offset(it.x, it.y) } else null
+                        if (drive && acc != null) for (e in r.pointerEvents) when (e) {
+                            is io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.Event.Click -> { acc.tap(e.x, e.y); say("👆 Dokundum") }
+                            is io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.Event.Scroll -> {
+                                // Pinch-drag: the page follows the hand, one swipe per stretch of movement.
+                                scrollAcc += e.dy
+                                if (kotlin.math.abs(scrollAcc) > h * 0.12f) {
+                                    val d = scrollAcc.coerceIn(-h * 0.4f, h * 0.4f)
+                                    scrollAcc = 0f
+                                    acc.swipe(w / 2f, h / 2f - d / 2f, w / 2f, h / 2f + d / 2f)
+                                }
+                            }
+                            else -> {}
+                        }
                         for (c in r.commands) {
                             if (sleeping.value) { wake(byClaps = false); continue }
-                            controller.onHand(c, null)?.let { note ->
-                                handNote.value = note
-                                launch { delay(1_800); if (handNote.value == note) handNote.value = null }
-                            }
+                            val done = if (drive && acc != null) drive(acc, c, w, h) else null
+                            (done ?: controller.onHand(c, null))?.let { say(it) }
                         }
                     }
                 }
                 if (stopCamera == null) Log.w(TAG, "hand gestures unavailable (tracking models or camera missing)")
             }
         }
+    }
+
+    /** A hand command carried out in the app in front; null when it is not about that app (music keys, Rick). */
+    private fun drive(acc: RickAccessibility, c: io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand, w: Float, h: Float): String? {
+        val music = app.bridge.mediaPlaying()
+        return when (c) {
+            io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.SCROLL_DOWN -> { acc.swipe(w / 2f, h * 0.72f, w / 2f, h * 0.28f); "⬇ Aşağı" }
+            io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.SCROLL_UP -> { acc.swipe(w / 2f, h * 0.28f, w / 2f, h * 0.72f); "⬆ Yukarı" }
+            io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.NEXT -> if (music) null else { acc.swipe(w * 0.8f, h / 2f, w * 0.2f, h / 2f); "⬅ Sonraki" }
+            io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.PREVIOUS -> if (music) null else { acc.swipe(w * 0.2f, h / 2f, w * 0.8f, h / 2f); "➡ Önceki" }
+            io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.BACK -> { acc.back(); "↩ Geri" }
+            io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.HOME -> { acc.home(); "🏠 Ana ekran" }
+            else -> null
+        }
+    }
+
+    private fun say(note: String, ms: Long = 1_800) {
+        handNote.value = note
+        scope.launch { delay(ms); if (handNote.value == note) handNote.value = null }
+    }
+
+    private fun locked(): Boolean = (getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager).isKeyguardLocked
+
+    private fun screenSize(): Pair<Float, Float> {
+        val b = wm.currentWindowMetrics.bounds
+        return b.width().toFloat() to b.height().toFloat()
+    }
+
+    /** The cursor layer: covers the screen, takes no touches, and stays at 80 % opacity so Android lets touches through. */
+    private fun ensureCursorWindow() {
+        if (cursorView != null) return
+        val p = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            android.graphics.PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            alpha = 0.8f
+            title = "RickCursor"
+        }
+        val v = ComposeView(this).apply {
+            setViewTreeLifecycleOwner(this@BubbleService)
+            setViewTreeSavedStateRegistryOwner(this@BubbleService)
+            setViewTreeViewModelStoreOwner(this@BubbleService)
+            setContent {
+                val at by cursor.collectAsState()
+                androidx.compose.foundation.Canvas(androidx.compose.ui.Modifier.fillMaxSize()) {
+                    val c = at ?: return@Canvas
+                    val r = 18.dp.toPx()
+                    drawCircle(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f), r * 1.15f, c)
+                    drawCircle(androidx.compose.ui.graphics.Color(0xFFFFB020), r, c, style = androidx.compose.ui.graphics.drawscope.Stroke(3.dp.toPx()))
+                    drawCircle(androidx.compose.ui.graphics.Color(0xFFFFB020), if (nav.pointer.state?.pinching == true) r * 0.55f else r * 0.2f, c)
+                }
+            }
+        }
+        runCatching { wm.addView(v, p) }.onSuccess { cursorView = v }.onFailure { Log.w(TAG, "cursor layer: ${it.message}") }
     }
 
     /** Falls asleep after the quiet time in Settings (at least two minutes) without talking. */
@@ -317,6 +428,7 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
     private fun wake(byClaps: Boolean) {
         if (!sleeping.value) return
         sleeping.value = false
+        cameraResting.value = false
         stopClaps()
         val controller = app.graph.sharedController ?: return
         val greeting = WakePhrase.greeting(NowProvider.System.now().hour)
@@ -332,6 +444,8 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
         scope.cancel()
         view?.let { runCatching { wm.removeView(it) } }
         view = null
+        cursorView?.let { runCatching { wm.removeView(it) } }
+        cursorView = null
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         viewModelStore.clear()
         super.onDestroy()
@@ -344,6 +458,7 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
         private const val NOTIFICATION_ID = 41
         const val ACTION_STOP = "io.github.ahmetdurmus1218.jarvis.BUBBLE_STOP"
         const val EXTRA_HANDS = "hands"
+        private const val CAMERA_IDLE_MS = 10 * 60_000L
 
         /** True while Rick's own window is in front (the window's hand control has the camera then). */
         val appInFront = MutableStateFlow(false)
@@ -382,4 +497,23 @@ class AndroidFloatingRick(private val context: Context, private val activity: ()
     }
 
     override val running: StateFlow<Boolean> = BubbleService.running.asStateFlow()
+
+    override fun appControlOn(): Boolean {
+        val on = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).orEmpty()
+        return on.split(':').any { it.startsWith(context.packageName + "/") && it.endsWith("RickAccessibility") }
+    }
+
+    override fun openAppControlSettings() {
+        runCatching { (activity() ?: context).startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
+
+    override fun appChoices(): List<Pair<String, String>> {
+        val pm = context.packageManager
+        val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        return pm.queryIntentActivities(launcher, 0)
+            .map { it.activityInfo.packageName to it.loadLabel(pm).toString() }
+            .distinctBy { it.first }
+            .filter { (pkg, label) -> pkg != context.packageName && !io.github.ahmetdurmus1218.jarvis.core.device.HandApps.neverAllowed(pkg, label) }
+            .sortedBy { it.second.lowercase() }
+    }
 }

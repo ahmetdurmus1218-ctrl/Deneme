@@ -319,8 +319,40 @@ private fun FloatingSettings(bridge: PlatformBridge, settings: SettingsStore) {
                 "Rick'in penceresinde ☰ → El ile yönet ile sayfaları da elinizle kaydırır, havada tıklarsınız.",
             color = JarvisColors.TextDim, fontSize = 11.sp,
         )
+        if (s.bubbleHands) AppControlSettings(floating, s.handApps) { apps -> settings.update { it.copy(handApps = apps) } }
     }
     note?.let { Text(it, color = JarvisColors.Amber, fontSize = 12.sp) }
+}
+
+/**
+ * "Diğer uygulamalarda el kontrolü": the hands tap, scroll and go back in the apps chosen here while
+ * Rick is in the background. Banks, payment, messaging, password and settings apps are never listed.
+ */
+@Composable
+private fun AppControlSettings(floating: io.github.ahmetdurmus1218.jarvis.ui.FloatingRick, chosen: Set<String>, onChange: (Set<String>) -> Unit) {
+    var on by remember { mutableStateOf(floating.appControlOn()) }
+    LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(1_500); on = floating.appControlOn() } }
+    val apps = remember { floating.appChoices() }
+    Text("DİĞER UYGULAMALARDA EL KONTROLÜ", color = JarvisColors.Cyan, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+    Text(
+        "Seçtiğiniz uygulamalarda (ör. YouTube): 🤏 dokundur = dokun · 🤏 çek = kaydır · ✋ yukarı/aşağı savur = sayfa · " +
+            "✌️ beklet = geri · ✋✋ = ana ekran. Rick ekrandaki yazıları okumaz; telefon kilitliyken çalışmaz. " +
+            "Banka, ödeme, mesajlaşma (WhatsApp dahil), şifre ve ayar uygulamaları listede hiç yer almaz.",
+        color = JarvisColors.TextDim, fontSize = 11.sp,
+    )
+    if (!on) {
+        Text(
+            "Açmak için: Erişilebilirlik → Rick el kontrolü → Aç. Seçenek gri ise önce Ayarlar → Uygulamalar → Rick → ⋮ → " +
+                "\"Kısıtlanmış ayarlara izin ver\".",
+            color = JarvisColors.Amber, fontSize = 11.sp,
+        )
+        OutlinedButton(onClick = { floating.openAppControlSettings() }) { Text("Erişilebilirlik ayarını aç") }
+    } else {
+        Text("✓ Açık", color = JarvisColors.Cyan, fontSize = 12.sp)
+    }
+    apps.forEach { (pkg, label) ->
+        Toggle(label, pkg in chosen) { v -> onChange(if (v) chosen + pkg else chosen - pkg) }
+    }
 }
 
 /**

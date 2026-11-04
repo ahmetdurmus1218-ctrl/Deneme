@@ -111,6 +111,9 @@ object JarvisUi {
     /** Rick as a living face instead of the HUD core (Settings → Görünüm). */
     var face by mutableStateOf(true)
 
+    /** Which look the living Rick has (Settings → Görünüm): spark, eyes, orb, ring, particles. */
+    var look by mutableStateOf("spark")
+
     /** The camera fills the screen behind Rick ("El ile yönet", full screen): pages turn see-through. */
     var seeThrough by mutableStateOf(false)
 

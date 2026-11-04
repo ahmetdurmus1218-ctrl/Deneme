@@ -451,3 +451,37 @@ Kullanıcı kamera onu gösterirken elleriyle havada tıklamak, kaydırmak, dön
   (yalnız imleç; efekt ve basılı tutma eylemleri kapalı) ve **EFEKTLER** (imleç kapalı). Üstteki
   düğmeyle geçilir, seçim saklanır. İmleç yakındaki düğmeye "mıknatısla" yapışır (36 dp) ve ortasına
   atlar; kullanıcı tıklamanın neye gideceğini görür.
+
+## D45 — Arka planda diğer uygulamaları elle yönetme ve güvenlik sıkılaştırması (v1.4)
+
+- **Diğer uygulamalarda el kontrolü:** Kullanıcı, müzik YouTube'da çalarken Rick arka plandayken de
+  uygulamayı elle yönetmek istedi (banka ve WhatsApp hariç). Medya tuşları (dur/devam, sonraki, ses) zaten
+  her uygulamada çalışıyordu. Dokunma, kaydırma ve geri için Android Erişilebilirlik servisi
+  (`RickAccessibility`) eklendi. Önceki "erişilebilirlik yok" kararı, şu sınırlarla değiştirildi:
+  - Yalnız hareket (dispatchGesture, geri, ana ekran). `canRetrieveWindowContent=false`: ekrandaki yazı
+    okunmaz. Alınan tek olay "öne bir pencere geldi"; ondan yalnız paket adı tutulur.
+  - **İzin listesi:** Kullanıcı uygulamaları kendisi seçer (varsayılan: YouTube, YouTube Music, Spotify,
+    Chrome, Firefox, Netflix). Banka, ödeme, cüzdan, mesajlaşma (WhatsApp dahil), e-posta, şifre, kripto ve
+    ayar uygulamaları (`HandApps.neverAllowed`) listede hiç görünmez ve seçilmiş olsalar bile çalışmaz.
+    "Yasaklı listesi" yerine izin listesi seçildi, çünkü bankaları adlarından güvenilir biçimde tanımak
+    mümkün değil.
+  - Telefon kilitliyken çalışmaz. Erişilebilirlik kapalıysa hiçbir şey yapmaz.
+  - İmleç tam ekran, dokunulamayan bir katmanda; Android 12+ dokunmaları geçirsin diye opaklığı %80.
+  - Rick'te INTERNET izni olmadığı için hiçbir şey dışarı gitmez.
+- **Arama güvenliği (`CallSafety`):** Rehberdeki kişiler doğrudan aranır. Rehberde olmayan numara için
+  yalnız çevirici açılır, aramayı kullanıcı başlatır. 0900'lü ve 3–6 haneli kısa servis numaraları
+  reddedilir. Acil numaralar (112 vb.) çeviriciyle açılır.
+- **Kilit ekranı (`LockPolicy`):** Telefon kilitliyken yalnız fener, ses, medya ve pil komutları çalışır.
+  Arama, mesaj hazırlama, yol tarifi, uygulama açma ve ayar kilit açılınca yapılır.
+- **Dokunma tuzağı:** Ana pencere `filterTouchesWhenObscured`. Başka bir uygulamanın üstüne çizdiği
+  görünmez bir katmanın içinden gelen dokunmalar yok sayılır. Rick'in kendi balonu aynı uygulama olduğu
+  için etkilenmez.
+- **Arka plan kamerası:** 10 dakika el görülmezse kapanır; balona dokununca ya da uyanınca açılır.
+  Bildirim "kamera açık" diye açıkça yazar.
+- **İmza anahtarı:** Secret tanımlı değilse sürümler repodaki test anahtarıyla imzalanıyor. Bu anahtar
+  herkese açık olduğu için başkası sahte bir "güncelleme" imzalayabilir. Çözüm: kullanıcıya özel anahtar
+  (README'deki dört secret). Bunu yalnız kullanıcı GitHub ayarlarından ekleyebilir; anahtar değişince
+  uygulama bir kez kaldırılıp yeniden kurulur.
+- **Görünüm:** Kullanıcı yüzü beğenmedi ve önce resim görmek istedi. Beş seçenek resimle gösterildi;
+  kullanıcı "hepsini yap" dedi. Beşi de Ayarlar → Görünüm'de canlı önizlemeyle seçilebilir: kıvılcım,
+  gözlü kıvılcım, cam küre, ses halkası, parçacık küre. Varsayılan kıvılcım.

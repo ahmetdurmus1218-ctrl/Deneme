@@ -55,6 +55,10 @@ data class Settings(
     val handNav: Boolean = false,
     /** "El ile yönet" shows the camera over the whole screen behind Rick (false: a small corner window). */
     val handNavFull: Boolean = true,
+    /** Apps the hands may drive while Rick is in the background (never banks, payment, messengers: see HandApps). */
+    val handApps: Set<String> = io.github.ahmetdurmus1218.jarvis.core.device.HandApps.DEFAULT,
+    /** Rick's look: spark, eyes, orb, ring, particles (Settings → Görünüm). */
+    val look: String = "spark",
     /** The floating Rick also watches the hands: swipe for the next song, ✋ to pause, 🤏 turn for volume. */
     val bubbleHands: Boolean = false,
     /** The floating Rick over other apps (Android), started from Settings. */

@@ -325,6 +325,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
             if (settings.bubble && f.allowed() && !f.running.value) f.start(settings.bubbleHands)
         }
         LaunchedEffect(settings.face) { io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.face = settings.face }
+        LaunchedEffect(settings.look) { JarvisUi.look = settings.look }
         // The voice chosen in Settings (man / woman, Rick's own or the phone's).
         LaunchedEffect(settings.voiceId) { graph.bridge.speechOutput?.choose(settings.voiceId) }
         LaunchedEffect(Unit) { graph.bridge.downloader.refresh() }

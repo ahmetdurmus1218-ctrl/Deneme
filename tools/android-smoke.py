@@ -620,6 +620,25 @@ def main():
         wait_for(tab("Sohbet"), "Rick opened from the floating face", timeout=20)
         check_no_crash()
 
+        step("hand control of other apps: the accessibility service binds (gestures only, it reads no screen content)")
+        comp = KALE + "/io.github.ahmetdurmus1218.jarvis.android.RickAccessibility"
+        adb("logcat", "-c")
+        adb("shell", "settings", "put", "secure", "enabled_accessibility_services", comp)
+        adb("shell", "settings", "put", "secure", "accessibility_enabled", "1")
+        bound = False
+        for _ in range(20):
+            time.sleep(1)
+            if "RickAccess: connected" in adb("logcat", "-d", "-s", "RickAccess:*", check=False):
+                bound = True
+                break
+        if not bound:
+            print(adb("shell", "dumpsys", "accessibility", check=False)[:3000])
+            raise SystemExit("the hand-control accessibility service did not connect")
+        info = adb("shell", "dumpsys", "accessibility", check=False)
+        print("\n".join(l for l in info.splitlines() if "RickAccessibility" in l or "canRetrieveWindowContent" in l)[:1500])
+        adb("shell", "settings", "put", "secure", "enabled_accessibility_services", "")
+        check_no_crash()
+
     print("\nSMOKE TEST PASSED", flush=True)
 
 

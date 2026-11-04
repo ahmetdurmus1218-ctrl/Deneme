@@ -208,6 +208,25 @@ fun DisplaySettings(settings: SettingsStore) {
                 }
             }
         }
+        if (s.face) {
+            // The five looks, each shown alive; a tap picks it.
+            io.github.ahmetdurmus1218.jarvis.ui.components.LOOKS.chunked(3).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    row.forEach { (id, label) ->
+                        androidx.compose.foundation.layout.Column(
+                            androidx.compose.ui.Modifier
+                                .border(if (s.look == id) 2.dp else 1.dp, if (s.look == id) JarvisColors.Cyan else JarvisColors.GlassBorder, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                                .clickable { settings.update { it.copy(look = id) } }
+                                .padding(6.dp),
+                            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                        ) {
+                            io.github.ahmetdurmus1218.jarvis.ui.components.RickFace(io.github.ahmetdurmus1218.jarvis.ui.CoreMode.IDLE, 0f, size = 64.dp, look = id)
+                            Text(label, fontSize = 11.sp, color = if (s.look == id) JarvisColors.Cyan else JarvisColors.TextDim)
+                        }
+                    }
+                }
+            }
+        }
         Text("Ekran", fontSize = 13.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(1 to "Mark 1 · sade", 2 to "Mark 2 · yoğun HUD").forEach { (m, label) ->

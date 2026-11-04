@@ -77,6 +77,8 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
     }
     private val mainScope = kotlinx.coroutines.MainScope()
 
+    private fun locked(): Boolean = (app.getSystemService(android.content.Context.KEYGUARD_SERVICE) as android.app.KeyguardManager).isKeyguardLocked
+
     override fun mediaPlaying(): Boolean =
         runCatching { (app.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager).isMusicActive }.getOrDefault(false)
 
@@ -236,7 +238,10 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
             "Zamanlayıcı uygulaması bulunamadı",
         )
         is QuickCommand.OpenApp -> openApp(command.appName)
-        is QuickCommand.Device -> device(command.action)
+        // Locked phone: only harmless actions (torch, volume, media, battery); nothing that reaches a person or an app.
+        is QuickCommand.Device -> if (locked() && !io.github.ahmetdurmus1218.jarvis.core.device.LockPolicy.allowedWhileLocked(command.action)) {
+            io.github.ahmetdurmus1218.jarvis.core.device.LockPolicy.LOCKED
+        } else device(command.action)
         else -> null
     }
 
@@ -369,6 +374,17 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
             else -> c
         }
         val uri = android.net.Uri.parse("tel:" + android.net.Uri.encode(number))
+        // A misheard number must not cost money or ring a stranger: contacts are called, an unknown
+        // number only opens the dialer (the user presses call), paid / short service numbers are refused.
+        when (io.github.ahmetdurmus1218.jarvis.core.device.CallSafety.kind(number, fromContacts = !isNumber)) {
+            io.github.ahmetdurmus1218.jarvis.core.device.CallSafety.Kind.PAID ->
+                return "$number ücretli ya da kısa bir servis numarası; güvenlik için onu ben aramıyorum. İsterseniz kendiniz çevirin."
+            io.github.ahmetdurmus1218.jarvis.core.device.CallSafety.Kind.EMERGENCY ->
+                return start(Intent(Intent.ACTION_DIAL, uri), "Telefon uygulaması bulunamadı") ?: "$number numarasını çevirdim; aramak için yeşil tuşa basın."
+            io.github.ahmetdurmus1218.jarvis.core.device.CallSafety.Kind.UNKNOWN_NUMBER ->
+                return start(Intent(Intent.ACTION_DIAL, uri), "Telefon uygulaması bulunamadı") ?: "$number rehberinizde yok; numarayı çevirdim, doğruysa yeşil tuşa basın."
+            io.github.ahmetdurmus1218.jarvis.core.device.CallSafety.Kind.CONTACT -> {}
+        }
         val mayCall = ContextCompat.checkSelfPermission(app, android.Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED ||
             activity?.ensurePermission(android.Manifest.permission.CALL_PHONE) == true
         if (mayCall) {
