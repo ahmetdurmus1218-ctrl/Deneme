@@ -53,6 +53,8 @@ class DesktopActions(
             DeviceAction.Battery -> battery()?.let { "Pil yüzde $it." } ?: "Bu bilgisayarda pil görünmüyor; prize bağlı çalışıyor."
             is DeviceAction.Call, is DeviceAction.Message -> "Arama ve mesaj bilgisayardan yapılamıyor; telefondaki Rick'e söyleyin."
             is DeviceAction.Navigate -> "Bilgisayarda internetsiz harita yok; telefondaki Rick yol tarifini harita uygulamasında açabilir."
+            // The default browser opens the search and goes online by itself; Rick's own traffic stays blocked.
+            is DeviceAction.OpenIn -> runCatching { open(a.app.webUrl(a.query)) }.exceptionOrNull()?.let { "Tarayıcı açılamadı: ${it.message}" }
         }
     }
 

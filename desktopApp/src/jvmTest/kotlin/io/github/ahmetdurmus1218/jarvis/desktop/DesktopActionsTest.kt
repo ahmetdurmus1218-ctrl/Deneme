@@ -38,6 +38,15 @@ class DesktopActionsTest {
     }
 
     @Test
+    fun searchesOpenInTheBrowser() {
+        val a = actions()
+        assertNull(a.device(DeviceAction.OpenIn(io.github.ahmetdurmus1218.jarvis.core.device.OutsideApp.YOUTUBE, "Tarkan Şımarık")))
+        assertEquals("https://www.youtube.com/results?search_query=Tarkan%20%C5%9E%C4%B1mar%C4%B1k", opened.single())
+        a.device(DeviceAction.OpenIn(io.github.ahmetdurmus1218.jarvis.core.device.OutsideApp.GOOGLE, "hava durumu"))
+        assertEquals("https://www.google.com/search?q=hava%20durumu", opened.last())
+    }
+
+    @Test
     fun settingsPagesAndPhoneOnlyThings() {
         val a = actions()
         assertNull(a.device(DeviceAction.Panel(SettingsPanel.BLUETOOTH, true)))

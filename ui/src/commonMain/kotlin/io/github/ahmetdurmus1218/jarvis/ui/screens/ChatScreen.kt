@@ -423,7 +423,8 @@ private fun Stage(
             }
             SourceChips(last.kaynaklar)
             last.error?.let { Text("Hata: $it", color = JarvisColors.Red, fontWeight = FontWeight.SemiBold) }
-            if (last.offer != null && onOffer != null) {
+            // "Hangisini açayım?" is answered with a name, not with yes / no buttons.
+            if (last.offer != null && last.offer !is io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.AskWhat && onOffer != null) {
                 OfferRow(last.offerAnswer) { yes -> onOffer(last.id, yes) }
             } else if (onFeedback != null && last.done && last.error == null && last.scenes.any { it.sahne.ses.isNotBlank() }) {
                 FeedbackRow(last.feedback) { good -> onFeedback(last.id, good) }

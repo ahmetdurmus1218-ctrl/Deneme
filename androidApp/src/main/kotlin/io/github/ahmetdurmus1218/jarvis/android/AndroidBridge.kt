@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction
 import io.github.ahmetdurmus1218.jarvis.core.device.MediaKey
+import io.github.ahmetdurmus1218.jarvis.core.device.OutsideApp
 import io.github.ahmetdurmus1218.jarvis.core.device.SettingsPanel
 import io.github.ahmetdurmus1218.jarvis.core.device.VolumeChange
 import io.github.ahmetdurmus1218.jarvis.core.models.Platform
@@ -290,11 +291,48 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
                 Intent(Intent.ACTION_VIEW, android.net.Uri.parse("geo:0,0?q=" + android.net.Uri.encode(a.place))),
                 "Harita uygulaması bulunamadı",
             )
+            is DeviceAction.OpenIn -> openIn(a)
         }
     } catch (e: SecurityException) {
         "Telefon buna izin vermedi: ${e.message ?: "güvenlik"}"
     } catch (e: Exception) {
         "Yapamadım: ${e.message ?: e.javaClass.simpleName}"
+    }
+
+    /**
+     * Hands a search to YouTube / YouTube Music / Spotify / the browser with a plain Intent. That
+     * app goes online by itself; Rick (no INTERNET permission) sends nothing. Music apps that
+     * support "play from search" start playing at once; YouTube shows its results.
+     */
+    private fun openIn(a: DeviceAction.OpenIn): String? {
+        val act = activity ?: return "Uygulama ön planda değil"
+        fun installed(pkg: String) = app.packageManager.getLaunchIntentForPackage(pkg) != null
+        fun playFromSearch(pkg: String) = Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH)
+            .setPackage(pkg)
+            .putExtra(android.app.SearchManager.QUERY, a.query)
+            .putExtra(MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/*")
+        val youtubeSearch = Intent(Intent.ACTION_SEARCH).setPackage(YOUTUBE).putExtra(android.app.SearchManager.QUERY, a.query)
+        val first: Intent? = when (a.app) {
+            OutsideApp.YOUTUBE -> youtubeSearch
+            OutsideApp.YOUTUBE_MUSIC -> playFromSearch(YOUTUBE_MUSIC)
+            OutsideApp.SPOTIFY -> playFromSearch(SPOTIFY)
+            OutsideApp.MUSIC -> when {
+                installed(YOUTUBE_MUSIC) -> playFromSearch(YOUTUBE_MUSIC)
+                installed(SPOTIFY) -> playFromSearch(SPOTIFY)
+                else -> youtubeSearch
+            }
+            OutsideApp.GOOGLE -> null
+        }
+        if (first != null) {
+            try {
+                act.startActivity(first)
+                return null
+            } catch (_: ActivityNotFoundException) {
+                // not installed: the same search on the web below
+            } catch (_: SecurityException) {
+            }
+        }
+        return start(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(a.app.webUrl(a.query))), "Bu telefonda ${a.app.label} da tarayıcı da bulunamadı")
     }
 
     /**
@@ -335,6 +373,12 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
         } catch (e: SecurityException) {
             e.message ?: notFound
         }
+    }
+
+    private companion object Packages {
+        const val YOUTUBE = "com.google.android.youtube"
+        const val YOUTUBE_MUSIC = "com.google.android.apps.youtube.music"
+        const val SPOTIFY = "com.spotify.music"
     }
 
     private fun categoryIntent(category: String) = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, category)

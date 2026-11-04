@@ -324,9 +324,12 @@ class JarvisControllerTest {
 
     // ---- offers ----
 
-    private class WebBridge(tts: Tts, val body: String) : PlatformBridgeDelegate(Bridge(tts)) {
+    private class WebBridge(tts: Tts, val body: String, gateReady: Boolean = true) : PlatformBridgeDelegate(Bridge(tts)) {
         val fetched = mutableListOf<String>()
         var closed = 0
+        override val downloader = object : Downloader by b.downloader {
+            override val state: StateFlow<DownloadState> = MutableStateFlow(if (gateReady) DownloadState.Ready("Kapı 1.1") else DownloadState.Unavailable)
+        }
         override val web = object : WebGate {
             override suspend fun fetch(url: String): WebFetch { fetched += url; return WebFetch.Ok(body, "tr.wikipedia.org", body.length.toLong()) }
             override suspend fun done() { closed++ }
@@ -404,6 +407,71 @@ class JarvisControllerTest {
         advanceUntilIdle()
         assertTrue(bridge.fetched.isEmpty())
         assertTrue(c.turns.value.last().scenes.single().sahne.ses.contains("çevrimdışı"))
+        scope.cancel()
+    }
+
+    private fun webSetup(scope: CoroutineScope, body: String, gateReady: Boolean = true): Triple<JarvisController, WebBridge, NetworkLogStore> {
+        val bridge = WebBridge(Tts(), body, gateReady)
+        val memory = InMemoryMemoryStore()
+        val assistant = Assistant(MockLlmEngine(tokenDelayMs = 0), DefaultTools.create(memory, now), memory, now, webOffer = { gateReady }, browserOffer = { true })
+        val files = Files()
+        val log = NetworkLogStore(files)
+        return Triple(JarvisController(scope, bridge, assistant, memory, SettingsStore(files), netLog = log), bridge, log)
+    }
+
+    @Test
+    fun goOnlineInPlainWordsIsAYes() = runTest {
+        val scope = controllerScope()
+        val body = """{"query":{"pages":[{"title":"Atatürk","index":1,"extract":"Mustafa Kemal Atatürk, Türkiye Cumhuriyeti'nin kurucusudur. 1881'de doğdu."}]}}"""
+        val (c, bridge, _) = webSetup(scope, body)
+        c.send("Atatürk kimdir?")
+        advanceUntilIdle()
+        c.send("Online ol, onay verdim, bak")
+        advanceUntilIdle()
+        assertEquals("Atatürk", io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.queryOf(bridge.fetched.single()))
+        assertTrue(c.turns.value.last().scenes.single().sahne.ses.startsWith("Mustafa Kemal"))
+        // Said straight away, without an offer first.
+        c.send("internette Çanakkale Savaşı ara")
+        advanceUntilIdle()
+        assertEquals("Çanakkale Savaşı", io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.queryOf(bridge.fetched.last()))
+        scope.cancel()
+    }
+
+    @Test
+    fun withoutTheGateTheBrowserIsOfferedAndTheReasonSaid() = runTest {
+        val scope = controllerScope()
+        val (c, bridge, log) = webSetup(scope, "{}", gateReady = false)
+        c.send("internette Çanakkale Savaşı ara")
+        advanceUntilIdle()
+        val turn = c.turns.value.last()
+        assertTrue(turn.scenes.single().sahne.ses.contains("Rick Kapı"), turn.scenes.single().sahne.ses)
+        assertTrue(bridge.fetched.isEmpty())
+        c.send("evet")
+        advanceUntilIdle()
+        val google = QuickCommand.Device(io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.OpenIn(io.github.ahmetdurmus1218.jarvis.core.device.OutsideApp.GOOGLE, "Çanakkale Savaşı"))
+        assertEquals(listOf<QuickCommand>(google), (bridge.b as Bridge).executed)
+        assertEquals("google.com", log.events.value.single().host)
+        scope.cancel()
+    }
+
+    @Test
+    fun youTubeGetsTheSongAndAVagueAskGetsAQuestion() = runTest {
+        val scope = controllerScope()
+        val (c, bridge, log) = webSetup(scope, "{}")
+        val executed = (bridge.b as Bridge).executed
+        c.send("YouTube'dan Tarkan Şımarık aç")
+        advanceUntilIdle()
+        val yt = io.github.ahmetdurmus1218.jarvis.core.device.OutsideApp.YOUTUBE
+        assertEquals(QuickCommand.Device(io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.OpenIn(yt, "Tarkan Şımarık")), executed.single())
+        assertEquals("youtube.com", log.events.value.single().host)
+        c.send("YouTube'dan şu müziği aç")
+        advanceUntilIdle()
+        assertTrue(c.turns.value.last().scenes.single().sahne.ses.contains("Hangisini"))
+        assertEquals(1, executed.size)
+        c.send("Sezen Aksu Gidiyorum")
+        advanceUntilIdle()
+        assertEquals(QuickCommand.Device(io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.OpenIn(yt, "Sezen Aksu Gidiyorum")), executed.last())
+        assertTrue(c.turns.value.last().scenes.single().sahne.ses.contains("Sezen Aksu Gidiyorum"))
         scope.cancel()
     }
 }

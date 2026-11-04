@@ -33,6 +33,15 @@
 
     <queries>
         <package android:name="io.github.ahmetdurmus1218.jarvis.gate" />
+        <!-- Apps a search can be handed to ("YouTube'dan … aç"); they go online, Rick does not. -->
+        <package android:name="com.google.android.youtube" />
+        <package android:name="com.google.android.apps.youtube.music" />
+        <package android:name="com.spotify.music" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>

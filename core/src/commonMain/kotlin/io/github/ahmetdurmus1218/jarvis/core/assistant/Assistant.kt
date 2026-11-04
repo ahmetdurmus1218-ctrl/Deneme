@@ -47,6 +47,8 @@ sealed interface AssistantEvent {
     data class Failed(val message: String) : AssistantEvent
     /** Rick proposes something ([scene] asks); it is done only if the user says yes. */
     data class Offered(val offer: Offer, val scene: VerifiedScene) : AssistantEvent
+    /** The user asked for an online lookup in so many words: go straight to the approval. */
+    data class WebRequested(val lookup: Offer.WebLookup, val scene: VerifiedScene) : AssistantEvent
 }
 
 /**
@@ -72,18 +74,47 @@ class Assistant(
     private val webOffer: () -> Boolean = { false },
     /** Device actions this platform can really do (the PC has no torch and cannot call). */
     private val canOffer: (QuickCommand) -> Boolean = { true },
+    /** True when Rick may offer to open a search in the browser (not in full offline mode). */
+    private val browserOffer: () -> Boolean = { false },
 ) {
     companion object {
         const val MAX_TOOL_ROUNDS = 5
         const val NO_SOURCE_TEXT = "Bu bilgi kütüphanemde yok."
         fun webOfferText(query: String) =
             "Bunu kütüphanemde bulamadım. İsterseniz internette, Wikipedia'da bakayım; yalnızca \"$query\" araması gider."
+        fun browserOfferText(query: String) =
+            "Bunu kütüphanemde bulamadım. İsterseniz tarayıcıda Google'da \"$query\" aramasını açayım."
+        const val ASK_WHAT_TEXT = "Tabii. Hangisini açayım? Şarkının ya da sanatçının adını söyleyin."
+
+        /** The user's last real question in [history] (not a yes / no or a "go online"). */
+        fun lastQuestion(history: List<ChatMessage>): String? = history.lastOrNull {
+            it.role == Role.USER && WebCommand.parse(it.content) == null && OfferReply.parse(it.content) == null && it.content.isNotBlank()
+        }?.content
         const val NO_VISION_TEXT = "Görmek için gerçek bir model gerekiyor. Telefonda Gemma 4'ü, bilgisayarda modelin görme eklentisini Modeller ekranından indirin."
         private const val REPAIR_PROMPT =
             "Önceki cevabın geçerli JSON değildi. Aynı cevabı yalnızca belirtilen JSON biçiminde, başka hiçbir metin olmadan yeniden yaz."
     }
 
     fun ask(userText: String, history: List<ChatMessage> = emptyList()): Flow<AssistantEvent> = flow {
+        // "internette … ara", "online ol, bak": the user asked to go online; only the approval is left.
+        WebCommand.parse(userText)?.let { said ->
+            val question = said.ifEmpty { lastQuestion(history).orEmpty() }
+            if (question.isEmpty()) {
+                val scene = VerifiedScene(Sahne("Neye bakayım? Örneğin: internette Çanakkale Savaşı ara."))
+                emit(AssistantEvent.SceneReady(0, scene))
+                emit(AssistantEvent.Completed(VerifiedReply(listOf(scene), null, emptyList()), ""))
+                return@flow
+            }
+            // Today's weather or rates are not in an encyclopedia: the browser's search is the way.
+            if (LiveInfo.matches(question) && canOffer(googleSearch(question))) {
+                val cmd = googleSearch(question.trim().trimEnd('?', '.', '!').take(OnlineWikipedia.MAX_QUERY))
+                emit(AssistantEvent.Quick(cmd, VerifiedScene(QuickResponder.respond(cmd, now.now()))))
+                return@flow
+            }
+            val query = io.github.ahmetdurmus1218.jarvis.core.knowledge.WikiQuery.clean(question).take(OnlineWikipedia.MAX_QUERY)
+            emit(AssistantEvent.WebRequested(Offer.WebLookup(query, question), VerifiedScene(Sahne("Tamam, internette \"$query\" için bakıyorum."))))
+            return@flow
+        }
         briefing?.let { input ->
             if (io.github.ahmetdurmus1218.jarvis.core.briefing.Briefing.matches(userText)) {
                 val scenes = io.github.ahmetdurmus1218.jarvis.core.briefing.Briefing.scenes(input()).map { VerifiedScene(it) }
@@ -110,6 +141,12 @@ class Assistant(
         val route = Router.route(userText)
         if (route is Route.Quick) {
             val cmd = route.command
+            // "YouTube'dan bir şarkı aç": which one? The next sentence answers.
+            val openIn = (cmd as? QuickCommand.Device)?.action as? io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.OpenIn
+            if (openIn != null && openIn.query.isEmpty()) {
+                emit(AssistantEvent.Offered(Offer.AskWhat(openIn.app), VerifiedScene(Sahne(ASK_WHAT_TEXT))))
+                return@flow
+            }
             val scene = if (cmd is QuickCommand.Home) {
                 Sahne(home?.apply(cmd.action, now.now().epochMillis) ?: "Ev cihazları bu cihazda yok.")
             } else {
@@ -122,6 +159,15 @@ class Assistant(
         NeedDetector.detect(userText)?.takeIf { canOffer(it.offer.command) }?.let { need ->
             emit(AssistantEvent.Offered(need.offer, VerifiedScene(Sahne(need.say))))
             return@flow
+        }
+        // Weather, rates, news, scores: no offline source knows them; offer the browser instead of guessing.
+        if (LiveInfo.matches(userText)) {
+            val q = userText.trim().trimEnd('?', '.', '!').take(OnlineWikipedia.MAX_QUERY)
+            val google = googleSearch(q)
+            if (browserOffer() && canOffer(google)) {
+                emit(AssistantEvent.Offered(Offer.Action(google), VerifiedScene(Sahne(LiveInfo.say(q), Gorsel(GorselTip.BASLIK, baslik = "Anlık bilgi")))))
+                return@flow
+            }
         }
         val budget: Budget
         val knowledge: Boolean
@@ -164,9 +210,20 @@ class Assistant(
                 emit(AssistantEvent.Offered(Offer.WebLookup(query, userText), scene))
                 return@flow
             }
+            // No gate to read the web with: the browser can still look it up, if the user wants.
+            if (results.none { it is AssistantEvent.ToolCall && it.ok } && lessons.none { !it.liked } && notes.isEmpty() && browserOffer() && canOffer(googleSearch(""))) {
+                val query = io.github.ahmetdurmus1218.jarvis.core.knowledge.WikiQuery.clean(userText).take(OnlineWikipedia.MAX_QUERY)
+                val scene = VerifiedScene(Sahne(browserOfferText(query), Gorsel(GorselTip.BASLIK, baslik = "Tarayıcıda bakayım mı?")))
+                emit(AssistantEvent.Offered(Offer.Action(googleSearch(query)), scene))
+                return@flow
+            }
         }
         generate(turn, config, knowledge)
     }
+
+    private fun googleSearch(q: String) = QuickCommand.Device(
+        io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.OpenIn(io.github.ahmetdurmus1218.jarvis.core.device.OutsideApp.GOOGLE, q),
+    )
 
     /**
      * Answers [question] from pages read on the Wikipedia website after the user's approval. The

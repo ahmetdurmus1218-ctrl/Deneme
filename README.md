@@ -90,6 +90,12 @@ ihtiyaç söylerseniz önce sorar: "Yarın 7'de kalkmam lazım" → "Saat 07:00 
 ya da "tamam" derseniz (veya **Evet** düğmesine basarsanız) yapar; "hayır" derseniz yapmaz. Arama ve mesajı
 yalnızca hazırlar, son tuşa siz basarsınız. Bilgi kütüphanede yoksa internette bakmayı teklif eder (bölüm 6).
 
+Başka uygulamalara da iş verir: "YouTube'dan Tarkan Şımarık aç", "Spotify'dan Duman çal", "Sezen Aksu
+Gidiyorum şarkısını çal", "Google'da kedi bakımı ara". Arama o uygulamaya (yüklü değilse tarayıcıya) verilir;
+internete çıkan o uygulamadır, Rick değil, ve Ağ sekmesine yazılır. "İnternette Çanakkale Savaşı ara" ya da bir
+sorudan sonra "online ol, bak" derseniz Rick parmak izi/PIN ile onay isteyip Wikipedia'da kendisi bakar (bunun
+için `rick-kapi.apk` kurulu olmalı; yoksa Rick bunu söyler ve tarayıcıda açmayı teklif eder).
+
 ## 4. Modelleri tekrar indirmemek
 
 Rick bir dosyayı indirmeden önce **bu cihazda zaten var mı** diye bakar. Varsa ve SHA-256 özeti kilit listesiyle

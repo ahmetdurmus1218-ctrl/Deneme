@@ -159,6 +159,8 @@ class AppGraph(
             s.webOffer && !s.fullOffline && bridge.web != null && bridge.downloader.state.value is DownloadState.Ready
         },
         canOffer = { cmd -> bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.ANDROID || !phoneOnly(cmd) },
+        // Opening a search in the browser is the browser going online, not Rick; still not in full offline mode.
+        browserOffer = { !settings.state.value.fullOffline },
     )
 
     /** Things only a phone can do (the PC would only answer that it cannot). */

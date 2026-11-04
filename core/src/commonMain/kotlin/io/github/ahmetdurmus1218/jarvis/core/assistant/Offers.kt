@@ -21,6 +21,9 @@ sealed interface Offer {
      * it is shown to the user before the approval.
      */
     data class WebLookup(val query: String, val question: String) : Offer
+
+    /** "Hangisini açayım?": the user's next sentence is what to open in [app]. */
+    data class AskWhat(val app: io.github.ahmetdurmus1218.jarvis.core.device.OutsideApp) : Offer
 }
 
 /** "evet", "olur", "tabii", "yap" … / "hayır", "gerek yok", "boşver" … as an answer to an offer. */
@@ -35,14 +38,29 @@ object OfferReply {
             "(?: (?:tesekkurler|sagol|gerek yok|kalsin|simdilik|rick))*$",
     )
 
-    /** true = yes, false = no, null = something else (a new question). */
+    /**
+     * Longer answers count only when every word is answer vocabulary ("onay verdim, bak", "izin
+     * veriyorum hadi", "online ol bak"): "tamam, alarm kur" is a new command, not a yes.
+     */
+    private val STRONG_YES = setOf("evet", "olur", "tamam", "onay", "onayliyorum", "onayladim", "izin", "iznim", "hadi", "tabii", "tabi", "elbette", "kesinlikle", "aynen", "online", "cevrimici", "internete", "internetten", "internette", "interneti")
+    private val YES_VOCAB = STRONG_YES + setOf(
+        "lutfen", "yap", "bak", "baksana", "bakabilirsin", "ara", "arastir", "ac", "kur", "verdim", "veriyorum", "verdi", "ver", "var", "ol", "cik", "cikabilirsin",
+        "kullan", "baglan", "gir", "rick", "ben", "sana", "artik", "simdi", "hemen", "bunu", "onu", "sunu", "de", "da", "ve", "o", "zaman", "ki", "peki", "ok", "okey", "yapabilirsin", "devam", "et",
+    )
+    private val STRONG_NO = setOf("hayir", "istemiyorum", "istemem", "yapma", "bakma", "vazgec", "vazgectim", "olmaz", "bosver", "gerek")
+    private val NO_VOCAB = STRONG_NO + setOf("yok", "simdi", "degil", "simdilik", "tesekkurler", "tesekkur", "ederim", "sagol", "rick", "lutfen", "kalsin", "sonra", "bunu", "onu", "artik", "ben", "de", "da", "ama", "cikma", "internete", "arama", "acma")
+
+    /** true = yes, false = no, null = something else (a new question or command). */
     fun parse(text: String): Boolean? {
         val n = Turkish.normalize(text).replace(Regex("[^a-z0-9 ]"), " ").replace(Regex(" +"), " ").trim()
-        return when {
-            YES.matches(n) -> true
-            NO.matches(n) -> false
-            else -> null
-        }
+        if (YES.matches(n)) return true
+        if (NO.matches(n)) return false
+        if (text.trim().endsWith("?")) return null
+        val words = n.split(' ')
+        if (words.size > 10) return null
+        if (words.all { it in YES_VOCAB } && words.any { it in STRONG_YES }) return true
+        if (words.all { it in NO_VOCAB } && words.any { it in STRONG_NO }) return false
+        return null
     }
 }
 
@@ -85,6 +103,61 @@ object NeedDetector {
         if (SLEEP.containsMatchIn(n)) return Need(Offer.Action(QuickCommand.Device(DeviceAction.Volume(VolumeChange.SILENT_PHONE))), "İyi uykular! Telefonu sessize alayım mı?")
         return null
     }
+}
+
+/**
+ * The user asking Rick to look something up online in so many words: "internette Çanakkale Savaşı
+ * ara", "bunu internetten bul", "online ol, onay verdim, bak". Each one still needs the one-time
+ * approval (fingerprint / PIN, UAC on the PC) before anything leaves the device.
+ */
+object WebCommand {
+    private const val NET = "(?:internette|internetten|internete|nette|netten|webde|webden|online|cevrimici)"
+    private const val LOOK = "(?:ara|arat|bak|bul|arastir|sorgula|ogren)\\w*(?: misin| musun| bakalim| hemen| simdi| lutfen| rick)*"
+    private val NET_FIRST = Regex("^(?:rick )?$NET\\s+(.+?)\\s+$LOOK$")
+    private val NET_LAST = Regex("^(?:rick )?(.+?)\\s+$NET\\s+$LOOK$")
+    private val NET_WORD = Regex("\\b(?:online|cevrimici|internet\\w*|net(?:te|ten|e)|web\\w*)\\b")
+    /** The words of "go online and look" when nothing else is said. */
+    private val GO = setOf(
+        "online", "cevrimici", "ol", "internete", "internetten", "internette", "interneti", "internet", "nette", "netten", "webde", "webden", "web",
+        "cik", "cikabilirsin", "cikmana", "bak", "baksana", "bakabilirsin", "ara", "arastir", "bul", "baglan", "kullan", "gir", "git",
+        "onay", "onayliyorum", "onayladim", "verdim", "veriyorum", "verdi", "izin", "iznim", "var", "tamam", "evet", "hadi", "artik", "simdi",
+        "hemen", "lutfen", "bunu", "onu", "sunu", "rick", "ben", "sana", "de", "da", "ve", "o", "zaman", "sen", "bir",
+    )
+    private val TOPIC_FILLER = setOf("bunu", "onu", "sunu", "bu", "su", "o", "konuyu", "simdi", "hemen", "lutfen", "bir", "artik")
+
+    /** The words to search; "" when the user said only "go online and look" (use the last question); null when this is not such a request. */
+    fun parse(text: String): String? {
+        val n = Turkish.normalize(text).replace(Regex("[^a-z0-9 ]"), " ").replace(Regex(" +"), " ").trim()
+        if (n.isEmpty()) return null
+        val words = n.split(' ')
+        if (words.size <= 10 && words.all { it in GO } && NET_WORD.containsMatchIn(n)) return ""
+        val m = NET_FIRST.matchEntire(n) ?: NET_LAST.matchEntire(n) ?: return null
+        val part = m.groupValues[1]
+        if (part.split(' ').all { it in TOPIC_FILLER }) return ""
+        val said = Turkish.cutOriginal(text, part).split(Regex("\\s+"))
+            .map { it.substringBefore('\'').substringBefore('’').trim(',', '.', '!', '"') }
+            .filter { it.isNotBlank() && Turkish.normalize(it) !in TOPIC_FILLER }
+        return said.joinToString(" ").take(OnlineWikipedia.MAX_QUERY).ifBlank { null }
+    }
+}
+
+/**
+ * Questions about right now (weather, exchange rates, news, scores): no offline library and no
+ * encyclopedia knows them, so Rick offers to open the search in the browser instead of guessing.
+ */
+object LiveInfo {
+    private val LIVE = Regex(
+        "\\b(?:hava durumu\\w*|hava nasil|hava kac derece|disarisi kac derece|yagmur yagacak|kar yagacak|dolar\\w*|euro\\w*|avro\\w*|sterlin\\w*|doviz\\w*|kur(?:u|lari) ne|" +
+            "altin fiyat\\w*|gram altin\\w*|ceyrek altin\\w*|bitcoin\\w*|borsa\\w*|bist|haberler\\w*|son dakika|gundem\\w*|mac(?:i|in)? (?:sonucu|skoru|kac kac|ne oldu|ne zaman|saat kacta)|" +
+            "skor\\w*|puan durumu|trafik durumu|yol durumu|nobetci eczane\\w*|benzin fiyat\\w*|akaryakit\\w*|namaz vakti\\w*|ezan\\w* ne zaman)\\b",
+    )
+
+    /** "Borsa nedir?" is a definition, not today's numbers. */
+    private val DEFINITION = Regex("\\b(?:nedir|kimdir|ne demek|ne anlama gelir|nasil calisir|nasil olusur|tarihi|tarihcesi|kim buldu|kim icat)\\b")
+
+    fun matches(text: String): Boolean = Turkish.normalize(text).let { LIVE.containsMatchIn(it) && !DEFINITION.containsMatchIn(it) }
+
+    fun say(query: String) = "Bu anlık bir bilgi, internetsiz bilemem. Tarayıcıda Google'da \"$query\" aramasını açayım mı?"
 }
 
 /** A page from the Wikipedia website, verbatim (first paragraphs only). */

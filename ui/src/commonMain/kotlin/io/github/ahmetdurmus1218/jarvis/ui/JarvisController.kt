@@ -281,6 +281,17 @@ class JarvisController(
         noteActivity()
         // An open offer ("Feneri açayım mı?") is answered by "evet" / "hayır"; anything else moves on.
         pendingOffer()?.let { t ->
+            val offer = t.offer
+            // "Hangisini açayım?" — the answer is the song / video itself.
+            if (offer is io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.AskWhat) {
+                if (io.github.ahmetdurmus1218.jarvis.core.assistant.OfferReply.parse(clean) == false) { answerOffer(t.id, false, clean); return }
+                if (io.github.ahmetdurmus1218.jarvis.core.router.Router.route(clean) !is io.github.ahmetdurmus1218.jarvis.core.router.Route.Quick) {
+                    answerWhat(t.id, offer, clean)
+                    return
+                }
+            }
+            // "online ol, bak" after "internette bakayım mı?" is a yes.
+            if (offer is io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.WebLookup && io.github.ahmetdurmus1218.jarvis.core.assistant.WebCommand.parse(clean) == "") { answerOffer(t.id, true, clean); return }
             when (io.github.ahmetdurmus1218.jarvis.core.assistant.OfferReply.parse(clean)) {
                 true -> { answerOffer(t.id, true, clean); return }
                 false -> { answerOffer(t.id, false, clean); return }
@@ -323,6 +334,7 @@ class JarvisController(
                 val inApp = ev.command is QuickCommand.ShowPlanet || ev.command is QuickCommand.HandControl || ev.command is QuickCommand.Home || ev.command == QuickCommand.Sleep
                 if (inApp) _appCommands.tryEmit(ev.command)
                 val error = if (inApp) null else bridge.execute(ev.command)
+                if (error == null) logHandoff(ev.command)
                 val scene = if (error == null) ev.scene else VerifiedScene(Sahne(error))
                 updateTurn(id) { it.copy(scenes = listOf(scene), done = true) }
                 say(scene.sahne.ses)
@@ -342,6 +354,10 @@ class JarvisController(
             is AssistantEvent.Offered -> {
                 updateTurn(id) { it.copy(scenes = listOf(ev.scene), offer = ev.offer, done = true) }
                 say(ev.scene.sahne.ses)
+            }
+            is AssistantEvent.WebRequested -> {
+                updateTurn(id) { it.copy(scenes = listOf(ev.scene)) }
+                runLookup(id, ev.lookup)
             }
         }
         if (ev is AssistantEvent.Completed || ev is AssistantEvent.Quick || ev is AssistantEvent.Failed || ev is AssistantEvent.Offered) {
@@ -376,6 +392,7 @@ class JarvisController(
         when (offer) {
             is io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.Action -> askJob = scope.launch {
                 val error = bridge.execute(offer.command)
+                if (error == null) logHandoff(offer.command)
                 val scene = if (error == null) {
                     io.github.ahmetdurmus1218.jarvis.core.assistant.QuickResponder.respond(offer.command, io.github.ahmetdurmus1218.jarvis.core.time.NowProvider.System.now())
                 } else {
@@ -384,7 +401,53 @@ class JarvisController(
                 finishWith(id, scene)
             }
             is io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.WebLookup -> lookUpOnline(id, offer)
+            is io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.AskWhat -> finishWith(id, "Peki.")
         }
+    }
+
+    /** The answer to "Hangisini açayım?": open [said] in the app the user named before. */
+    private fun answerWhat(turnId: Long, offer: io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.AskWhat, said: String) {
+        noteActivity()
+        stopSpeaking()
+        askJob?.cancel()
+        updateTurn(turnId) { it.copy(offerAnswer = true) }
+        val id = nextId++
+        currentTurnId = id
+        continueAfter = null
+        _turns.value = _turns.value + Turn(id, said)
+        val n = io.github.ahmetdurmus1218.jarvis.core.text.Turkish.normalize(said).replace(Regex("[?.!]+$"), "").trim()
+            .replace(Regex("\\s+(?:ac|cal|oynat|dinle|dinlet|izle|izlet|koy|baslat)\\w*(?: misin| musun| lutfen)?$"), "")
+        val query = io.github.ahmetdurmus1218.jarvis.core.device.DeviceCommands.searchWords(said, n)
+        if (query.isEmpty()) {
+            finishWith(id, "Adını anlayamadım; tekrar söyler misiniz? Örneğin: YouTube'dan Tarkan Şımarık aç.")
+            return
+        }
+        val cmd = QuickCommand.Device(io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.OpenIn(offer.app, query))
+        askJob = scope.launch {
+            val error = bridge.execute(cmd)
+            if (error == null) logHandoff(cmd)
+            finishWith(id, error ?: io.github.ahmetdurmus1218.jarvis.core.device.DeviceCommands.describe(cmd.action))
+        }
+    }
+
+    /**
+     * A search handed to YouTube / Spotify / the browser goes online from that app, not from Rick;
+     * it is still written to the network log so the user sees what left with their command.
+     */
+    private fun logHandoff(cmd: QuickCommand) {
+        val a = (cmd as? QuickCommand.Device)?.action as? io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.OpenIn ?: return
+        val now = io.github.ahmetdurmus1218.jarvis.core.time.NowProvider.System.now().epochMillis
+        netLog?.record(io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent(now, a.app.host, 0, "${a.app.label} uygulamasına aktarıldı: \"${a.query}\"", "sizin komutunuz", "uygulamaya aktarıldı"))
+    }
+
+    /** Rick cannot look it up itself ([reason]); the browser can, if the user says yes. */
+    private fun offerBrowser(id: Long, reason: String, query: String) {
+        val cmd = QuickCommand.Device(io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.OpenIn(io.github.ahmetdurmus1218.jarvis.core.device.OutsideApp.GOOGLE, query))
+        val scene = VerifiedScene(Sahne("$reason İsterseniz tarayıcıda Google'da \"$query\" aramasını açayım."))
+        updateTurn(id) { it.copy(scenes = listOf(scene), offer = io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.Action(cmd), done = true) }
+        say(scene.sahne.ses)
+        if (queued == 0 && _mode.value == CoreMode.THINKING) _mode.value = CoreMode.IDLE
+        maybeContinueConversation()
     }
 
     private fun finishWith(id: Long, text: String) = finishWith(id, Sahne(text))
@@ -402,19 +465,29 @@ class JarvisController(
      * The answer is built from the pages like any library answer and the event is logged.
      */
     private fun lookUpOnline(id: Long, offer: io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.WebLookup) {
+        _mode.value = CoreMode.THINKING
+        askJob = scope.launch { runLookup(id, offer) }
+    }
+
+    private suspend fun runLookup(id: Long, offer: io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.WebLookup) {
         val host = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.HOST
         val what = "Wikipedia araması: \"${offer.query}\""
         _mode.value = CoreMode.THINKING
-        askJob = scope.launch {
+        run {
             try {
                 val gate = bridge.web
                 if (settings.state.value.fullOffline) {
                     finishWith(id, "Tam çevrimdışı mod açık, o yüzden internete çıkmadım. İsterseniz Ayarlar'dan kapatabilirsiniz.")
-                    return@launch
+                    return@run
                 }
-                if (gate == null) {
-                    finishWith(id, "Bu cihazda internete çıkabilecek bir kapı yok.")
-                    return@launch
+                if (gate == null || bridge.downloader.state.value !is DownloadState.Ready) {
+                    val reason = if (bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.ANDROID) {
+                        "Ben internete yalnızca Rick Kapı uygulamasıyla çıkabiliyorum ve o bu telefonda kurulu değil (Releases sayfasındaki rick-kapi.apk)."
+                    } else {
+                        "İnternet kapım (rick-kapi) şu an hazır değil."
+                    }
+                    offerBrowser(id, reason, offer.query)
+                    return@run
                 }
                 updateTurn(id) { it.copy(tools = listOf("🌐 $host ← \"${offer.query}\"")) }
                 _partial.value = "🌐 Yalnızca \"${offer.query}\" araması $host adresine gidecek. Onayınızı bekliyorum…"
@@ -424,7 +497,7 @@ class JarvisController(
                     netLog?.record(io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent(now, host, 0, what, "-", "reddedildi"))
                     _partial.value = ""
                     finishWith(id, "Peki, internete çıkmadım.")
-                    return@launch
+                    return@run
                 }
                 _partial.value = "🌐 Wikipedia'da bakıyorum…"
                 val result = try {
@@ -436,7 +509,7 @@ class JarvisController(
                 when (result) {
                     is WebFetch.Failed -> {
                         netLog?.record(io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent(now, host, 0, what, approval.method.label, "hata: ${result.message}"))
-                        finishWith(id, "İnternete ulaşamadım: ${result.message}")
+                        offerBrowser(id, "İnternete ulaşamadım: ${result.message.trimEnd('.')}.", offer.query)
                     }
                     is WebFetch.Ok -> {
                         netLog?.record(io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent(now, result.host, result.bytes, what, approval.method.label, "tamam"))

@@ -9,12 +9,19 @@ import io.github.ahmetdurmus1218.jarvis.core.assistant.OfferReply
 import io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia
 import io.github.ahmetdurmus1218.jarvis.core.assistant.WebPage
 import io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction
+import io.github.ahmetdurmus1218.jarvis.core.device.DeviceCommands
 import io.github.ahmetdurmus1218.jarvis.core.device.MediaKey
+import io.github.ahmetdurmus1218.jarvis.core.device.OutsideApp
 import io.github.ahmetdurmus1218.jarvis.core.device.VolumeChange
 import io.github.ahmetdurmus1218.jarvis.core.llm.MockLlmEngine
 import io.github.ahmetdurmus1218.jarvis.core.memory.FactExtractor
 import io.github.ahmetdurmus1218.jarvis.core.memory.InMemoryMemoryStore
 import io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand
+import io.github.ahmetdurmus1218.jarvis.core.router.QuickCommandRouter
+import io.github.ahmetdurmus1218.jarvis.core.assistant.LiveInfo
+import io.github.ahmetdurmus1218.jarvis.core.assistant.WebCommand
+import io.github.ahmetdurmus1218.jarvis.core.llm.ChatMessage
+import io.github.ahmetdurmus1218.jarvis.core.llm.Role
 import io.github.ahmetdurmus1218.jarvis.core.scene.GorselTip
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
@@ -52,6 +59,80 @@ class OffersTest {
         listOf("Evet", "olur", "tamam yap", "Evet lütfen.", "hadi bak", "tabii ki", "kur").forEach { assertEquals(true, OfferReply.parse(it), it) }
         listOf("Hayır", "gerek yok", "boşver", "şimdi değil", "yok teşekkürler").forEach { assertEquals(false, OfferReply.parse(it), it) }
         listOf("Evet ama önce saat kaç?", "Atatürk kimdir", "tamam da neden").forEach { assertNull(OfferReply.parse(it), it) }
+        // Yes in more words, as people say it.
+        listOf("Online ol, onay verdim, bak", "izin veriyorum bak", "onaylıyorum", "tamam internete çık", "evet bak hadi rick").forEach { assertEquals(true, OfferReply.parse(it), it) }
+        listOf("hayır internete çıkma", "istemiyorum teşekkürler").forEach { assertEquals(false, OfferReply.parse(it), it) }
+        // A new command is not a yes to the old offer.
+        listOf("tamam alarm kur saat 7", "annemi ara", "YouTube'dan Tarkan aç").forEach { assertNull(OfferReply.parse(it), it) }
+    }
+
+    private fun openIn(text: String) = (QuickCommandRouter.route(text) as? QuickCommand.Device)?.action
+
+    @Test
+    fun searchesAreHandedToYouTubeSpotifyAndGoogle() {
+        assertEquals(DeviceAction.OpenIn(OutsideApp.YOUTUBE, "Tarkan Şımarık"), openIn("YouTube'dan Tarkan Şımarık aç"))
+        assertEquals(DeviceAction.OpenIn(OutsideApp.YOUTUBE, "Sezen Aksu Gidiyorum"), openIn("YouTube'da Sezen Aksu'nun Gidiyorum şarkısını açar mısın"))
+        assertEquals(DeviceAction.OpenIn(OutsideApp.YOUTUBE, "Barış Manço"), openIn("Barış Manço'yu YouTube'dan aç"))
+        assertEquals(DeviceAction.OpenIn(OutsideApp.SPOTIFY, "Duman"), openIn("Spotify'dan Duman çal"))
+        assertEquals(DeviceAction.OpenIn(OutsideApp.YOUTUBE_MUSIC, "Müslüm Gürses"), openIn("YouTube Müzik'ten Müslüm Gürses çal"))
+        assertEquals(DeviceAction.OpenIn(OutsideApp.GOOGLE, "kedi bakımı"), openIn("Google'da kedi bakımı ara"))
+        assertEquals(DeviceAction.OpenIn(OutsideApp.MUSIC, "Tarkan Kuzu Kuzu"), openIn("Tarkan Kuzu Kuzu şarkısını çal"))
+        assertEquals(DeviceAction.OpenIn(OutsideApp.YOUTUBE, "kedi"), openIn("kedi videosunu aç"))
+        // Not said what: Rick asks.
+        assertEquals(DeviceAction.OpenIn(OutsideApp.YOUTUBE, ""), openIn("YouTube'dan şu müziği aç"))
+        // Opening the app itself, and plain music, stay as they were.
+        assertEquals(QuickCommand.OpenApp("youtube"), QuickCommandRouter.route("YouTube'u aç"))
+        assertEquals(QuickCommand.OpenApp("youtube muzik"), QuickCommandRouter.route("YouTube Müzik aç"))
+        assertEquals(DeviceAction.Media(MediaKey.PLAY), openIn("bir şarkı aç"))
+        assertEquals(DeviceAction.Media(MediaKey.PLAY), openIn("müzik çal"))
+        assertEquals("https://www.youtube.com/results?search_query=Tarkan%20%C5%9E%C4%B1mar%C4%B1k", OutsideApp.YOUTUBE.webUrl("Tarkan Şımarık"))
+        assertEquals("YouTube'da \"Duman\" sonuçlarını açıyorum; istediğinize dokunun.", DeviceCommands.describe(DeviceAction.OpenIn(OutsideApp.YOUTUBE, "Duman")))
+    }
+
+    @Test
+    fun askingToGoOnline() {
+        assertEquals("Çanakkale Savaşı", WebCommand.parse("internette Çanakkale Savaşı ara"))
+        assertEquals("Atatürk", WebCommand.parse("Atatürk'ü internetten arar mısın?"))
+        assertEquals("kara delik", WebCommand.parse("internetten kara delik bak"))
+        assertEquals("", WebCommand.parse("Online ol, onay verdim, bak"))
+        assertEquals("", WebCommand.parse("internete çık"))
+        assertEquals("", WebCommand.parse("bunu internette ara"))
+        assertNull(WebCommand.parse("internet nedir"))
+        assertNull(WebCommand.parse("Atatürk kimdir?"))
+        assertNull(WebCommand.parse("online mısın?"))
+    }
+
+    @Test
+    fun liveQuestionsAreNotGuessed() {
+        listOf("Bugün hava nasıl?", "Dolar kaç TL", "Galatasaray maçı kaç kaç bitti", "son dakika haberleri").forEach { assertTrue(LiveInfo.matches(it), it) }
+        listOf("Borsa nedir?", "Atatürk kimdir?", "Su kaç derecede kaynar?").forEach { assertFalse(LiveInfo.matches(it), it) }
+    }
+
+    @Test
+    fun goOnlineUsesTheLastQuestion() = runTest {
+        val history = listOf(ChatMessage(Role.USER, "Atatürk kimdir?"), ChatMessage(Role.ASSISTANT, "Bunu kütüphanemde bulamadım."))
+        val ev = assistant(web = true).ask("online ol onay verdim bak", history).toList().single()
+        assertEquals(Offer.WebLookup("Atatürk", "Atatürk kimdir?"), (ev as AssistantEvent.WebRequested).lookup)
+        val direct = assistant(web = true).ask("internette Çanakkale Savaşı ara").toList().single() as AssistantEvent.WebRequested
+        assertEquals("Çanakkale Savaşı", direct.lookup.query)
+        // Nothing asked before: Rick asks what to look up.
+        val none = assistant(web = true).ask("internete çık").toList()
+        assertTrue(none.filterIsInstance<AssistantEvent.Completed>().single().reply.scenes.single().sahne.ses.startsWith("Neye bakayım"))
+        // Today's weather goes to the browser's search, not to an encyclopedia.
+        val weather = assistant(web = true).ask("internette bugün hava durumu ara").toList().single() as AssistantEvent.Quick
+        assertEquals(QuickCommand.Device(DeviceAction.OpenIn(OutsideApp.GOOGLE, "bugün hava durumu")), weather.command)
+    }
+
+    @Test
+    fun withoutAGateTheBrowserIsOffered() = runTest {
+        val memory = InMemoryMemoryStore()
+        val a = Assistant(MockLlmEngine(tokenDelayMs = 0), DefaultTools.create(memory), memory, webOffer = { false }, browserOffer = { true })
+        val offered = a.ask("Atatürk kimdir?").toList().filterIsInstance<AssistantEvent.Offered>().single()
+        assertEquals(Offer.Action(QuickCommand.Device(DeviceAction.OpenIn(OutsideApp.GOOGLE, "Atatürk"))), offered.offer)
+        val live = a.ask("Bugün hava nasıl?").toList().single() as AssistantEvent.Offered
+        assertEquals(Offer.Action(QuickCommand.Device(DeviceAction.OpenIn(OutsideApp.GOOGLE, "Bugün hava nasıl"))), live.offer)
+        val vague = a.ask("YouTube'dan bir şarkı aç").toList().single() as AssistantEvent.Offered
+        assertEquals(Offer.AskWhat(OutsideApp.YOUTUBE), vague.offer)
     }
 
     @Test

@@ -121,6 +121,12 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Testler: canlı tr.wikipedia.org sertifika sabitleme testi (Kapı + rick-kapi); emülatörde teklif + "Hayır", "Evet" → PIN → Kapı → Wikipedia → kaynaklı cevap → Ağ kaydı. CI'nın tamamı yeşil.
 - [x] `v1.1.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.1.0 (rick.apk 80 MB, rick-kapi.apk 8,6 MB, Rick-Setup-1.1.0.msi 110 MB).
 
+## v1.2 — her yoldan yapan Rick
+- [x] "YouTube'dan / Spotify'dan … aç / çal", "… şarkısını çal", "Google'da … ara": arama o uygulamaya ya da tarayıcıya aktarılır, Ağ sekmesine yazılır; ne açılacağı söylenmediyse "Hangisini?" (D40).
+- [x] "internette … ara", "online ol, onay verdim, bak": doğrudan onaya gider (her aramada parmak izi/PIN); "onay verdim bak" gibi cümleler evet sayılır.
+- [x] Kapı yoksa / cevap vermezse nedeni söylenir ve tarayıcıda Google araması teklif edilir; hava, döviz, maç gibi anlık sorularda da.
+- [x] Testler: çekirdek (komut ayrıştırma, evet/hayır, internet komutları), denetleyici (onay cümlesi, Kapı yokken tarayıcı, YouTube ve "Hangisini?"), PC tarayıcı adresleri, emülatörde "Online ol onay verdim bak" → PIN → Wikipedia ve "Youtubedan … ac".
+
 ## Kaldığım yer
 Oturum 2 (2026-11-03): v0.3–v0.5 ve halilozat özellikleri yayımlandı (v0.5.0). Ardından kullanıcının telefon
 denemesine göre v1.0: ad Rick, sesli cevap, küçük ekran, indirmeden önce cihazda arama, modelsiz cihaz

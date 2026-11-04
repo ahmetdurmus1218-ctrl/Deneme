@@ -334,3 +334,23 @@ olduğunu söyledi. Nedenler ve kararlar:
   yapamadığı şeyleri (fener, arama) teklif etmez. Dil modeli de aynı kuralla eğitildi: ihtiyaçta önce sorar,
   açık istekte doğrudan yapar.
 
+## D40 — Başka uygulamaya aktarma ve "internetten bak" komutları
+Kullanıcı "YouTube'dan şu müziği aç" ve "online ol, onay verdim, bak" dediğinde Rick'in bir şey yapamadığını
+söyledi. Nedenler: "YouTube'dan X aç" uygulama açma komutuna düşüp "youtubedan X" adında uygulama arıyordu;
+"onay verdim, bak" gibi cümleler "evet" sayılmıyor, teklifi kapatıp yeni bir soru gibi modele gidiyordu;
+Kapı kurulu değilse Rick internete çıkamadığını hiç söylemiyordu. Kararlar:
+- **Aktarma (`DeviceAction.OpenIn`):** "YouTube'dan / Spotify'dan / YouTube Müzik'ten X aç / çal", "X şarkısını
+  çal", "X videosunu aç", "Google'da X ara" aramayı o uygulamaya düz bir Intent ile verir (telefonda YouTube
+  araması, Spotify / YouTube Music'te "aradığını çal"; uygulama yoksa aynı arama tarayıcıda; PC'de varsayılan
+  tarayıcı). İnternete çıkan o uygulamadır; Kale'nin INTERNET izni yine yoktur, PC'de Rick'in kendi trafiği
+  güvenlik duvarında kapalı kalır. Yalnızca kullanıcının kendi komutuyla olur (araç/model çıktısı tetikleyemez)
+  ve Ağ sekmesine "uygulamaya aktarıldı" diye yazılır. Ne açılacağı söylenmediyse Rick "Hangisini?" diye sorar.
+- **"İnternetten bak" komutları:** "internette X ara", "X'i internetten bul", "online ol, bak" (son soru için)
+  doğrudan onay adımına gider; parmak izi/PIN (PC'de UAC) yine her aramada istenir (bölüm 3.3: bir onay = tek
+  istek). Anlık bilgiler (hava, döviz, maç, haber) ansiklopedide olmadığı için tarayıcıda Google araması açılır.
+- **Daha geniş "evet":** "onay verdim bak", "izin veriyorum", "online ol hadi" gibi yalnızca cevap sözcüklerinden
+  oluşan cümleler evet sayılır; "tamam, alarm kur" gibi yeni bir komut sayılmaz.
+- **Nedeni söyle, yolunu bul:** Kapı kurulu değilse ya da cevap vermezse Rick nedenini söyler ve aynı aramayı
+  tarayıcıda açmayı teklif eder. Kütüphanede olmayan bilgi için Kapı yoksa da tarayıcı teklif edilir. Tam
+  offline modda teklif yapılmaz.
+
