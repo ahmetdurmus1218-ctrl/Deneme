@@ -526,8 +526,19 @@ def main():
         shot("18-haber-pin")
         adb("shell", "input", "text", PIN)
         adb("shell", "input", "keyevent", "66")
-        wait_for(text_has("günün başlıkları"), "headlines from BBC Türkçe", timeout=120)
+        # Five headline cards: wait for the answer (or a reason), then scroll back up to its first line.
+        first = wait_for(lambda n: text_has("günün başlıkları")(n) or text_has("Web: ")(n) or text_has("ulaşamadım")(n) or text_has("okuyamadım")(n),
+                         "the news answer", timeout=120)
+        print("news answer:", label(first))
         shot("18b-haberler")
+        if "ulaşamadım" in label(first) or "okuyamadım" in label(first):
+            raise SystemExit("news could not be read: " + label(first))
+        for _ in range(8):
+            if find(text_has("günün başlıkları")) is not None:
+                break
+            adb("shell", "input", "swipe", "540", "900", "540", "1700", "300")
+            time.sleep(1)
+        wait_for(text_has("günün başlıkları"), "headlines from BBC Türkçe", timeout=10)
         tap(wait_for(tab("Ağ"), "network tab"))
         wait_for(text_has("Günün haberleri (BBC Türkçe)"), "news read in the network log")
         check_no_crash()

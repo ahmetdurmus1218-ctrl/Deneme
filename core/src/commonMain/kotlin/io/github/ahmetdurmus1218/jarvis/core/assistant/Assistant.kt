@@ -243,11 +243,11 @@ class Assistant(
         val scenes = listOf(
             VerifiedScene(Sahne("${OnlineNews.SOURCE}'den günün başlıkları.", Gorsel(GorselTip.LISTE, baslik = "Günün haberleri", ogeler = top.map { it.title }))),
         ) + top.map { n ->
-            VerifiedScene(Sahne(n.title.trimEnd('.') + ".", Gorsel(GorselTip.KAYNAK_KARTI, baslik = n.title, kaynak = OnlineNews.SOURCE, konum = n.url, metin = n.summary.ifBlank { null })))
+            VerifiedScene(Sahne(n.title.trimEnd('.') + ".", Gorsel(GorselTip.KAYNAK_KARTI, baslik = n.title, kaynak = OnlineNews.SOURCE, konum = n.url, metin = n.summary.take(220).ifBlank { null })))
         }
         scenes.forEachIndexed { i, s -> emit(AssistantEvent.SceneReady(i, s)) }
-        val detay = items.joinToString("\n") { "- " + it.title + (if (it.summary.isNotBlank()) ": " + it.summary else "") }
-        emit(AssistantEvent.Completed(VerifiedReply(scenes, detay, top.map { Kaynak(it.title, "web", it.url) }), ""))
+        // The cards carry the headlines and their summaries; no long text under them.
+        emit(AssistantEvent.Completed(VerifiedReply(scenes, null, top.map { Kaynak(it.title, "web", it.url) }), ""))
     }
 
     private fun googleSearch(q: String) = QuickCommand.Device(
