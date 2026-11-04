@@ -636,7 +636,7 @@ def main():
             raise SystemExit("the hand-control accessibility service did not connect")
         info = adb("shell", "dumpsys", "accessibility", check=False)
         print("\n".join(l for l in info.splitlines() if "RickAccessibility" in l or "canRetrieveWindowContent" in l)[:1500])
-        adb("shell", "settings", "put", "secure", "enabled_accessibility_services", "")
+        adb("shell", "settings", "delete", "secure", "enabled_accessibility_services", check=False)
         check_no_crash()
 
     print("\nSMOKE TEST PASSED", flush=True)
