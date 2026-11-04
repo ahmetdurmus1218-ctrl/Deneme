@@ -139,6 +139,43 @@ class AndroidCamera(
 
     private var lastTs = 0L
 
+    /**
+     * Hands only, without a preview (the floating Rick watching for gestures while another app is in
+     * front): the selfie camera bound to [owner]. Returns a stop function, or null when the tracking
+     * models or the camera are missing. Frames are analysed and dropped at once.
+     */
+    fun startBackground(owner: LifecycleOwner, onFrame: (VisionFrame) -> Unit): (() -> Unit)? {
+        if (!trackingReady()) return null
+        if (!app.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) return null
+        val trackers = Trackers.create(app, modelPath(HAND_MODEL)!!, modelPath(FACE_MODEL)!!) ?: return null
+        val executor = Executors.newSingleThreadExecutor()
+        var provider: ProcessCameraProvider? = null
+        var analysis: ImageAnalysis? = null
+        val future = ProcessCameraProvider.getInstance(app)
+        future.addListener({
+            try {
+                val p = future.get()
+                provider = p
+                val selector = if (p.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
+                val a = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                    .build()
+                val mirror = selector == CameraSelector.DEFAULT_FRONT_CAMERA
+                a.setAnalyzer(executor) { proxy -> analyze(proxy, mirror, trackers, onFrame) }
+                analysis = a
+                p.bindToLifecycle(owner, selector, a)
+            } catch (e: Exception) {
+                Log.w(TAG, "background camera unavailable", e)
+            }
+        }, ContextCompat.getMainExecutor(app))
+        return {
+            runCatching { analysis?.let { a -> provider?.unbind(a) } }
+            executor.shutdown()
+            trackers.close()
+        }
+    }
+
     private fun analyze(proxy: ImageProxy, front: Boolean, trackers: Trackers?, onFrame: (VisionFrame) -> Unit) {
         try {
             val raw = proxy.toBitmap()

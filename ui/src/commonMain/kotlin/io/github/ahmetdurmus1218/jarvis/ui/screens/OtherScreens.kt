@@ -48,8 +48,10 @@ import kotlinx.coroutines.launch
 
 @Composable
 private fun ScreenColumn(title: String, content: @Composable () -> Unit) {
+    val scroll = rememberScrollState()
+    PageScrollOf(scroll)
     Column(
-        Modifier.fillMaxSize().background(JarvisColors.Background).verticalScroll(rememberScrollState()).padding(16.dp),
+        Modifier.fillMaxSize().background(JarvisColors.Background).verticalScroll(scroll).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = JarvisColors.Cyan)
@@ -301,11 +303,22 @@ private fun FloatingSettings(bridge: PlatformBridge, settings: SettingsStore) {
     Toggle(if (running) "Ekranda Rick açık" else "Ekranda Rick'i göster", s.bubble && running) { on ->
         settings.update { it.copy(bubble = on) }
         scope.launch {
-            note = if (on) floating.start() else { floating.stop(); null }
+            note = if (on) floating.start(s.bubbleHands) else { floating.stop(); null }
             if (note != null) settings.update { it.copy(bubble = false) }
         }
     }
     Toggle("Uyurken iki alkışla uyansın (mikrofon yalnızca telefonda dinler)", s.bubbleClapWake) { v -> settings.update { it.copy(bubbleClapWake = v) } }
+    if (bridge.camera != null) {
+        Toggle("El hareketleri: başka uygulamadayken de (kamera açık kalır)", s.bubbleHands) { v ->
+            settings.update { it.copy(bubbleHands = v) }
+            if (running) scope.launch { note = floating.start(v) }
+        }
+        Text(
+            "✋ sola/sağa savur: sonraki/önceki şarkı · ✋ beklet: durdur/devam · 🤏 çevir: ses · 👍 beklet: konuş · ✊ beklet: sus. " +
+                "Rick'in penceresinde ☰ → El ile yönet ile sayfaları da elinizle kaydırır, havada tıklarsınız.",
+            color = JarvisColors.TextDim, fontSize = 11.sp,
+        )
+    }
     note?.let { Text(it, color = JarvisColors.Amber, fontSize = 12.sp) }
 }
 

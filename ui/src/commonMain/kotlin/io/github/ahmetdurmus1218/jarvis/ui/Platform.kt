@@ -34,6 +34,12 @@ interface PlatformBridge {
     /** Raw 16 kHz microphone samples for the clap wake-up (sleep mode); null if the device has none. */
     val micStream: MicStream? get() = null
 
+    /** True while some app plays music (a song, a video), so a hand swipe means "next song". */
+    fun mediaPlaying(): Boolean = false
+
+    /** A tap at ([x], [y]) in window pixels inside Rick's own window (the air click); false if not possible here. */
+    fun injectTap(x: Float, y: Float): Boolean = false
+
     /** Rick floating over other apps (Android); null where there is none. */
     val floating: FloatingRick? get() = null
 
@@ -95,8 +101,11 @@ interface FloatingRick {
     fun allowed(): Boolean
     /** Opens the system screen where the user allows it. */
     fun askPermission()
-    /** Starts it (asks for the microphone first); a reason when it could not. */
-    suspend fun start(): String?
+    /**
+     * Starts it (asks for the microphone first, and for the camera when [hands]: it then also
+     * watches for hand gestures); a reason when it could not.
+     */
+    suspend fun start(hands: Boolean = false): String?
     fun stop()
     val running: kotlinx.coroutines.flow.StateFlow<Boolean>
 }

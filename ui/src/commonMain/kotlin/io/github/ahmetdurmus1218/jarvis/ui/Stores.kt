@@ -51,6 +51,10 @@ data class Settings(
     val reduceMotion: Boolean = false,
     /** Rick shown as a living face (true) or as the HUD core. */
     val face: Boolean = true,
+    /** Hand control of the whole app with the camera (☰ → El ile yönet): swipe pages, click in the air. */
+    val handNav: Boolean = false,
+    /** The floating Rick also watches the hands: swipe for the next song, ✋ to pause, 🤏 turn for volume. */
+    val bubbleHands: Boolean = false,
     /** The floating Rick over other apps (Android), started from Settings. */
     val bubble: Boolean = false,
     /** While the floating Rick sleeps, two claps wake it (microphone stays on, on the device only). */

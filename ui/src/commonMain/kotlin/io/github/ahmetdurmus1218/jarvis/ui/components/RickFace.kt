@@ -66,6 +66,8 @@ fun RickFace(
     modifier: Modifier = Modifier,
     size: Dp = 240.dp,
     sleeping: Boolean = false,
+    /** Where to look (-1…1 on both axes), e.g. at the user's hand; null: its own glances. */
+    lookAt: Offset? = null,
 ) {
     val mood = faceMood(mode, sleeping)
     val transition = rememberInfiniteTransition()
@@ -109,7 +111,10 @@ fun RickFace(
             }
         }
     }
-    val gaze by animateOffsetAsState(gazeTarget, spring(dampingRatio = 0.72f, stiffness = 140f))
+    val gaze by animateOffsetAsState(
+        if (lookAt != null && !sleeping) Offset(lookAt.x.coerceIn(-1f, 1f), lookAt.y.coerceIn(-1f, 1f)) else gazeTarget,
+        spring(dampingRatio = 0.72f, stiffness = 140f),
+    )
     val tilt by animateFloatAsState(tiltTarget, spring(dampingRatio = 0.8f, stiffness = 30f))
     val listen by animateFloatAsState(if (mood == FaceMood.LISTENING) 1f else 0f, tween(300))
     val speak by animateFloatAsState(if (mood == FaceMood.SPEAKING) 1f else 0f, tween(180))

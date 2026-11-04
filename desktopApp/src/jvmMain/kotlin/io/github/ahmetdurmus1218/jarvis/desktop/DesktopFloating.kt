@@ -13,7 +13,7 @@ object DesktopFloating : FloatingRick {
     private val shown = MutableStateFlow(false)
     override fun allowed(): Boolean = true
     override fun askPermission() {}
-    override suspend fun start(): String? { shown.value = true; return null }
+    override suspend fun start(hands: Boolean): String? { shown.value = true; return null }
     override fun stop() { shown.value = false }
     override val running: StateFlow<Boolean> = shown.asStateFlow()
 }

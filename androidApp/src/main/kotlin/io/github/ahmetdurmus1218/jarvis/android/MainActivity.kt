@@ -40,12 +40,14 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         bridge.activity = this
+        BubbleService.appInFront.value = true
         bridge.downloader.refresh()
         // Large model downloads can take a while; keep the screen on while Rick is in front.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
     override fun onPause() {
+        BubbleService.appInFront.value = false
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         super.onPause()
     }

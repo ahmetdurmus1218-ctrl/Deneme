@@ -100,6 +100,10 @@ süre konuşmazsanız uyur, **iki alkışla** uyanır ve günün haberlerini oku
 BBC Türkçe başlıklarını okur (Kapı gerekir, her seferinde onay ister). Başka uygulamaların içinde işlem yapmaz:
 WhatsApp'tan mesaj göndermez, bankaya girmez.
 
+**Rick'i elinizle yönetin:** ☰ → **El ile yönet** (köşede küçük kamera). Açık elinizi savurunca sayfa kayar; müzik
+çalarken sonraki/önceki şarkıya geçer; elinizi açık bekletince durur/devam eder; 🤏 dokundurup bileği çevirince ses
+değişir; 👍 bekletince Rick dinler. Ayarlar → Ekranda Rick → "El hareketleri" ile başka uygulamadayken de çalışır.
+
 Kamerada (📷 → el kontrolü) **elinizle havada** kontrol edebilirsiniz: ☝️ işaret parmağınız imleçtir; başparmakla
 dokundurmak (🤏) ya da parmağı bir düğmede bekletmek tıklar; 🤏 ile çekmek kaydırır, bileği çevirmek döndürür; açık
 eli sola/sağa savurmak sonraki/önceki karta geçer. Rick'in "…ayım mı?" sorularına Evet/Hayır havada tıklanır.

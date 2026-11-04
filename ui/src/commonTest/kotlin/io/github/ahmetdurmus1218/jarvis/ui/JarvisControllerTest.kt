@@ -506,4 +506,35 @@ class JarvisControllerTest {
         assertEquals(2, bridge.fetched.size)
         scope.cancel()
     }
+
+    private class MusicBridge(tts: Tts, var playing: Boolean) : PlatformBridgeDelegate(Bridge(tts)) {
+        override fun mediaPlaying() = playing
+    }
+
+    @Test
+    fun handsChangeTheSongWhileMusicPlaysAndTurnThePageOtherwise() = runTest {
+        val scope = controllerScope()
+        val bridge = MusicBridge(Tts(), playing = true)
+        val memory = InMemoryMemoryStore()
+        val c = JarvisController(scope, bridge, Assistant(MockLlmEngine(tokenDelayMs = 0), DefaultTools.create(memory, now), memory, now), memory, SettingsStore(Files()))
+        val pages = mutableListOf<Int>()
+        assertEquals("⏭ Sonraki şarkı", c.onHand(io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.NEXT) { pages += it })
+        assertEquals("⏸ Durdurdum", c.onHand(io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.PAUSE_PLAY) { pages += it })
+        advanceUntilIdle()
+        val executed = (bridge.b as Bridge).executed.map { (it as QuickCommand.Device).action }
+        assertEquals(
+            listOf(io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.Media(io.github.ahmetdurmus1218.jarvis.core.device.MediaKey.NEXT), io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.Media(io.github.ahmetdurmus1218.jarvis.core.device.MediaKey.PAUSE)),
+            executed,
+        )
+        // Paused by the hand: the next ✋ plays again. No music: swipes turn Rick's page.
+        bridge.playing = false
+        assertEquals("▶ Devam", c.onHand(io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.PAUSE_PLAY) { pages += it })
+        assertEquals("⬇ Sonraki sayfa", c.onHand(io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.NEXT) { pages += it })
+        assertEquals("⬆ Yukarı", c.onHand(io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.SCROLL_UP) { pages += it })
+        assertEquals(listOf(1, -1), pages)
+        // Over other apps there is no page: nothing to do.
+        assertEquals(null, c.onHand(io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.NEXT, null))
+        assertEquals("🔊 Ses +", c.onHand(io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.VOLUME_UP, null))
+        scope.cancel()
+    }
 }

@@ -543,6 +543,17 @@ def main():
         wait_for(text_has("Günün haberleri (BBC Türkçe)"), "news read in the network log")
         check_no_crash()
 
+        step("hand navigation: ☰ → 'El ile yönet' → corner camera + cursor layer over the app, no crash, then off")
+        tap(wait_for(tab("Sohbet"), "chat tab"))
+        tap(wait_for(text_is("☰"), "menu"))
+        tap(wait_for(text_has("El ile yönet"), "hand navigation menu item"))
+        wait_for(text_has("El ile yönetim · kapat"), "hand navigation layer", timeout=20)
+        time.sleep(3)
+        shot("18c-el-ile-yonet")
+        check_no_crash()
+        tap(wait_for(text_has("El ile yönetim · kapat"), "close hand navigation"))
+        check_no_crash()
+
         step("floating Rick: overlay permission → Settings toggle → face over the home screen → tap / hold")
         adb("shell", "appops", "set", KALE, "SYSTEM_ALERT_WINDOW", "allow")
         tap(wait_for(tab("Ayarlar"), "settings tab"))

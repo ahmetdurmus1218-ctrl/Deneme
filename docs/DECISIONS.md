@@ -413,4 +413,13 @@ Kullanıcı kamera onu gösterirken elleriyle havada tıklamak, kaydırmak, dön
   Fener, Ses +) tek tıkla; Rick bir şey önerdiğinde Evet / Hayır havada tıklanır. Cevap kart kart gösterilir.
 - Mantık `core` içinde (`AirPointer`), testli; kamera görüntüsü telefonda işlenir, kaydedilmez. Kamerasız
   demo eller hiçbir şeye tıklamaz. Efekt panelinden kapatılabilir.
+- **Her yerde el ile yönetim (kullanıcının ikinci açıklaması):** el hareketleri yalnızca efekt ekranında değil.
+  ☰ → "El ile yönet": köşede küçük kamera, uygulamanın tamamında imleç; 🤏 kısa çimdik imlecin altına gerçek
+  bir dokunuş verir (yalnızca Rick'in kendi penceresine, `injectTap`), 🤏 sürükleme ve ✋ savurma sayfayı
+  kaydırır. Müzik çalarken ✋ sola/sağa sonraki/önceki şarkı, ✋ bekletmek durdur/devam, 🤏 çevirmek ses;
+  👍 bekletmek dinle, ✊ bekletmek sus (`HandNavigator`, `JarvisController.onHand`).
+- **Başka uygulama öndeyken:** "Ekranda Rick" isteğe bağlı olarak kamerayı da tutar (ön plan servisi
+  `camera` türü, açarken izin istenir); müzik ve ses komutları çalışır, yüz eli izler. Başka uygulamalara
+  dokunma / tıklama yoktur (erişilebilirlik izni yok, bankacılık ve mesajlaşma dışarıda). Rick'in penceresi
+  öndeyken servis kamerayı bırakır.
 

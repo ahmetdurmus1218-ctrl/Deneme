@@ -6,7 +6,9 @@ import io.github.ahmetdurmus1218.jarvis.core.assistant.AssistantEvent
 import io.github.ahmetdurmus1218.jarvis.core.llm.ChatMessage
 import io.github.ahmetdurmus1218.jarvis.core.llm.Role
 import io.github.ahmetdurmus1218.jarvis.core.memory.MemoryStore
+import io.github.ahmetdurmus1218.jarvis.core.device.MediaKey
 import io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand
+import io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand
 import io.github.ahmetdurmus1218.jarvis.core.scene.Kaynak
 import io.github.ahmetdurmus1218.jarvis.core.scene.Reply
 import io.github.ahmetdurmus1218.jarvis.core.scene.SceneJson
@@ -688,6 +690,41 @@ class JarvisController(
     val learned: StateFlow<List<String>> = _learned.asStateFlow()
 
     /** Replaces the caption above the input row (e.g. "Ses tanıma hazır" after Whisper is installed). */
+    /** Set when a hand ✋ paused the music, so the next ✋ plays it again. */
+    private var pausedByHand = false
+
+    /**
+     * A hand command, by what is going on: while music plays, swipes change the song, ✋ pauses and
+     * plays, and the wrist turns the volume; otherwise swipes turn Rick's page ([page]: +1 forward,
+     * -1 back; null where there is no page, e.g. over other apps). 👍 listens, ✊ quiets Rick.
+     * Returns what was done, for a short note on the screen (null: nothing to do).
+     */
+    fun onHand(cmd: HandCommand, page: ((Int) -> Unit)?): String? {
+        noteActivity()
+        val music = bridge.mediaPlaying() && _mode.value != CoreMode.SPEAKING
+        fun device(a: io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction) {
+            scope.launch { bridge.execute(QuickCommand.Device(a)) }
+        }
+        fun media(k: MediaKey) = device(io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.Media(k))
+        fun volume(v: io.github.ahmetdurmus1218.jarvis.core.device.VolumeChange) = device(io.github.ahmetdurmus1218.jarvis.core.device.DeviceAction.Volume(v))
+        return when (cmd) {
+            HandCommand.NEXT -> if (music) { media(MediaKey.NEXT); "⏭ Sonraki şarkı" } else page?.let { it(1); "⬇ Sonraki sayfa" }
+            HandCommand.PREVIOUS -> if (music) { media(MediaKey.PREVIOUS); "⏮ Önceki şarkı" } else page?.let { it(-1); "⬆ Önceki sayfa" }
+            HandCommand.SCROLL_DOWN -> page?.let { it(1); "⬇ Aşağı" }
+            HandCommand.SCROLL_UP -> page?.let { it(-1); "⬆ Yukarı" }
+            HandCommand.PAUSE_PLAY -> when {
+                music -> { media(MediaKey.PAUSE); pausedByHand = true; "⏸ Durdurdum" }
+                _mode.value == CoreMode.SPEAKING -> { stopSpeaking(); "🤫 Sustum" }
+                pausedByHand -> { media(MediaKey.PLAY); pausedByHand = false; "▶ Devam" }
+                else -> null
+            }
+            HandCommand.LISTEN -> { startListening(); "🎤 Dinliyorum" }
+            HandCommand.QUIET -> { stopSpeaking(); if (music) media(MediaKey.PAUSE); "🤫 Sustum" }
+            HandCommand.VOLUME_UP -> { volume(io.github.ahmetdurmus1218.jarvis.core.device.VolumeChange.UP); "🔊 Ses +" }
+            HandCommand.VOLUME_DOWN -> { volume(io.github.ahmetdurmus1218.jarvis.core.device.VolumeChange.DOWN); "🔉 Ses −" }
+        }
+    }
+
     fun showNotice(text: String) {
         _partial.value = text
     }

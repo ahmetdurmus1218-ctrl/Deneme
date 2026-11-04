@@ -77,6 +77,28 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
     }
     private val mainScope = kotlinx.coroutines.MainScope()
 
+    override fun mediaPlaying(): Boolean =
+        runCatching { (app.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager).isMusicActive }.getOrDefault(false)
+
+    /**
+     * The air click: a real tap (down, then up) delivered to Rick's own window only. Other apps can
+     * never be touched this way (no accessibility service, nothing outside Rick).
+     */
+    override fun injectTap(x: Float, y: Float): Boolean {
+        val act = activity ?: return false
+        val root = act.window?.decorView ?: return false
+        val t = android.os.SystemClock.uptimeMillis()
+        val down = android.view.MotionEvent.obtain(t, t, android.view.MotionEvent.ACTION_DOWN, x, y, 0)
+        root.dispatchTouchEvent(down)
+        down.recycle()
+        root.postDelayed({
+            val up = android.view.MotionEvent.obtain(t, android.os.SystemClock.uptimeMillis(), android.view.MotionEvent.ACTION_UP, x, y, 0)
+            root.dispatchTouchEvent(up)
+            up.recycle()
+        }, 60)
+        return true
+    }
+
     override val floating: io.github.ahmetdurmus1218.jarvis.ui.FloatingRick by lazy { AndroidFloatingRick(app) { activity } }
     /** Whisper (Rick's own, hash-verified model) when installed, else the phone's on-device recognizer. */
     override val speechInput = PreferWhisperSpeechInput(

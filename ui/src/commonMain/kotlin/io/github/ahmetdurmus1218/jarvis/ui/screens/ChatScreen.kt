@@ -375,6 +375,7 @@ private fun Stage(
     onOffer: ((Long, Boolean) -> Unit)? = null,
 ) {
     val scroll = rememberScrollState()
+    PageScrollOf(scroll)
     // Keep the newest answer in view (the keyboard or a small screen can push it below the fold).
     LaunchedEffect(last?.id, last?.scenes?.size, last?.done) {
         if (last != null) scroll.animateScrollTo(scroll.maxValue)

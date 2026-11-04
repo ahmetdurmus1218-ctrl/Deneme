@@ -288,7 +288,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         // The floating Rick comes back with the app when the user left it on.
         LaunchedEffect(settings.bubble) {
             val f = graph.bridge.floating ?: return@LaunchedEffect
-            if (settings.bubble && f.allowed() && !f.running.value) f.start()
+            if (settings.bubble && f.allowed() && !f.running.value) f.start(settings.bubbleHands)
         }
         LaunchedEffect(settings.face) { io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.face = settings.face }
         // The voice chosen in Settings (man / woman, Rick's own or the phone's).
@@ -385,7 +385,19 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                             "✅ Yapılacaklar" to { todoOpen = true },
                                             "🏠 Ev" to { homeOpen = true },
                                             "📚 Kitaplık" to { libraryOpen = true },
-                                            "✋ El kontrolü" to { cameraOpen = true },
+                                            (if (settings.handNav) "🖐 El ile yönetimi kapat" else "🖐 El ile yönet (kamera)") to {
+                                                val cam = graph.bridge.camera
+                                                when {
+                                                    settings.handNav -> graph.settings.update { it.copy(handNav = false) }
+                                                    cam == null -> controller.showNotice("Bu cihazda kamera yok.")
+                                                    !cam.trackingReady() -> {
+                                                        controller.showNotice("Önce el takibini indirin (8 MB); sonra ☰ → El ile yönet.")
+                                                        cameraOpen = true
+                                                    }
+                                                    else -> graph.settings.update { it.copy(handNav = true) }
+                                                }
+                                            },
+                                            "✋ El kontrolü (efektler)" to { cameraOpen = true },
                                             "🌙 Uyku modu" to { sleeping = true },
                                         ),
                                     )
@@ -435,6 +447,14 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                     io.github.ahmetdurmus1218.jarvis.core.models.Platform.DESKTOP -> "ikinci bir onay"
                 }
                 ApprovalScreen(req, authLabel) { graph.installer.answerApproval(it) }
+            }
+        
+            // ☰ → El ile yönet: the hands drive the app (not over the effects screen, the wizard or sleep).
+            val handCam = graph.bridge.camera
+            if (settings.handNav && handCam != null && !cameraOpen && !wizard && !sleeping && !waking) {
+                io.github.ahmetdurmus1218.jarvis.ui.screens.HandNavOverlay(handCam, controller, graph.bridge) {
+                    graph.settings.update { it.copy(handNav = false) }
+                }
             }
         }
     }

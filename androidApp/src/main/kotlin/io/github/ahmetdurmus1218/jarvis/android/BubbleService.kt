@@ -84,6 +84,13 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
     private var view: ComposeView? = null
     private var params: WindowManager.LayoutParams? = null
     private val sleeping = MutableStateFlow(false)
+    private var handsWanted = false
+    private var handsAllowed = false
+    private var stopCamera: (() -> Unit)? = null
+    private val nav = io.github.ahmetdurmus1218.jarvis.core.vision.HandNavigator()
+    /** Where the hand is (-1…1 across the screen), so the face looks at it; and the last hand command. */
+    private val handAt = MutableStateFlow<androidx.compose.ui.geometry.Offset?>(null)
+    private val handNote = MutableStateFlow<String?>(null)
     private var clapJob: Job? = null
 
     private val app get() = application as JarvisApplication
@@ -104,11 +111,13 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
             stopSelf()
             return START_NOT_STICKY
         }
+        handsWanted = intent?.getBooleanExtra(EXTRA_HANDS, false) == true
         goForeground()
         if (view == null) {
             if (!Settings.canDrawOverlays(this)) { stopSelf(); return START_NOT_STICKY }
             show()
             watchIdle()
+            watchHands()
         }
         running.value = true
         return START_STICKY
@@ -128,9 +137,10 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
             .setOngoing(true)
             .build()
         val mic = ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-        val types = if (Build.VERSION.SDK_INT >= 34) {
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or (if (mic) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0)
-        } else if (mic) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0
+        val cam = handsWanted && ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        val extra = (if (mic) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0) or (if (cam) ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA else 0)
+        val types = if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or extra else extra
+        handsAllowed = cam
         ServiceCompat.startForeground(this, NOTIFICATION_ID, n, types)
     }
 
@@ -158,6 +168,8 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
                 val level by controller.level.collectAsState()
                 val subtitle by controller.subtitle.collectAsState()
                 val asleep by sleeping.collectAsState()
+                val look by handAt.collectAsState()
+                val note by handNote.collectAsState()
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     RickFace(
                         mode, level,
@@ -180,7 +192,14 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
                             },
                         size = 96.dp,
                         sleeping = asleep,
+                        lookAt = look,
                     )
+                    note?.let { n ->
+                        Text(
+                            n, color = JarvisColors.Background, fontSize = 12.sp,
+                            modifier = Modifier.background(JarvisColors.Amber, RoundedCornerShape(10.dp)).padding(horizontal = 8.dp, vertical = 3.dp),
+                        )
+                    }
                     // What Rick is saying, under the face (only while speaking).
                     if (mode == CoreMode.SPEAKING && subtitle.isNotBlank()) {
                         Text(
@@ -213,6 +232,45 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
 
     private fun openRick() {
         startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+    }
+
+    /**
+     * Hand gestures while another app is in front (the music app, say): swipe for the next / previous
+     * song, ✋ hold to pause / play, 🤏 turn for the volume, 👍 hold to talk, ✊ hold to quiet Rick.
+     * Paused while Rick's own window is in front (its "El ile yönet" has the camera then).
+     */
+    private fun watchHands() {
+        if (!handsAllowed) return
+        val camera = app.bridge.camera as? AndroidCamera ?: return
+        val controller = app.graph.sharedController ?: return
+        scope.launch {
+            appInFront.collect { front ->
+                stopCamera?.invoke()
+                stopCamera = null
+                nav.reset()
+                handAt.value = null
+                if (front) return@collect
+                val w = resources.displayMetrics.widthPixels.toFloat()
+                val h = resources.displayMetrics.heightPixels.toFloat()
+                stopCamera = camera.startBackground(this@BubbleService) { f ->
+                    val hand = f.hands.firstOrNull()?.let { hd ->
+                        io.github.ahmetdurmus1218.jarvis.core.vision.Hand(hd.points.map { p -> io.github.ahmetdurmus1218.jarvis.core.vision.Point(p.x * w, p.y * h, p.z) })
+                    }
+                    scope.launch {
+                        val r = nav.update(android.os.SystemClock.uptimeMillis(), hand, w, h)
+                        handAt.value = f.hands.firstOrNull()?.points?.get(9)?.let { androidx.compose.ui.geometry.Offset(it.x * 2f - 1f, it.y * 2f - 1f) }
+                        for (c in r.commands) {
+                            if (sleeping.value) { wake(byClaps = false); continue }
+                            controller.onHand(c, null)?.let { note ->
+                                handNote.value = note
+                                launch { delay(1_800); if (handNote.value == note) handNote.value = null }
+                            }
+                        }
+                    }
+                }
+                if (stopCamera == null) Log.w(TAG, "hand gestures unavailable (tracking models or camera missing)")
+            }
+        }
     }
 
     /** Falls asleep after the quiet time in Settings (at least two minutes) without talking. */
@@ -266,6 +324,8 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
 
     override fun onDestroy() {
         running.value = false
+        stopCamera?.invoke()
+        stopCamera = null
         stopClaps()
         scope.cancel()
         view?.let { runCatching { wm.removeView(it) } }
@@ -281,6 +341,10 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
         private const val CHANNEL = "rick-bubble"
         private const val NOTIFICATION_ID = 41
         const val ACTION_STOP = "io.github.ahmetdurmus1218.jarvis.BUBBLE_STOP"
+        const val EXTRA_HANDS = "hands"
+
+        /** True while Rick's own window is in front (the window's hand control has the camera then). */
+        val appInFront = MutableStateFlow(false)
         val running = MutableStateFlow(false)
     }
 }
@@ -295,13 +359,16 @@ class AndroidFloatingRick(private val context: Context, private val activity: ()
         runCatching { (activity() ?: context).startActivity(i) }
     }
 
-    override suspend fun start(): String? {
+    override suspend fun start(hands: Boolean): String? {
         if (!allowed()) return "Önce \"Diğer uygulamaların üzerinde göster\" iznini verin."
-        // Asked while Rick is on screen, so the service may keep the microphone in the background.
+        // Asked while Rick is on screen, so the service may keep the microphone (and camera) in the background.
         activity()?.ensurePermission(android.Manifest.permission.RECORD_AUDIO)
+        if (hands) activity()?.ensurePermission(android.Manifest.permission.CAMERA)
         if (Build.VERSION.SDK_INT >= 33) activity()?.ensurePermission(android.Manifest.permission.POST_NOTIFICATIONS)
         return try {
-            ContextCompat.startForegroundService(context, Intent(context, BubbleService::class.java))
+            // A running service is stopped first, so its foreground types (camera or not) are set anew.
+            if (BubbleService.running.value) context.stopService(Intent(context, BubbleService::class.java))
+            ContextCompat.startForegroundService(context, Intent(context, BubbleService::class.java).putExtra(BubbleService.EXTRA_HANDS, hands))
             null
         } catch (e: Exception) {
             "Başlatılamadı: ${e.message ?: e.javaClass.simpleName}"
