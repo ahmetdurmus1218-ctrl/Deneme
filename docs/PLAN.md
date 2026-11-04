@@ -146,6 +146,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] v1.4.0: diğer uygulamalarda el kontrolü (erişilebilirlik, izin listesi; banka/WhatsApp asla), arama güvenliği, kilit ekranı kuralı, dokunma tuzağı koruması, arka plan kamerasının 10 dk sonra kapanması, 5 seçilebilir görünüm (D45).
 - [x] `v1.4.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.4.0 (CI, Windows ve emülatör yeşil; emülatörde erişilebilirlik servisi bağlandı).
 - [x] v1.4.1: bilinçli 🤏 tıklama (üstünde durmak tıklamaz), kamera ekranında fener ve kısayol düğmeleri kaldırıldı, küçük ✨ efekt düğmesi, alkış uyanıkken de, YouTube'da doğrudan oynatma (D46).
+- [x] `v1.4.1` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.4.1 (CI, Windows ve emülatör yeşil).
 - [ ] Kullanıcının yapması gereken: kendi imza anahtarını GitHub secret olarak eklemek (README → İmzalama).
 - [ ] Sıradaki (v1.5): PC'de web kamerasıyla el hareketleri; gerçek telefonda el kontrolü geri bildirimi.
 
