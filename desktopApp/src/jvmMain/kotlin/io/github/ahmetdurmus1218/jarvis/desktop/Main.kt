@@ -11,6 +11,8 @@ import io.github.ahmetdurmus1218.jarvis.desktop.llm.DesktopLlm
 import io.github.ahmetdurmus1218.jarvis.ui.AppGraph
 import io.github.ahmetdurmus1218.jarvis.ui.JarvisApp
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.input.pointer.pointerInput
 import java.io.File
@@ -78,12 +80,12 @@ private fun androidx.compose.ui.window.FrameWindowScope.FloatingFace(controller:
     val mode by controller.mode.collectAsState()
     val level by controller.level.collectAsState()
     val subtitle by controller.subtitle.collectAsState()
-    androidx.compose.foundation.window.WindowDraggableArea {
+    WindowDraggableArea {
         androidx.compose.foundation.layout.Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
             io.github.ahmetdurmus1218.jarvis.ui.components.RickFace(
                 mode, level,
                 androidx.compose.ui.Modifier.pointerInput(Unit) {
-                    androidx.compose.foundation.gestures.detectTapGestures(
+                    detectTapGestures(
                         onTap = { controller.toggleListening() },
                         onDoubleTap = { openMain() },
                     )
