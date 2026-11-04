@@ -431,16 +431,16 @@ Kullanıcı kamera onu gösterirken elleriyle havada tıklamak, kaydırmak, dön
   nedeni söylenir.
 
 
-## D44 — Gerçekçi yüz, tam ekran el ile yönetim, kontrol ile efektin ayrılması (v1.3.1)
+## D44 — Canlı simge, tam ekran el ile yönetim, kontrol ile efektin ayrılması (v1.3.1)
 
-- **Yüz:** 1.3'teki yuvarlak "emoji" yüz (iri beyaz gözler, gülen ağız, pembe yanaklar, uçuşan "z"ler)
-  kullanıcıya çocuksu/anime gibi geldi. Yerine gerçek insan oranlarıyla çizilmiş bir hologram baş ve omuz
-  geldi: yüz hatları (alın, elmacık, çene, şakak gölgesi), badem göz (iris lifleri, gözbebeği, ışık
-  yansıması, üst kapak gölgesi, kapak çizgisi ve kıvrımı), kaş, burun (köprü ışığı, kanat, delikler),
-  dudaklar (yay şeklinde üst dudak, konuşurken açılan alt dudak ve çene). Göz kapakları yüzün kendi
-  ışığıyla kapanır; düşünürken başın etrafında ince bir tarama yayı döner. Çizim önce aynı motorla
-  (Skia, Python) denenip bakıldı, sonra Compose'a taşındı. 140 dp'den küçükken (ekrandaki balon, PC'deki
-  küçük pencere) yalnız baş, daha büyük gösterilir.
+- **Yüz → canlı simge:** 1.3'teki yuvarlak "emoji" yüz kullanıcıya çocuksu geldi. Önce gerçek oranlı bir
+  hologram insan başı denendi; kullanıcı onu da beğenmedi ("çok kötü") ve yüz yerine tepkilere göre insan gibi
+  hareket eden, Claude simgesine benzer bir kıvılcım istedi. Anthropic'in logosu marka olduğu için
+  kopyalanmadı; yerine kendi çizdiğimiz sıcak renkli, 12 ışınlı, el yapımı gibi düzensiz bir kıvılcım geldi.
+  Beden dili: beklerken nefes alır, salınır, etrafa doğru yaslanır, arada hızlı bir büzülmeyle "göz
+  kırpar"; dinlerken öne eğilir, büyür, ışınları sesle uzanır; düşünürken yavaşça döner, ışınları dalgalanır;
+  konuşurken ışınlar hecelerle atar ve başını sallar gibi iner kalkar; uyurken küçülür, söner, yassılaşır.
+  Çizim önce aynı motorla (Skia, Python) denenip bakıldı.
 - **El ile yönet:** kamera sağ üstte 84×112 dp'lik bir kutudaydı. Artık varsayılan tam ekran: kamera Rick'in
   arkasını kaplar, sayfalar yarı saydam olur, görüntü 1,3 kat büyütülür ve imleç kullanıcının ekranda gördüğü
   parmak ucunun üstüne denk gelir (aynı dönüşüm: `toFullScreen`). Elin iskeleti de çizilir. "▢ küçük

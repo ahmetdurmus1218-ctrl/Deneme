@@ -141,7 +141,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Hava kontrolü: ☝️ imleç, 🤏 ya da bekleterek tıkla, 🤏↕ kaydır, 🤏⟲ döndür, ✋⇆ savurarak kart değiştir; kamerada Evet/Hayır ve komut düğmeleri (D43).
 - [x] Testler: hava imleci (tıklama, bekletme, kaydırma, döndürme, savurma), havada tıklama kaydı, yüzün her hâlinin ekran görüntüsü; haber ayrıştırma ve tetikleyiciler, denetleyicide haber akışı, Kapı ve PC'de canlı BBC sertifika testi, emülatörde haber (PIN) ve ekranda Rick (pencere, dokunma, basılı tutma).
 - [x] `v1.3.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.3.0 (rick.apk 81 MB, rick-kapi.apk 8,6 MB, Rick-Setup-1.3.0.msi 111 MB). CI'nın tamamı yeşil; emülatörde canlı BBC Türkçe başlıkları, El ile yönet katmanı, ekranda Rick (pencere, dokunma, basılı tutma).
-- [x] v1.3.1: gerçekçi hologram yüz (çocuksu emoji yüz yerine), El ile yönet tam ekran (kamera Rick'in arkasında, imleç parmak ucunda), kamera ekranında KONTROL / EFEKTLER kiplerinin ayrılması ve düğmeye yapışan imleç (D44).
+- [x] v1.3.1: yüz yerine tepkilere göre insan gibi hareket eden canlı kıvılcım simgesi, El ile yönet tam ekran (kamera Rick'in arkasında, imleç parmak ucunda), kamera ekranında KONTROL / EFEKTLER kiplerinin ayrılması ve düğmeye yapışan imleç (D44).
 - [ ] Sıradaki (v1.4): PC'de web kamerasıyla el hareketleri (kamera görüntüsü + el modeli ONNX, Hugging Face'ten kilitli); gerçek telefonda el hareketi hassasiyeti geri bildirimi.
 
 ## Kaldığım yer

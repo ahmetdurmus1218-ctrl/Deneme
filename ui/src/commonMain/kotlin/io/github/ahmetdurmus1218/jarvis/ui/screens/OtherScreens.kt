@@ -294,7 +294,7 @@ private fun FloatingSettings(bridge: PlatformBridge, settings: SettingsStore) {
     LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(1_500); allowed = floating.allowed() } }
     Text("Ekranda Rick", fontWeight = FontWeight.SemiBold)
     Text(
-        "Rick'in canlı yüzü her uygulamanın üstünde durur: dokunun konuşun, basılı tutun Rick açılsın, sürükleyip taşıyın. " +
+        "Rick'in canlı simgesi her uygulamanın üstünde durur: dokunun konuşun, basılı tutun Rick açılsın, sürükleyip taşıyın. " +
             "Bir süre konuşmazsanız uyur; iki alkışla uyanır, günaydın der, haberleri sorar. Başka uygulamaların içinde işlem yapmaz (mesaj göndermez, bankaya girmez).",
         color = JarvisColors.TextDim, fontSize = 12.sp,
     )

@@ -202,7 +202,7 @@ fun DisplaySettings(settings: SettingsStore) {
         }
         Text("Rick'in görünüşü", fontSize = 13.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf(true to "🙂 Canlı yüz", false to "◎ Çekirdek").forEach { (f, label) ->
+            listOf(true to "✳ Canlı simge", false to "◎ Çekirdek").forEach { (f, label) ->
                 OutlinedButton(onClick = { settings.update { it.copy(face = f) } }) {
                     Text(label, color = if (s.face == f) JarvisColors.Cyan else JarvisColors.TextDim, fontSize = 12.sp)
                 }
