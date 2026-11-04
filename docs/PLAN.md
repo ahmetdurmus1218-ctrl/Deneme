@@ -128,6 +128,8 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] "Ahmet'i ara", "Ahmet'e telefon et", "annemi ara": arama gerçekten başlıyor (CALL_PHONE), rehberde ad biçimleri ("annemi" → "Anne") (D41).
 - [x] Ayarlar → Rick'in sesi: kadın / erkek, telefonun internetsiz Türkçe sesleri (daha doğal) dinlenip seçiliyor, "Telefona ses ekle" (D41).
 - [x] Testler: çekirdek (komut ayrıştırma, evet/hayır, internet komutları, arama ve rehber eşleştirme), denetleyici (onay cümlesi, Kapı yokken tarayıcı, YouTube ve "Hangisini?"), PC tarayıcı adresleri, emülatörde "Online ol onay verdim bak" → PIN → Wikipedia ve "Youtubedan … ac".
+- [x] `v1.2.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.2.0 (rick.apk 81 MB, rick-kapi.apk 8,6 MB, Rick-Setup-1.2.0.msi 111 MB). CI'nın tamamı yeşil; emülatörde YouTube'a aktarma ve "Online ol onay verdim bak" → Wikipedia çalıştı.
+- [ ] Sıradaki (kullanıcı onayı bekliyor): Erişilebilirlik hizmetiyle başka uygulamaların ekranlarını kullanma (bankalar engelli listede); gerçek telefonda arama ve ses seçimi geri bildirimi.
 
 ## Kaldığım yer
 Oturum 2 (2026-11-03): v0.3–v0.5 ve halilozat özellikleri yayımlandı (v0.5.0). Ardından kullanıcının telefon
