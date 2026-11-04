@@ -29,16 +29,23 @@ for it in items:
         print("ok (cached)", it["fileName"])
         continue
     tmp = path + ".part"
-    req = urllib.request.Request(it["url"], headers={"User-Agent": "jarvis-ci"})
-    with urllib.request.urlopen(req, timeout=600) as r, open(tmp, "wb") as out:
-        while True:
-            b = r.read(1 << 20)
-            if not b:
-                break
-            out.write(b)
-    got = sha256(tmp)
-    if got != it["sha256"] or os.path.getsize(tmp) != it["size"]:
+    # Some hosts (Kiwix) redirect to a rotating set of mirrors and one may serve a broken copy:
+    # try again, but never accept anything whose SHA-256 and size do not match the lock.
+    for attempt in range(1, 4):
+        req = urllib.request.Request(it["url"], headers={"User-Agent": "jarvis-ci"})
+        with urllib.request.urlopen(req, timeout=600) as r, open(tmp, "wb") as out:
+            while True:
+                b = r.read(1 << 20)
+                if not b:
+                    break
+                out.write(b)
+        got = sha256(tmp)
+        size = os.path.getsize(tmp)
+        if got == it["sha256"] and size == it["size"]:
+            break
         os.remove(tmp)
-        sys.exit(f"SHA-256/size mismatch for {it['fileName']}: {got}")
+        print(f"attempt {attempt}: SHA-256/size mismatch for {it['fileName']}: {got} ({size} bytes)", flush=True)
+    else:
+        sys.exit(f"SHA-256/size mismatch for {it['fileName']} after 3 attempts")
     os.replace(tmp, path)
     print("ok", it["fileName"], it["size"])
