@@ -322,11 +322,10 @@ fun CameraScreen(
         ) {
             TextButton(onClick = onClose, modifier = Modifier.airTarget(targets, onClose)) { Text("← GERİ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace) }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                if (demo) {
-                    Text("R.I.C.K · EL KONTROLÜ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, fontSize = 13.sp)
-                } else {
+                Text("R.I.C.K · EL KONTROLÜ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, fontSize = 13.sp)
+                if (!demo) {
                     Row(
-                        Modifier.border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(50)).padding(2.dp),
+                        Modifier.padding(top = 4.dp).border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(50)).padding(2.dp),
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         ModeTab("🖐 KONTROL", control, targets) { setControl(true) }
