@@ -32,6 +32,26 @@ class AirTargets {
         .minByOrNull { it.rect.width * it.rect.height }?.action
 
     fun size(): Int = targets.size
+
+    /** A target the cursor is on or near: where its middle is (root coordinates) and what it does. */
+    class Hit(val center: androidx.compose.ui.geometry.Offset, val action: () -> Unit)
+
+    /**
+     * The target under ([x], [y]), or else the closest one within [radius] (a magnet: the hand
+     * shakes, a button does not have to be hit exactly). Root coordinates.
+     */
+    fun near(x: Float, y: Float, radius: Float): Hit? {
+        val live = targets.values.filter { it.rect.width > 0f && it.rect.height > 0f }
+        val inside = live.filter { it.rect.contains(androidx.compose.ui.geometry.Offset(x, y)) }.minByOrNull { it.rect.width * it.rect.height }
+        val t = inside ?: live.map { it to distance(it.rect, x, y) }.filter { it.second <= radius }.minByOrNull { it.second }?.first
+        return t?.let { Hit(it.rect.center, it.action) }
+    }
+
+    private fun distance(r: Rect, x: Float, y: Float): Float {
+        val dx = maxOf(r.left - x, 0f, x - r.right)
+        val dy = maxOf(r.top - y, 0f, y - r.bottom)
+        return kotlin.math.hypot(dx, dy)
+    }
 }
 
 /** Registers this element with [targets] so a click in the air runs [action] (taps keep working as before). */

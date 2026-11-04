@@ -78,7 +78,13 @@ class AndroidCamera(
             }
             return
         }
-        val previewView = remember { PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER } }
+        // A TextureView (COMPATIBLE) so the picture can sit behind see-through pages and be enlarged.
+        val previewView = remember {
+            PreviewView(context).apply {
+                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                scaleType = PreviewView.ScaleType.FILL_CENTER
+            }
+        }
         val ready = trackingReady()
         val trackers = remember(ready) { if (ready) Trackers.create(app, modelPath(HAND_MODEL)!!, modelPath(FACE_MODEL)!!) else null }
         var cameraError by remember { mutableStateOf<String?>(null) }

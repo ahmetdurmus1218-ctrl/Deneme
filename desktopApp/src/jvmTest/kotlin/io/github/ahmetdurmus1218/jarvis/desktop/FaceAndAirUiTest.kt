@@ -84,5 +84,30 @@ class FaceAndAirUiTest {
         targets.at(20 * density, 20 * density)!!.invoke()
         assertEquals("evet", clicked)
         assertNull(targets.at(20 * density, 180 * density))
+
+        // The magnet: just below "Evet" still hits it (and shows its middle); far away nothing.
+        val near = targets.near(50 * density, 120 * density, 36 * density)!!
+        near.action()
+        assertEquals("evet", clicked)
+        assertEquals(50 * density, near.center.x, 0.5f)
+        assertEquals(50 * density, near.center.y, 0.5f)
+        assertNull(targets.near(50 * density, 200 * density, 36 * density))
+    }
+
+    @Test
+    fun theBubbleFaceIsTheHeadOnly() {
+        rule.mainClock.autoAdvance = false
+        rule.setContent {
+            JarvisTheme {
+                Box(Modifier.size(96.dp).background(JarvisColors.Background).testTag("small")) {
+                    RickFace(CoreMode.SPEAKING, 0f, size = 96.dp)
+                }
+            }
+        }
+        rule.mainClock.advanceTimeBy(900)
+        val img = rule.onNodeWithTag("small").captureToImage().toAwtImage()
+        val rgb = BufferedImage(img.width, img.height, BufferedImage.TYPE_INT_RGB)
+        rgb.createGraphics().apply { drawImage(img, 0, 0, null); dispose() }
+        ImageIO.write(rgb, "jpg", File(File("build/ui-screens").apply { mkdirs() }, "25-yuz-kucuk.jpg"))
     }
 }

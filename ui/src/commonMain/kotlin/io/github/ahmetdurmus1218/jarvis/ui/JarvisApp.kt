@@ -21,6 +21,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -59,6 +60,7 @@ import io.github.ahmetdurmus1218.jarvis.ui.screens.SettingsScreen
 import io.github.ahmetdurmus1218.jarvis.ui.screens.WizardScreen
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisColors
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisTheme
+import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi
 
 private enum class Tab(val label: String, val icon: String) {
     CHAT("Sohbet", "💬"),
@@ -337,7 +339,14 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         }
 
         // Edge-to-edge on Android: keep everything clear of the status bar, navigation bar and keyboard.
+        // ☰ → El ile yönet: the hands drive the app (not over the effects screen, the wizard or sleep).
+        val handCam = graph.bridge.camera
+        val handNavOn = settings.handNav && handCam != null && !cameraOpen && !wizard && !sleeping && !waking
+        val handFull = handNavOn && settings.handNavFull
+        val handState = remember { io.github.ahmetdurmus1218.jarvis.ui.screens.HandNavState() }
+        SideEffect { JarvisUi.seeThrough = handFull }
         Box(Modifier.fillMaxSize().background(JarvisColors.Background).windowInsetsPadding(WindowInsets.safeDrawing)) {
+            if (handFull && handCam != null) io.github.ahmetdurmus1218.jarvis.ui.screens.HandNavBackdrop(handCam, handState)
             val camera = graph.bridge.camera
             if (cameraOpen) {
                 CameraScreen(
@@ -353,7 +362,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                 }
             } else {
                 Scaffold(
-                    containerColor = JarvisColors.Background,
+                    containerColor = JarvisUi.page,
                     bottomBar = {
                         NavigationBar(containerColor = JarvisColors.Surface) {
                             Tab.entries.forEach { t ->
@@ -481,10 +490,11 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                 ApprovalScreen(req, authLabel) { graph.installer.answerApproval(it) }
             }
         
-            // ☰ → El ile yönet: the hands drive the app (not over the effects screen, the wizard or sleep).
-            val handCam = graph.bridge.camera
-            if (settings.handNav && handCam != null && !cameraOpen && !wizard && !sleeping && !waking) {
-                io.github.ahmetdurmus1218.jarvis.ui.screens.HandNavOverlay(handCam, controller, graph.bridge) {
+            if (handNavOn && handCam != null) {
+                io.github.ahmetdurmus1218.jarvis.ui.screens.HandNavOverlay(
+                    handCam, controller, graph.bridge, handState, full = handFull,
+                    onFull = { on -> graph.settings.update { it.copy(handNavFull = on) } },
+                ) {
                     graph.settings.update { it.copy(handNav = false) }
                 }
             }

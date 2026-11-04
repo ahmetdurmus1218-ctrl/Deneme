@@ -88,7 +88,16 @@ const val QUESTION_READ = "Buradaki yazıyı oku."
 const val QUESTION_FORTUNE = "Bu bir Türk kahvesi fincanı. Telvede gerçekten gördüğün şekillerden esprili, kısa bir kahve falı yorumla; bunun bilim olmadığını bir kez söyle."
 const val THUMB_COFFEE = "Rick, bana bol köpüklü bir Türk kahvesi yap"
 const val GESTURE_LEGEND = "✋ ateş · 🤏 gezegen · ✊→✋ patlat · ☝️ iz · ☝️☝️ şimşek · basılı tut: 👍 dinle ✌️ bu ne? ✊ sus"
-const val AIR_LEGEND = "☝️ işaret et · 🤏 dokundur ya da ☝️ beklet = tıkla · 🤏↕ kaydır · 🤏⟲ döndür · ✋⇆ savur = sonraki · 👋 salla = çık"
+const val AIR_LEGEND = "☝️ işaret et · 🤏 dokundur ya da ☝️ beklet = tıkla · 🤏↕ kaydır · ✋⇆ savur = sonraki · 👋 salla = çık"
+
+/**
+ * Control mode: the hand only points and clicks — no fire, planets, bursts or held-shape actions
+ * that would go off while the user is aiming at a button.
+ */
+val CONTROL_ONLY = EffectSettings(
+    fire = false, seals = false, planets = false, burst = false, lightning = false, trail = false,
+    controls = false, faceLock = false, air = true,
+)
 
 /** Commands one click away in the air (the microphone gives every other command). */
 private val AIR_COMMANDS = listOf(
@@ -101,10 +110,13 @@ private val AIR_COMMANDS = listOf(
 )
 
 /**
- * Hand control: the live camera (or a camera-less demo) with effects that follow the hands — fire,
- * seal rings, pinch planets, bursts, lightning, a light trail — hold-to-act controls (👍 listen,
- * ✌️ what is this, ✊ quiet), the face HUD lock, and "Bu ne?" / "Oku" / "Fal" through the vision
- * model. Faces are only located, never identified; frames never leave the device.
+ * Hand control with the live camera (or a camera-less demo), in two separate modes:
+ * - KONTROL: the index finger is a cursor that snaps onto nearby buttons; 🤏 or a held ☝️ clicks,
+ *   🤏 drag scrolls, ✋ swipe turns the answer cards, 👋 wave closes. Nothing else reacts.
+ * - EFEKTLER: fire, seal rings, pinch planets, bursts, lightning, a light trail, hold-to-act
+ *   controls (👍 listen, ✌️ what is this, ✊ quiet) and the face HUD lock; no cursor.
+ * "Bu ne?" / "Oku" / "Fal" ask the vision model. Faces are only located, never identified;
+ * frames never leave the device.
  */
 @Composable
 fun CameraScreen(
@@ -156,8 +168,17 @@ fun CameraScreen(
         controller.stopSpeaking()
         controller.speakTest(scenes[i].sahne.ses)
     }
-    // "Hareketi azalt" also calms the hand effects: no screen shake, no fire.
-    engine.settings = if (settings.reduceMotion) settings.effects.copy(fire = false) else settings.effects
+    // Two clear modes: KONTROL (the hand is a pointer, nothing else happens) and EFEKTLER (the fun
+    // effects, no cursor). Mixing them made every pinch a planet while the user aimed at a button.
+    val control = settings.effects.air && !demo
+    val fx = when {
+        control -> CONTROL_ONLY
+        settings.reduceMotion -> settings.effects.copy(fire = false, air = false)
+        else -> settings.effects.copy(air = false)
+    }
+    engine.settings = fx
+    val magnet = with(androidx.compose.ui.platform.LocalDensity.current) { 36.dp.toPx() }
+    fun setControl(on: Boolean) = settingsStore.update { it.copy(effects = it.effects.copy(air = on)) }
 
     fun ask(question: String) {
         val cam = camera ?: return controller.showNotice("Bu cihazda kamera yok: PC'de 📷 menüsünden ekran ya da resim gösterebilirsiniz.")
@@ -204,7 +225,7 @@ fun CameraScreen(
                 fired = null // the demo never sends commands
             } else {
                 fired = engine.update(now, f?.hands.orEmpty(), f?.width ?: 1, f?.height ?: 1)
-                if (settings.effects.faceLock && f != null) {
+                if (fx.faceLock && f != null) {
                     val (labels, greet) = faceLock.update(now, f.faces, settings.userName, busy = controller.mode.value != CoreMode.IDLE)
                     faceLabels = labels
                     if (greet) controller.speakTest(FaceLock.GREETING)
@@ -212,23 +233,23 @@ fun CameraScreen(
                     faceLabels = emptyList()
                 }
             }
-            if (!demo && f != null && f.width > 0 && f.height > 0) {
+            if (!demo && control && f != null && f.width > 0 && f.height > 0) {
                 val px = f.hands.map { hd -> Hand(hd.points.map { io.github.ahmetdurmus1218.jarvis.core.vision.Point(it.x * canvasW, it.y * canvasH, it.z) }) }
                 val esc = escape.update(now, px.firstOrNull(), canvasW, canvasH, second = px.getOrNull(1)).commands
                 if (io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.EXIT in esc || io.github.ahmetdurmus1218.jarvis.core.vision.HandCommand.HOME in esc) onClose()
             }
             // The hand as a cursor (camera only: the demo hands must not click anything).
-            if (!demo && settings.effects.air) {
+            if (!demo && control) {
                 val h0 = f?.hands?.firstOrNull()
                 val mapped = if (f != null && h0 != null && f.width > 0 && f.height > 0) {
                     val m = ImageMapper(f.width.toFloat(), f.height.toFloat(), androidx.compose.ui.geometry.Size(canvasW, canvasH), crop = true)
                     Hand(h0.points.map { io.github.ahmetdurmus1218.jarvis.core.vision.Point(m.x(it.x * f.width), m.y(it.y * f.height), it.z) })
                 } else null
-                val events = air.update(now, mapped, canvasW, canvasH) { x, y -> targets.at(origin.x + x, origin.y + y) != null }
+                val events = air.update(now, mapped, canvasW, canvasH) { x, y -> targets.near(origin.x + x, origin.y + y, magnet) != null }
                 airState = air.state
                 for (e in events) when (e) {
                     is io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.Event.Click ->
-                        targets.at(origin.x + e.x, origin.y + e.y)?.let { act -> airFlash = now; act() }
+                        targets.near(origin.x + e.x, origin.y + e.y, magnet)?.let { hit -> airFlash = now; hit.action() }
                     is io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.Event.Scroll -> scope.launch { answerScroll.scrollBy(-e.dy) }
                     is io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.Event.Rotate -> engine.rotatePlanets(e.degrees)
                     is io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.Event.Swipe -> when (e.direction) {
@@ -287,7 +308,11 @@ fun CameraScreen(
             val ih = if (demo) minOf(size.width, size.height) else (frame?.height ?: 1).toFloat()
             hands.forEach { h -> drawHand(h, m, iw, ih, clock, mode) }
             drawEffects(engine, m, clock)
-            airState?.let { a -> drawAirCursor(a, targets.at(origin.x + a.x, origin.y + a.y) != null, tick - airFlash < 300) }
+            airState?.let { a ->
+                // The cursor snaps onto the button it is near, so the user sees what a click will hit.
+                val hit = targets.near(origin.x + a.x, origin.y + a.y, magnet)
+                drawAirCursor(a, hit?.let { Offset(it.center.x - origin.x, it.center.y - origin.y) }, tick - airFlash < 300)
+            }
         }
 
         // Top bar
@@ -297,7 +322,17 @@ fun CameraScreen(
         ) {
             TextButton(onClick = onClose, modifier = Modifier.airTarget(targets, onClose)) { Text("← GERİ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace) }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("R.I.C.K · EL KONTROLÜ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, fontSize = 13.sp)
+                if (demo) {
+                    Text("R.I.C.K · EL KONTROLÜ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, fontSize = 13.sp)
+                } else {
+                    Row(
+                        Modifier.border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(50)).padding(2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        ModeTab("🖐 KONTROL", control, targets) { setControl(true) }
+                        ModeTab("✨ EFEKTLER", !control, targets) { setControl(false) }
+                    }
+                }
                 val g = frame?.hands?.firstOrNull()?.let(GestureClassifier::classify) ?: Gesture.NONE
                 Text(
                     if (demo) "DEMO · $demoTitle · $fps FPS"
@@ -358,7 +393,7 @@ fun CameraScreen(
                     OutlinedButton(onClick = no, modifier = Modifier.airTarget(targets, no)) { Text("Hayır", color = JarvisColors.Cyan) }
                 }
             }
-            if (!demo && settings.effects.air) {
+            if (!demo && control) {
                 // Every command: the microphone; the common ones: one click away.
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     AirChip(if (mode == CoreMode.LISTENING) "■ Dinliyorum" else "🎤 Konuş", targets, accent = true) { controller.toggleListening() }
@@ -373,7 +408,7 @@ fun CameraScreen(
                 TrackingOffer(installer, trackingItems)
             } else {
                 Text(
-                    if (!demo && settings.effects.air) AIR_LEGEND else GESTURE_LEGEND,
+                    if (!demo && control) AIR_LEGEND else GESTURE_LEGEND,
                     color = JarvisColors.TextDim, fontSize = 12.sp, textAlign = TextAlign.Center,
                     modifier = Modifier.border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 4.dp),
                 )
@@ -431,7 +466,6 @@ private fun EffectsPanel(e: EffectSettings, name: String, onChange: (EffectSetti
         row("👍 ✌️ ✊ Rick kontrolleri", e.controls) { onChange(e.copy(controls = it)) }
         row("👍 basılı: Türk kahvesi yap (kapalıysa: dinle)", e.thumbCoffee) { onChange(e.copy(thumbCoffee = it)) }
         row("Yüz kilidi", e.faceLock) { onChange(e.copy(faceLock = it)) }
-        row("☝️ Hava kontrolü (işaret et, 🤏 tıkla, kaydır, döndür)", e.air) { onChange(e.copy(air = it)) }
         Text("Gezegen", color = JarvisColors.TextDim, fontSize = 12.sp)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Chip(e.fixedPlanet == null, "Sıradaki") { onChange(e.copy(fixedPlanet = null)) }
@@ -503,11 +537,30 @@ private fun AirChip(label: String, targets: io.github.ahmetdurmus1218.jarvis.ui.
     )
 }
 
-/** The air cursor: a ring on the fingertip, filling while it waits to click; brighter over something clickable. */
-private fun DrawScope.drawAirCursor(a: io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.State, overTarget: Boolean, flash: Boolean) {
-    val c = Offset(a.x, a.y)
+/** One half of the KONTROL / EFEKTLER switch. */
+@Composable
+private fun ModeTab(label: String, selected: Boolean, targets: io.github.ahmetdurmus1218.jarvis.ui.components.AirTargets, onClick: () -> Unit) {
+    Text(
+        label, fontSize = 11.sp, fontFamily = FontFamily.Monospace,
+        color = if (selected) JarvisColors.Background else JarvisColors.Cyan,
+        modifier = Modifier
+            .background(if (selected) JarvisColors.Cyan else Color.Transparent, RoundedCornerShape(50))
+            .clickable(onClick = onClick)
+            .airTarget(targets, onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    )
+}
+
+/**
+ * The air cursor: a ring on the fingertip, filling while it waits to click. Near a button it
+ * jumps onto the button's middle ([snap]) and turns amber, so the user sees what a click will hit.
+ */
+private fun DrawScope.drawAirCursor(a: io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.State, snap: Offset?, flash: Boolean) {
+    val overTarget = snap != null
+    val c = snap ?: Offset(a.x, a.y)
     val r = 22.dp.toPx()
     val color = if (overTarget) JarvisColors.Amber else JarvisColors.Cyan
+    if (snap != null) drawLine(color.copy(alpha = 0.5f), Offset(a.x, a.y), snap, strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
     if (flash) drawCircle(color.copy(alpha = 0.45f), r * 1.8f, c)
     drawCircle(color.copy(alpha = 0.9f), r, c, style = androidx.compose.ui.graphics.drawscope.Stroke(3.dp.toPx()))
     if (a.dwell > 0f) {

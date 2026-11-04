@@ -110,6 +110,13 @@ object JarvisUi {
 
     /** Rick as a living face instead of the HUD core (Settings → Görünüm). */
     var face by mutableStateOf(true)
+
+    /** The camera fills the screen behind Rick ("El ile yönet", full screen): pages turn see-through. */
+    var seeThrough by mutableStateOf(false)
+
+    /** The background of Rick's pages: solid, or see-through over the camera. */
+    val page: androidx.compose.ui.graphics.Color
+        get() = if (seeThrough) JarvisColors.Background.copy(alpha = 0.62f) else JarvisColors.Background
 }
 
 private fun scheme(p: Palette) = if (p.light) {

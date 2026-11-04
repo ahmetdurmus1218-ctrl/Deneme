@@ -430,3 +430,24 @@ Kullanıcı kamera onu gösterirken elleriyle havada tıklamak, kaydırmak, dön
   korur: 4 dakikadan uzun süren bir "düşünme" ve 1 dakikadan uzun açık kalan mikrofon kendiliğinden kapanır ve
   nedeni söylenir.
 
+
+## D44 — Gerçekçi yüz, tam ekran el ile yönetim, kontrol ile efektin ayrılması (v1.3.1)
+
+- **Yüz:** 1.3'teki yuvarlak "emoji" yüz (iri beyaz gözler, gülen ağız, pembe yanaklar, uçuşan "z"ler)
+  kullanıcıya çocuksu/anime gibi geldi. Yerine gerçek insan oranlarıyla çizilmiş bir hologram baş ve omuz
+  geldi: yüz hatları (alın, elmacık, çene, şakak gölgesi), badem göz (iris lifleri, gözbebeği, ışık
+  yansıması, üst kapak gölgesi, kapak çizgisi ve kıvrımı), kaş, burun (köprü ışığı, kanat, delikler),
+  dudaklar (yay şeklinde üst dudak, konuşurken açılan alt dudak ve çene). Göz kapakları yüzün kendi
+  ışığıyla kapanır; düşünürken başın etrafında ince bir tarama yayı döner. Çizim önce aynı motorla
+  (Skia, Python) denenip bakıldı, sonra Compose'a taşındı. 140 dp'den küçükken (ekrandaki balon, PC'deki
+  küçük pencere) yalnız baş, daha büyük gösterilir.
+- **El ile yönet:** kamera sağ üstte 84×112 dp'lik bir kutudaydı. Artık varsayılan tam ekran: kamera Rick'in
+  arkasını kaplar, sayfalar yarı saydam olur, görüntü 1,3 kat büyütülür ve imleç kullanıcının ekranda gördüğü
+  parmak ucunun üstüne denk gelir (aynı dönüşüm: `toFullScreen`). Elin iskeleti de çizilir. "▢ küçük
+  pencere" ile eskisine dönülür. Görüntünün saydam sayfaların arkasında durabilmesi ve büyütülebilmesi
+  için Android önizlemesi TextureView (COMPATIBLE) kipine alındı.
+- **Kamera ekranı:** imleç ile efektler aynı anda açıktı; kullanıcı bir düğmeye 🤏 ile tıklamaya
+  çalışırken her seferinde gezegen, ateş ya da patlama çıkıyordu. Artık iki ayrı kip var: **KONTROL**
+  (yalnız imleç; efekt ve basılı tutma eylemleri kapalı) ve **EFEKTLER** (imleç kapalı). Üstteki
+  düğmeyle geçilir, seçim saklanır. İmleç yakındaki düğmeye "mıknatısla" yapışır (36 dp) ve ortasına
+  atlar; kullanıcı tıklamanın neye gideceğini görür.

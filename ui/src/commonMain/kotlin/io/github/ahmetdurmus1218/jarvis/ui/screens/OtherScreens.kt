@@ -44,6 +44,7 @@ import io.github.ahmetdurmus1218.jarvis.ui.SpeechInput
 import io.github.ahmetdurmus1218.jarvis.ui.VoiceChoice
 import io.github.ahmetdurmus1218.jarvis.ui.VoiceGender
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisColors
+import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi
 import kotlinx.coroutines.launch
 
 @Composable
@@ -51,7 +52,7 @@ private fun ScreenColumn(title: String, content: @Composable () -> Unit) {
     val scroll = rememberScrollState()
     PageScrollOf(scroll)
     Column(
-        Modifier.fillMaxSize().background(JarvisColors.Background).verticalScroll(scroll).padding(16.dp),
+        Modifier.fillMaxSize().background(JarvisUi.page).verticalScroll(scroll).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = JarvisColors.Cyan)
