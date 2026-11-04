@@ -187,8 +187,15 @@ class GateClient(private val context: Context, private val storage: AndroidModel
                 replyTo = replies
                 data = Bundle().apply { putString(GateProtocol.KEY_URL, url) }
             })
-            withTimeoutOrNull(QUERY_TIMEOUT_MS) { result.await() }
-                ?: failed("Kapı cevap vermedi. Rick Kapı'nın son sürümünü (rick-kapi.apk) kurun.")
+            (withTimeoutOrNull(QUERY_TIMEOUT_MS) { result.await() }
+                ?: failed("Kapı cevap vermedi. Rick Kapı'nın son sürümünü (rick-kapi.apk) kurun."))
+                .also { r ->
+                    // Only sizes and the start of a public page, never anything of the user's.
+                    when (r) {
+                        is io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Ok -> android.util.Log.i("RickGate", "web ok ${r.host} ${r.bytes} B: ${r.body.take(160).replace('\n', ' ')}")
+                        is io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed -> android.util.Log.i("RickGate", "web failed: ${r.message}")
+                    }
+                }
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             failed(e.message ?: "Kapı hatası")

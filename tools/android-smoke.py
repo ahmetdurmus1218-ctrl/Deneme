@@ -527,19 +527,21 @@ def main():
         shot("18-haber-pin")
         adb("shell", "input", "text", PIN)
         adb("shell", "input", "keyevent", "66")
-        # Five headline cards: wait for the answer (or a reason), then scroll back up to its first line.
-        first = wait_for(lambda n: text_has("günün başlıkları")(n) or text_has("Web: ")(n) or text_has("ulaşamadım")(n) or text_has("okuyamadım")(n),
-                         "the news answer", timeout=120)
-        print("news answer:", label(first))
-        shot("18b-haberler")
-        if "ulaşamadım" in label(first) or "okuyamadım" in label(first):
-            raise SystemExit("news could not be read: " + label(first))
-        for _ in range(8):
-            if find(text_has("günün başlıkları")) is not None:
+        # Wait for the answer (👍 appears when it is done), then read the whole page from the top.
+        for _ in range(60):
+            if find(text_is("👍")) is not None or find(text_has("ulaşamadım")) is not None:
                 break
-            adb("shell", "input", "swipe", "540", "900", "540", "1700", "300")
+            time.sleep(2)
+        shot("18b-haberler")
+        seen = []
+        for _ in range(10):
+            seen += [t for t in screen_texts() if t not in seen]
+            adb("shell", "input", "swipe", "540", "800", "540", "1800", "250")
             time.sleep(1)
-        wait_for(text_has("günün başlıkları"), "headlines from BBC Türkçe", timeout=10)
+        print("news screen texts:", seen)
+        print(adb("logcat", "-d", "-s", "RickGate:*", "RickNews:*", check=False)[-3000:])
+        if not any("günün başlıkları" in t for t in seen):
+            raise SystemExit("headlines not shown; texts: " + " | ".join(seen))
         tap(wait_for(tab("Ağ"), "network tab"))
         wait_for(text_has("Günün haberleri (BBC Türkçe)"), "news read in the network log")
         check_no_crash()
