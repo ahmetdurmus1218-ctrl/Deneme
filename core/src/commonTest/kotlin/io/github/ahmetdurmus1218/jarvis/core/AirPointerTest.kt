@@ -39,15 +39,33 @@ class AirPointerTest {
     }
 
     @Test
-    fun holdingTheFingerStillOverAButtonClicksOnce() {
-        val p = AirPointer()
+    fun hoveringNeverClicksByItself() {
+        // Pointing at a button for seconds is not a click: only a deliberate pinch is.
+        assertTrue(AirPointer().run(0, 3_000, { hand(HandShape.POINT, 0.5f, 0.8f) }).none { it is AirPointer.Event.Click })
+    }
+
+    @Test
+    fun aFlickerOfThePinchIsNotAClickAndClicksDoNotRepeatAtOnce() {
+        // One frame of touching fingertips (tracking noise, a relaxed hand): nothing.
+        val flicker = AirPointer().run(0, 900, { t -> if (t in 300..330) hand(HandShape.PINCH, 0.5f, 0.8f) else hand(HandShape.OPEN, 0.5f, 0.8f) })
+        assertTrue(flicker.none { it is AirPointer.Event.Click }, flicker.toString())
+        // Two pinches 0.4 s apart: one click (the second is too soon).
+        val twice = AirPointer().run(0, 1_500, { t ->
+            if (t in 200..400 || t in 600..800) hand(HandShape.PINCH, 0.5f, 0.8f) else hand(HandShape.OPEN, 0.5f, 0.8f)
+        })
+        assertEquals(1, twice.count { it is AirPointer.Event.Click }, twice.toString())
+    }
+
+    @Test
+    fun holdingTheFingerStillOverAButtonClicksOnceWhereHoverClickIsOn() {
+        val p = AirPointer(dwellClick = true)
         val events = p.run(0, 2_000, { hand(HandShape.POINT, 0.5f, 0.8f) })
         assertEquals(1, events.count { it is AirPointer.Event.Click })
         val click = events.filterIsInstance<AirPointer.Event.Click>().single()
         val tip = hand(HandShape.POINT, 0.5f, 0.8f).points[8]
         assertTrue(kotlin.math.abs(click.x - tip.x) < 5f && kotlin.math.abs(click.y - tip.y) < 5f, "$click vs $tip")
         // Over nothing clickable: no click.
-        assertTrue(AirPointer().run(0, 2_000, { hand(HandShape.POINT, 0.5f, 0.8f) }, { _, _ -> false }).none { it is AirPointer.Event.Click })
+        assertTrue(AirPointer(dwellClick = true).run(0, 2_000, { hand(HandShape.POINT, 0.5f, 0.8f) }, { _, _ -> false }).none { it is AirPointer.Event.Click })
     }
 
     @Test

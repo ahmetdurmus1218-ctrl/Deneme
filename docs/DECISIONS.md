@@ -485,3 +485,22 @@ Kullanıcı kamera onu gösterirken elleriyle havada tıklamak, kaydırmak, dön
 - **Görünüm:** Kullanıcı yüzü beğenmedi ve önce resim görmek istedi. Beş seçenek resimle gösterildi;
   kullanıcı "hepsini yap" dedi. Beşi de Ayarlar → Görünüm'de canlı önizlemeyle seçilebilir: kıvılcım,
   gözlü kıvılcım, cam küre, ses halkası, parçacık küre. Varsayılan kıvılcım.
+
+## D46 — Gerçek kullanımdan gelen düzeltmeler (v1.4.1)
+
+- **Kendiliğinden tıklama ve fener:** İşaret parmağı bir düğmenin üstünde 0,9 sn durunca tıklama sayılıyordu.
+  Kamera ekranının altındaki "🔦 Fener" düğmesi böyle tekrar tekrar tıklandı ve fener sürekli açıldı. Artık
+  üstünde durmak hiçbir şeyi tıklamıyor (`AirPointer.dwellClick` varsayılan kapalı). Tıklama yalnız bilinçli bir
+  🤏: parmak uçları en az 150 ms değmeli, 700 ms içinde açılmalı, el kaymamalı; iki tıklama arasında en az
+  700 ms olmalı. Kamera ekranındaki telefona iş yaptıran kısayol düğmeleri (fener, ses, müzik, haberler…)
+  kaldırıldı; komutlar sesle verilir, ekranda yalnız 🎤 Konuş ve 🤫 Sus kaldı.
+- **Ekranı kaplayan kontroller:** Büyük KONTROL / EFEKTLER sekmeleri yerine üst çubukta küçük bir "✨" düğmesi.
+  ⚙ efekt ayarları yalnız efekt açıkken, ☕ Fal yalnız efekt kipinde görünür.
+- **Alkış:** Alkış yalnız Rick uyurken (5 dk sessizlikten sonra) dinleniyordu, kullanıcı da uyanıkken denedi.
+  Artık Rick boştayken her zaman dinleniyor: uyanıkken iki alkış dinlemeyi başlatır, uyurken uyandırır.
+  Algılama telefon mikrofonları için biraz gevşetildi (yükseliş ×2,5, eşik 6). Daha önce kaydedilmiş bir eşik
+  varsa o kullanılır; Ayarlar'dan yeniden ayarlanabilir.
+- **YouTube'da şarkı:** "YouTube'dan X aç" yalnız arama sayfasını açıyordu. Artık YouTube bu telefonda "aranan
+  içeriği oynat" isteğini (MEDIA_PLAY_FROM_SEARCH) kabul ediyorsa doğrudan o kullanılıyor. Kabul etmiyorsa arama
+  sayfası açılıyor ve Rick bunu açıkça söylüyor. Ekranı okuyup sonucu kendisi seçmek, "ekranı okumaz" sözünü
+  bozacağı için yapılmadı.

@@ -389,6 +389,8 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
     /** Falls asleep after the quiet time in Settings (at least two minutes) without talking. */
     private fun watchIdle() {
         val controller = app.graph.sharedController ?: return
+        // Two claps work whenever Rick is idle, awake or asleep (the microphone is free then).
+        scope.launch { controller.mode.collect { m -> if (m == CoreMode.IDLE) listenForClaps() else stopClaps() } }
         scope.launch {
             var quietSince = System.currentTimeMillis()
             while (true) {
@@ -396,11 +398,8 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
                 val s = app.graph.settings.state.value
                 if (controller.mode.value != CoreMode.IDLE) quietSince = System.currentTimeMillis()
                 val limit = maxOf(2, s.sleepAfterMin.takeIf { it > 0 } ?: 5) * 60_000L
-                if (!sleeping.value && System.currentTimeMillis() - quietSince > limit) {
-                    sleeping.value = true
-                    listenForClaps()
-                }
-                if (sleeping.value && controller.mode.value != CoreMode.IDLE) { sleeping.value = false; stopClaps(); quietSince = System.currentTimeMillis() }
+                if (!sleeping.value && System.currentTimeMillis() - quietSince > limit) sleeping.value = true
+                if (sleeping.value && controller.mode.value != CoreMode.IDLE) { sleeping.value = false; quietSince = System.currentTimeMillis() }
             }
         }
     }
@@ -414,9 +413,20 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
         stopClaps()
         clapJob = scope.launch {
             val detector = ClapDetector(threshold = s.clapThreshold).apply { rhythm = s.clapRhythm }
-            val ok = mic.start { samples, n -> if (detector.feed(samples, n)) scope.launch { wake(byClaps = true) } }
+            val ok = mic.start { samples, n -> if (detector.feed(samples, n)) scope.launch { clapped() } }
             if (!ok) Log.w(TAG, "microphone not available for claps")
         }
+    }
+
+    /** Two claps: asleep, Rick wakes up; awake, it listens. */
+    private fun clapped() {
+        Log.i(TAG, "claps")
+        if (sleeping.value) { wake(byClaps = true); return }
+        val controller = app.graph.sharedController ?: return
+        if (controller.mode.value != CoreMode.IDLE) return
+        stopClaps()
+        say("👏 Dinliyorum")
+        controller.startListening()
     }
 
     private fun stopClaps() {

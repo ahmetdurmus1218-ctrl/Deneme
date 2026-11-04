@@ -345,19 +345,28 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
             .putExtra(android.app.SearchManager.QUERY, a.query)
             .putExtra(MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/*")
         val youtubeSearch = Intent(Intent.ACTION_SEARCH).setPackage(YOUTUBE).putExtra(android.app.SearchManager.QUERY, a.query)
+        fun resolves(i: Intent) = runCatching { app.packageManager.queryIntentActivities(i, 0).isNotEmpty() }.getOrDefault(false)
+        // "Play X on YouTube": YouTube's own play-from-search when this version offers it (it starts the
+        // video); otherwise its search page, where the user picks the result.
+        val youtubePlay = playFromSearch(YOUTUBE).takeIf { resolves(it) }
         val first: Intent? = when (a.app) {
-            OutsideApp.YOUTUBE -> youtubeSearch
+            OutsideApp.YOUTUBE -> youtubePlay ?: youtubeSearch
             OutsideApp.YOUTUBE_MUSIC -> playFromSearch(YOUTUBE_MUSIC)
             OutsideApp.SPOTIFY -> playFromSearch(SPOTIFY)
             OutsideApp.MUSIC -> when {
                 installed(YOUTUBE_MUSIC) -> playFromSearch(YOUTUBE_MUSIC)
                 installed(SPOTIFY) -> playFromSearch(SPOTIFY)
-                else -> youtubeSearch
+                else -> youtubePlay ?: youtubeSearch
             }
             OutsideApp.GOOGLE -> null
         }
         // The app itself when it is there (an empty error means it opened); else the same search on the web.
-        if (first != null && installedFor(first) && start(first, "-") == null) return null
+        if (first != null && installedFor(first) && start(first, "-") == null) {
+            return if (first === youtubeSearch) {
+                "YouTube'da \"${a.query}\" aramasını açtım; bu YouTube sürümü doğrudan oynatmaya izin vermiyor. " +
+                    "Videoya dokunun ya da el kontrolü açıksa 🤏 ile seçin."
+            } else null
+        }
         return start(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(a.app.webUrl(a.query))), "Bu telefonda ${a.app.label} da tarayıcı da bulunamadı")
     }
 

@@ -13,7 +13,7 @@ import kotlin.math.sqrt
 class ClapDetector(
     private val sampleRate: Int = UtteranceCapture.SAMPLE_RATE,
     /** How far above the noise floor a clap must jump (×). Calibrated in Settings. */
-    var threshold: Float = 8f,
+    var threshold: Float = 6f,
 ) {
     private val win = sampleRate / 200 // 5 ms
     private var acc = 0.0
@@ -67,7 +67,7 @@ class ClapDetector(
         var wake = false
         if (!inBurst) {
             // Onset: a jump far above the floor AND a steep rise from the previous 5 ms.
-            if (ratio >= threshold && rms > prev * 3f && rms > 0.02f) {
+            if (ratio >= threshold && rms > prev * 2.5f && rms > 0.012f) {
                 inBurst = true
                 burstStart = t
                 burstPeak = rms

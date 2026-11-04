@@ -308,7 +308,7 @@ private fun FloatingSettings(bridge: PlatformBridge, settings: SettingsStore) {
             if (note != null) settings.update { it.copy(bubble = false) }
         }
     }
-    Toggle("Uyurken iki alkışla uyansın (mikrofon yalnızca telefonda dinler)", s.bubbleClapWake) { v -> settings.update { it.copy(bubbleClapWake = v) } }
+    Toggle("İki alkış: Rick dinlemeye başlar, uyuyorsa uyanır (mikrofon yalnızca telefonda dinler)", s.bubbleClapWake) { v -> settings.update { it.copy(bubbleClapWake = v) } }
     if (bridge.camera != null) {
         Toggle("El hareketleri: başka uygulamadayken de (kamera açık kalır)", s.bubbleHands) { v ->
             settings.update { it.copy(bubbleHands = v) }

@@ -10,8 +10,10 @@ import kotlin.math.hypot
  * fingertip the user sees.
  *
  * - **Cursor:** the index fingertip, smoothed.
- * - **Click:** a quick pinch (thumb and index tips touch and part) at the cursor, or holding the
- *   pointing finger still over something clickable for [dwellMs].
+ * - **Click:** a deliberate pinch — thumb and index tips touch for at least [clickMinMs] (a
+ *   flicker is not a click), part again within [clickMaxMs], without moving — at the cursor, at
+ *   most once per [clickCooldownMs]. Hovering never clicks by itself (users found that things got
+ *   clicked "at random"); [dwellClick] turns hover-to-click back on where it is wanted.
  * - **Scroll:** pinch and move up / down (the content follows the hand).
  * - **Rotate:** pinch and turn the hand (wrist → middle finger angle).
  * - **Swipe:** an open hand moved quickly left / right / up / down.
@@ -20,7 +22,10 @@ import kotlin.math.hypot
  */
 class AirPointer(
     private val dwellMs: Long = 900,
-    private val clickMaxMs: Long = 600,
+    private val dwellClick: Boolean = false,
+    private val clickMinMs: Long = 150,
+    private val clickMaxMs: Long = 700,
+    private val clickCooldownMs: Long = 700,
     /** A swipe covers this share of the screen's width (or height) … */
     private val swipeShare: Float = 0.22f,
     /** … within this time. */
@@ -58,6 +63,7 @@ class AirPointer(
     private var dwellDone = false
     private val palmTrail = ArrayDeque<Triple<Long, Float, Float>>()
     private var lastSwipe = Long.MIN_VALUE / 2
+    private var lastClick = Long.MIN_VALUE / 2
 
     fun reset() {
         state = null
@@ -104,7 +110,11 @@ class AirPointer(
             }
         } else if (pinching && ++pinchOff >= 2) {
             pinching = false
-            if (!pinchMoved && now - pinchStart <= clickMaxMs) out += Event.Click(pinchX, pinchY)
+            val held = now - pinchStart
+            if (!pinchMoved && held in clickMinMs..clickMaxMs && now - lastClick > clickCooldownMs) {
+                lastClick = now
+                out += Event.Click(pinchX, pinchY)
+            }
             lastAngle = Float.NaN
         }
         if (pinching && touching) {
@@ -129,7 +139,7 @@ class AirPointer(
 
         // Dwell: the pointing finger held still over something clickable.
         var dwell = 0f
-        if (gesture == Gesture.POINTING && !pinching && clickable(cx, cy)) {
+        if (dwellClick && gesture == Gesture.POINTING && !pinching && clickable(cx, cy)) {
             if (dwellStart < 0 || hypot(cx - dwellX, cy - dwellY) > minOf(width, height) * 0.035f) {
                 dwellStart = now
                 dwellX = cx
@@ -137,8 +147,9 @@ class AirPointer(
                 dwellDone = false
             }
             dwell = ((now - dwellStart).toFloat() / dwellMs).coerceIn(0f, 1f)
-            if (dwell >= 1f && !dwellDone) {
+            if (dwell >= 1f && !dwellDone && now - lastClick > clickCooldownMs) {
                 dwellDone = true
+                lastClick = now
                 out += Event.Click(dwellX, dwellY)
             }
         } else {

@@ -88,7 +88,7 @@ const val QUESTION_READ = "Buradaki yazıyı oku."
 const val QUESTION_FORTUNE = "Bu bir Türk kahvesi fincanı. Telvede gerçekten gördüğün şekillerden esprili, kısa bir kahve falı yorumla; bunun bilim olmadığını bir kez söyle."
 const val THUMB_COFFEE = "Rick, bana bol köpüklü bir Türk kahvesi yap"
 const val GESTURE_LEGEND = "✋ ateş · 🤏 gezegen · ✊→✋ patlat · ☝️ iz · ☝️☝️ şimşek · basılı tut: 👍 dinle ✌️ bu ne? ✊ sus"
-const val AIR_LEGEND = "☝️ işaret et · 🤏 dokundur ya da ☝️ beklet = tıkla · 🤏↕ kaydır · ✋⇆ savur = sonraki · 👋 salla = çık"
+const val AIR_LEGEND = "☝️ işaret et · 🤏 parmakları birleştirip aç = tıkla · 🤏↕ kaydır · 👋 salla = çık"
 
 /**
  * Control mode: the hand only points and clicks — no fire, planets, bursts or held-shape actions
@@ -99,15 +99,6 @@ val CONTROL_ONLY = EffectSettings(
     controls = false, faceLock = false, air = true,
 )
 
-/** Commands one click away in the air (the microphone gives every other command). */
-private val AIR_COMMANDS = listOf(
-    "📰 Haberler" to "Günün haberleri",
-    "🕐 Saat" to "Saat kaç",
-    "📋 Brifing" to "Brifing ver",
-    "🎵 Müzik" to "Müzik çal",
-    "🔦 Fener" to "Feneri aç",
-    "🔊 Ses +" to "Sesi aç",
-)
 
 /**
  * Hand control with the live camera (or a camera-less demo), in two separate modes:
@@ -323,15 +314,6 @@ fun CameraScreen(
             TextButton(onClick = onClose, modifier = Modifier.airTarget(targets, onClose)) { Text("← GERİ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace) }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("R.I.C.K · EL KONTROLÜ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, fontSize = 13.sp)
-                if (!demo) {
-                    Row(
-                        Modifier.padding(top = 4.dp).border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(50)).padding(2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        ModeTab("🖐 KONTROL", control, targets) { setControl(true) }
-                        ModeTab("✨ EFEKTLER", !control, targets) { setControl(false) }
-                    }
-                }
                 val g = frame?.hands?.firstOrNull()?.let(GestureClassifier::classify) ?: Gesture.NONE
                 Text(
                     if (demo) "DEMO · $demoTitle · $fps FPS"
@@ -339,7 +321,9 @@ fun CameraScreen(
                     color = JarvisColors.TextDim, fontFamily = FontFamily.Monospace, fontSize = 10.sp,
                 )
             }
-            TextButton(onClick = { panel = !panel }, modifier = Modifier.airTarget(targets) { panel = !panel }) { Text("⚙", color = JarvisColors.Cyan, fontSize = 20.sp) }
+            // Effects (fire, planets…) are a separate, small switch: off, the hand only points and clicks.
+            if (!demo) ModeTab(if (control) "✨" else "✨ açık", !control, targets) { setControl(!control) }
+            if (!control || demo) TextButton(onClick = { panel = !panel }, modifier = Modifier.airTarget(targets) { panel = !panel }) { Text("⚙", color = JarvisColors.Cyan, fontSize = 20.sp) }
             if (camera != null) {
                 TextButton(onClick = { demo = !demo }, modifier = Modifier.airTarget(targets) { demo = !demo }) { Text(if (demo) "KAMERA" else "DEMO", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontSize = 11.sp) }
                 if (!demo) TextButton(onClick = { front = !front }, modifier = Modifier.airTarget(targets) { front = !front }) { Text("⟲", color = JarvisColors.Cyan, fontSize = 20.sp) }
@@ -393,14 +377,10 @@ fun CameraScreen(
                 }
             }
             if (!demo && control) {
-                // Every command: the microphone; the common ones: one click away.
+                // Every command goes by voice; only talk and quiet are buttons (nothing that acts on the phone).
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     AirChip(if (mode == CoreMode.LISTENING) "■ Dinliyorum" else "🎤 Konuş", targets, accent = true) { controller.toggleListening() }
                     AirChip("🤫 Sus", targets) { controller.stopSpeaking() }
-                    AIR_COMMANDS.take(2).forEach { (label, said) -> AirChip(label, targets) { controller.send(said) } }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    AIR_COMMANDS.drop(2).forEach { (label, said) -> AirChip(label, targets) { controller.send(said) } }
                 }
             }
             if (!demo && camera != null && !tracking) {
@@ -416,7 +396,7 @@ fun CameraScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(onClick = { ask(QUESTION_WHAT) }, enabled = mode != CoreMode.THINKING, modifier = Modifier.airTarget(targets) { ask(QUESTION_WHAT) }) { Text("BU NE?") }
                     OutlinedButton(onClick = { ask(QUESTION_READ) }, enabled = mode != CoreMode.THINKING, modifier = Modifier.airTarget(targets) { ask(QUESTION_READ) }) { Text("OKU", color = JarvisColors.Cyan) }
-                    OutlinedButton(onClick = { ask(QUESTION_FORTUNE) }, enabled = mode != CoreMode.THINKING, modifier = Modifier.airTarget(targets) { ask(QUESTION_FORTUNE) }) { Text("☕ FAL", color = JarvisColors.Amber) }
+                    if (!control) OutlinedButton(onClick = { ask(QUESTION_FORTUNE) }, enabled = mode != CoreMode.THINKING, modifier = Modifier.airTarget(targets) { ask(QUESTION_FORTUNE) }) { Text("☕ FAL", color = JarvisColors.Amber) }
                 }
             }
         }
@@ -536,7 +516,7 @@ private fun AirChip(label: String, targets: io.github.ahmetdurmus1218.jarvis.ui.
     )
 }
 
-/** One half of the KONTROL / EFEKTLER switch. */
+/** The small ✨ effects switch in the top bar. */
 @Composable
 private fun ModeTab(label: String, selected: Boolean, targets: io.github.ahmetdurmus1218.jarvis.ui.components.AirTargets, onClick: () -> Unit) {
     Text(

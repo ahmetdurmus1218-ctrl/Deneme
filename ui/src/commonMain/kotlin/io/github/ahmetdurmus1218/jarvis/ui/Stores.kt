@@ -36,7 +36,7 @@ data class Settings(
     /** "alkis+soz": two claps then "uyan Rick"; "alkis": claps alone. */
     val wakeMode: String = "alkis+soz",
     /** How far above the room's noise a clap must jump (calibrated in Settings). */
-    val clapThreshold: Float = 8f,
+    val clapThreshold: Float = 6f,
     /** The user's secret clap rhythm (gaps in ms); null = a plain double clap. */
     val clapRhythm: List<Long>? = null,
     /** 1 = Mark 1 (the clean stage), 2 = Mark 2 (dense HUD). */
