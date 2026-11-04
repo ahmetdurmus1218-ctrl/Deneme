@@ -265,6 +265,8 @@ class OffersTest {
         assertEquals("Meclis'te yeni bütçe görüşmeleri başladı.", done.reply.scenes[1].sahne.ses)
         assertTrue(done.reply.scenes[0].sahne.ses.contains("BBC Türkçe"))
         assertEquals("web", done.reply.kaynaklar.single().tur)
+        val question = assistant(web = true).newsReply(listOf(io.github.ahmetdurmus1218.jarvis.core.assistant.NewsItem("Bu ne anlama geliyor?", "", "https://www.bbc.com/turkce/a2"))).toList()
+        assertEquals("Bu ne anlama geliyor?", question.filterIsInstance<AssistantEvent.Completed>().single().reply.scenes[1].sahne.ses)
         val none = assistant(web = true).newsReply(emptyList()).toList().filterIsInstance<AssistantEvent.Completed>().single()
         assertTrue(none.reply.scenes.single().sahne.ses.contains("okuyamadım"))
     }

@@ -540,8 +540,10 @@ def main():
             time.sleep(1)
         print("news screen texts:", seen)
         print(adb("logcat", "-d", "-s", "RickGate:*", "RickNews:*", check=False)[-3000:])
-        if not any("günün başlıkları" in t for t in seen):
+        headlines = [t for t in seen if t.startswith("BBC Türkçe · https://")]
+        if len(headlines) < 3 or not any(t.startswith("Web: ") for t in seen):
             raise SystemExit("headlines not shown; texts: " + " | ".join(seen))
+        print(f"news: {len(headlines)} headline cards with their BBC Türkçe links")
         tap(wait_for(tab("Ağ"), "network tab"))
         wait_for(text_has("Günün haberleri (BBC Türkçe)"), "news read in the network log")
         check_no_crash()

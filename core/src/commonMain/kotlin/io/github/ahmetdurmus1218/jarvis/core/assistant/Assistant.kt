@@ -243,7 +243,7 @@ class Assistant(
         val scenes = listOf(
             VerifiedScene(Sahne("${OnlineNews.SOURCE}'den günün başlıkları.", Gorsel(GorselTip.LISTE, baslik = "Günün haberleri", ogeler = top.map { it.title }))),
         ) + top.map { n ->
-            VerifiedScene(Sahne(n.title.trimEnd('.') + ".", Gorsel(GorselTip.KAYNAK_KARTI, baslik = n.title, kaynak = OnlineNews.SOURCE, konum = n.url, metin = n.summary.take(220).ifBlank { null })))
+            VerifiedScene(Sahne(n.title.trim().let { t -> if (t.last() in ".?!…") t else "$t." }, Gorsel(GorselTip.KAYNAK_KARTI, baslik = n.title, kaynak = OnlineNews.SOURCE, konum = n.url, metin = n.summary.take(220).ifBlank { null })))
         }
         scenes.forEachIndexed { i, s -> emit(AssistantEvent.SceneReady(i, s)) }
         // The cards carry the headlines and their summaries; no long text under them.
