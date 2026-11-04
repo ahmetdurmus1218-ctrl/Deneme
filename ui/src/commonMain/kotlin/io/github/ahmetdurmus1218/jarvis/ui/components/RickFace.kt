@@ -149,6 +149,8 @@ fun RickFace(
         val squash = 1f - 0.16f * blink
         val grow = (1f + 0.1f * listen + 0.015f * breath) * (1f - 0.22f * asleep)
         val spin = think * ((t * 70f) % 360f)
+        // Dimmed toward the background (not see-through: overlapping rays would show seams).
+        val body = lerp(spark, JarvisColors.Background, 0.45f * asleep)
         withTransform({
             translate(lean.x, lean.y)
             rotate(tilt * 1.6f + spin, pivot = c)
@@ -165,12 +167,12 @@ fun RickFace(
                     0.02f * breath * (if (i % 2 == 0) 1f else -1f)
                 val dir = Offset(cos(a), sin(a))
                 drawLine(
-                    spark.copy(alpha = 1f - 0.45f * asleep),
+                    body,
                     c + dir * (r * 0.18f), c + dir * (r * len * (0.92f + reach)),
                     strokeWidth = r * 0.17f * width, cap = StrokeCap.Round,
                 )
             }
-            drawCircle(spark.copy(alpha = 1f - 0.3f * asleep), r * 0.24f, c)
+            drawCircle(body, r * 0.24f, c)
         }
     }
 }
