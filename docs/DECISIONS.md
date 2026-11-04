@@ -354,3 +354,22 @@ Kapı kurulu değilse Rick internete çıkamadığını hiç söylemiyordu. Kara
   tarayıcıda açmayı teklif eder. Kütüphanede olmayan bilgi için Kapı yoksa da tarayıcı teklif edilir. Tam
   offline modda teklif yapılmaz.
 
+## D41 — Aramayı gerçekten yapmak, ses seçimi
+Kullanıcı "birine telefon et" dediğinde Rick'in arayamadığını, telefondaki her şeyi (bankalar hariç) kontrol
+etmesini, kadın/erkek ses seçimini ve daha doğal sesi istedi.
+- **Arama:** "Ahmet'i ara", "Ahmet'e telefon et", "annemi ara hemen", "babamı arayabilir misin" artık aramayı
+  başlatır (`CALL_PHONE`, ilk aramada bir kez sorulur). Kullanıcının kendi açık komutu onaydır, tıpkı telefonun
+  kendi asistanında olduğu gibi; model ya da araç çıktısı arama başlatamaz. İzin verilmezse numara çevirici
+  ekranında hazır olur. Önceden "Ahmet'e telefon et" yer adı sanılıyordu ("-e/-te") ve "annemi" rehberdeki
+  "Anne" ile eşleşmiyordu: ad biçimleri (hal ekleri, "-m" iyelik) sırayla denenir (`DeviceCommands.findContact`).
+  Sohbet arasında söylenen "annemi aramam lazım" yine önce sorar ("Annem aransın mı?").
+- **Mesaj** yalnızca hazırlanır (`SEND_SMS` yok): yanlış duyulan bir metin geri alınamaz; gönder tuşuna kullanıcı basar.
+- **Her şeyi kontrol:** Android, sıradan bir uygulamanın Wi-Fi/Bluetooth'u kendisi açıp kapatmasına izin vermez
+  (Android 10+); Rick ilgili paneli açar. Başka uygulamaların ekranlarını kullanmak Erişilebilirlik izni ister ve
+  o izin her ekranı (bankalar dahil) okuyabilir; kullanıcı onaylamadan eklenmedi.
+- **Ses seçimi:** açık kaynakta internetsiz Türkçe *kadın* Piper sesi yok (tr_TR sesleri: dfki, fahrettin, fettah,
+  hepsi erkek). Telefonların kendi internetsiz Türkçe sesleri (Google / Samsung) daha doğal ve kadın sesi içerir.
+  Ayarlar → "Rick'in sesi": Kadın / Erkek düğmeleri, her sesi ▶ ile dinleme ve seçme, "Telefona ses ekle" (Türkçe
+  ses paketi). Yalnızca internet gerektirmeyen sesler listelenir; seçim `Settings.voiceId`. Motor cinsiyeti
+  adında söylemiyorsa (ör. Google "tr-tr-x-…") kullanıcı dinleyip seçer. PC'de şimdilik yalnızca Rick'in sesi.
+

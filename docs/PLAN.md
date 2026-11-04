@@ -125,7 +125,9 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] "YouTube'dan / Spotify'dan … aç / çal", "… şarkısını çal", "Google'da … ara": arama o uygulamaya ya da tarayıcıya aktarılır, Ağ sekmesine yazılır; ne açılacağı söylenmediyse "Hangisini?" (D40).
 - [x] "internette … ara", "online ol, onay verdim, bak": doğrudan onaya gider (her aramada parmak izi/PIN); "onay verdim bak" gibi cümleler evet sayılır.
 - [x] Kapı yoksa / cevap vermezse nedeni söylenir ve tarayıcıda Google araması teklif edilir; hava, döviz, maç gibi anlık sorularda da.
-- [x] Testler: çekirdek (komut ayrıştırma, evet/hayır, internet komutları), denetleyici (onay cümlesi, Kapı yokken tarayıcı, YouTube ve "Hangisini?"), PC tarayıcı adresleri, emülatörde "Online ol onay verdim bak" → PIN → Wikipedia ve "Youtubedan … ac".
+- [x] "Ahmet'i ara", "Ahmet'e telefon et", "annemi ara": arama gerçekten başlıyor (CALL_PHONE), rehberde ad biçimleri ("annemi" → "Anne") (D41).
+- [x] Ayarlar → Rick'in sesi: kadın / erkek, telefonun internetsiz Türkçe sesleri (daha doğal) dinlenip seçiliyor, "Telefona ses ekle" (D41).
+- [x] Testler: çekirdek (komut ayrıştırma, evet/hayır, internet komutları, arama ve rehber eşleştirme), denetleyici (onay cümlesi, Kapı yokken tarayıcı, YouTube ve "Hangisini?"), PC tarayıcı adresleri, emülatörde "Online ol onay verdim bak" → PIN → Wikipedia ve "Youtubedan … ac".
 
 ## Kaldığım yer
 Oturum 2 (2026-11-03): v0.3–v0.5 ve halilozat özellikleri yayımlandı (v0.5.0). Ardından kullanıcının telefon

@@ -474,4 +474,13 @@ class JarvisControllerTest {
         assertTrue(c.turns.value.last().scenes.single().sahne.ses.contains("Sezen Aksu Gidiyorum"))
         scope.cancel()
     }
+
+    @Test
+    fun voiceGenderIsReadOnlyWhenTheEngineSaysIt() {
+        assertEquals(VoiceGender.KADIN, VoiceGender.guess("tr-TR-language#female_1-local"))
+        assertEquals(VoiceGender.ERKEK, VoiceGender.guess("tr-TR-language#male_2-local"))
+        assertEquals(VoiceGender.KADIN, VoiceGender.guess("tur-tr-f01"))
+        assertEquals(VoiceGender.ERKEK, VoiceGender.guess("tur-tr-m00 embedded"))
+        assertEquals(null, VoiceGender.guess("tr-tr-x-cfs-local"))
+    }
 }

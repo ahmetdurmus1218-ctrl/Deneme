@@ -15,6 +15,8 @@ data class Settings(
     /** Hands-free: after answering a spoken question, Rick listens again by itself. */
     val conversationMode: Boolean = false,
     val speechRate: Float = 1.0f,
+    /** The chosen voice (see SpeechOutput.voices); null = Rick's own voice. */
+    val voiceId: String? = null,
     /** Old switch (before 1.1), no longer used; kept so saved settings still load. */
     val webSearch: Boolean = false,
     /**

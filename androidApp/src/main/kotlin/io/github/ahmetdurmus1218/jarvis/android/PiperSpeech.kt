@@ -118,8 +118,27 @@ class PiperSpeechOutput(
 
     fun installed(): Boolean = item() != null
 
+    /** The voice chosen in Settings: null / [PIPER_ID] = Piper, "system:…" = one of the phone's voices. */
+    @Volatile private var preferred: String? = null
+
+    /** True when the user picked one of the phone's own voices and it is (still) there. */
+    private fun phoneVoiceChosen(): Boolean = preferred?.let { p -> p != PIPER_ID && fallback.voices().any { it.id == p } } == true
+
+    override fun voices(): List<io.github.ahmetdurmus1218.jarvis.ui.VoiceChoice> = buildList {
+        if (installed()) add(io.github.ahmetdurmus1218.jarvis.ui.VoiceChoice(PIPER_ID, "Rick'in kendi sesi (Piper)", io.github.ahmetdurmus1218.jarvis.ui.VoiceGender.ERKEK, "internetsiz, telefonda üretilir"))
+        addAll(fallback.voices())
+    }
+
+    override fun choose(id: String?) {
+        preferred = id
+        fallback.choose(id?.takeIf { it != PIPER_ID })
+    }
+
+    override fun openVoiceSettings(): Boolean = fallback.openVoiceSettings()
+
     override val engineName: String
         get() = when {
+            phoneVoiceChosen() -> fallback.engineName
             tts != null -> "Piper tr_TR-dfki-medium (Rick'in kendi sesi, cihaz içi)"
             installed() && !failed -> "Piper (hazırlanıyor) · şimdilik: " + fallback.engineName
             else -> fallback.engineName
@@ -128,6 +147,7 @@ class PiperSpeechOutput(
     override val silentReason: String?
         get() = when {
             mediaMuted() -> "Telefonun medya sesi kapalı; yan taraftaki ses tuşuyla açın."
+            phoneVoiceChosen() -> fallback.silentReason
             tts != null -> null
             installed() && !failed -> null // still loading: speak() waits for it
             failed -> "Rick'in sesi açılamadı (${failure ?: "bilinmeyen hata"}). Modeller ekranından Piper'ı silip yeniden indirin."
@@ -184,7 +204,7 @@ class PiperSpeechOutput(
         ensureAudible()?.let { notice = it }
         // Installed but still unpacking (first answer after start): wait for it rather than fall back to
         // a system voice that many phones do not have offline, which would leave the answer silent.
-        val engine = if (installed()) load() else null
+        val engine = if (installed() && !phoneVoiceChosen()) load() else null
         if (engine == null) {
             audioFocus(true)
             try { return fallback.speak(text, rate) } finally { audioFocus(false) }
@@ -245,5 +265,6 @@ class PiperSpeechOutput(
         private const val TAG = "JarvisPiper"
         const val VOICE = "tts-piper-tr-dfki-medium"
         const val GROUP = "tts-piper-tr"
+        const val PIPER_ID = "piper"
     }
 }

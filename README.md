@@ -87,8 +87,12 @@ Rick'in dosyaları: `%LOCALAPPDATA%\Rick` (Gezgin'in adres çubuğuna yazıp Ent
 
 Açık komutları hemen yapar: "feneri aç", "sesi kıs", "7'de alarm kur", "Ahmet'i ara". Sohbet arasında bir
 ihtiyaç söylerseniz önce sorar: "Yarın 7'de kalkmam lazım" → "Saat 07:00 için alarm kurayım mı?". "Evet", "olur"
-ya da "tamam" derseniz (veya **Evet** düğmesine basarsanız) yapar; "hayır" derseniz yapmaz. Arama ve mesajı
-yalnızca hazırlar, son tuşa siz basarsınız. Bilgi kütüphanede yoksa internette bakmayı teklif eder (bölüm 6).
+ya da "tamam" derseniz (veya **Evet** düğmesine basarsanız) yapar; "hayır" derseniz yapmaz. Mesajı
+yalnızca hazırlar, gönder tuşuna siz basarsınız. Bilgi kütüphanede yoksa internette bakmayı teklif eder (bölüm 6).
+
+"Ahmet'i ara", "annemi ara", "Ahmet'e telefon et" aramayı başlatır (ilk seferde telefon arama izni sorar).
+Rick'in sesini Ayarlar → **Rick'in sesi**'nden kadın ya da erkek seçebilirsiniz; telefonun kendi Türkçe sesleri en
+doğal olanlardır (yoksa **Telefona ses ekle**).
 
 Başka uygulamalara da iş verir: "YouTube'dan Tarkan Şımarık aç", "Spotify'dan Duman çal", "Sezen Aksu
 Gidiyorum şarkısını çal", "Google'da kedi bakımı ara". Arama o uygulamaya (yüklü değilse tarayıcıya) verilir;

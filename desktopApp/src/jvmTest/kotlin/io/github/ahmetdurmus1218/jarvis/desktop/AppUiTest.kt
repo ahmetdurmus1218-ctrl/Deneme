@@ -164,10 +164,12 @@ class AppUiTest {
         waitForText("Sonuç 84 efendim.")
         waitForText("84")
         shot("03-sohbet-hesap")
+        // Not in the library and no gate to read the web with: Rick offers the browser and does nothing on "Hayır".
         ask("Atatürk kimdir?")
-        waitForText("Bu bilgi kütüphanemde yok.")
-        waitForText("kaynak yok")
+        waitForText("tarayıcıda Google'da \"Atatürk\" aramasını açayım", substring = true)
         shot("04-sohbet-kaynak-yok")
+        click("Hayır")
+        waitForText("Peki, yapmıyorum.")
 
         // 3. Models → approval screen → reject
         rule.onNodeWithText("Modeller").performClick()

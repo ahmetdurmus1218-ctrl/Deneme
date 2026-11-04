@@ -95,7 +95,7 @@ object NeedDetector {
         CALL.find(text)?.let { m ->
             val name = DeviceCommands.contactName(m.groupValues[1])
             if (name.length >= 2 && Turkish.normalize(name) !in setOf("onu", "seni", "beni", "bunu", "birini")) {
-                return Need(Offer.Action(QuickCommand.Device(DeviceAction.Call(name))), "$name için aramayı hazırlayayım mı? Aramayı siz başlatırsınız.")
+                return Need(Offer.Action(QuickCommand.Device(DeviceAction.Call(name))), "$name aransın mı?")
             }
         }
         if (DARK.containsMatchIn(n)) return Need(Offer.Action(QuickCommand.Device(DeviceAction.Torch(true))), "Feneri açayım mı?")

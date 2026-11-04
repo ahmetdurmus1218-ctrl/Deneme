@@ -205,9 +205,8 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
     }
 
     /**
-     * The phone itself, with plain system calls (no permission) and Intents. Calls and messages are
-     * only prepared: the dialer / composer opens with the number and text, and the user presses call
-     * or send there. Rick has neither CALL_PHONE nor SEND_SMS.
+     * The phone itself, with plain system calls and Intents. "… ara" places the call (CALL_PHONE);
+     * messages are only prepared in the composer and the user presses send (no SEND_SMS).
      */
     private suspend fun device(a: DeviceAction): String? = try {
         val audio = app.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
@@ -268,14 +267,7 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
                 val charging = (app.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager)?.isCharging == true
                 "Pil yüzde $p" + if (charging) ", şarj oluyor." else "."
             } ?: "Pil durumunu okuyamadım."
-            is DeviceAction.Call -> {
-                val number = if (a.target.any { it.isDigit() } && a.target.all { it.isDigit() || it == '+' }) a.target else contactNumber(a.target)
-                when (number) {
-                    null -> "Rehberde \"${a.target}\" adında birini bulamadım."
-                    "" -> "Rehbere bakmak için izin gerekli."
-                    else -> start(Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:" + android.net.Uri.encode(number))), "Telefon uygulaması bulunamadı")
-                }
-            }
+            is DeviceAction.Call -> call(a.target)
             is DeviceAction.Message -> {
                 val number = a.target?.let { t -> if (t.all { it.isDigit() || it == '+' || it == ' ' }) t.filterNot { it == ' ' } else contactNumber(t) }
                 when {
@@ -336,14 +328,35 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
     }
 
     /**
-     * The phone number of the contact whose name best matches [name] (read on the device, nothing
-     * leaves it). Null: no such contact; "": the contacts permission was refused.
+     * Calls [target] (digits, or a contact name as said). The user's own "… ara" is the consent, as
+     * with any phone assistant; the number is dialled with CALL_PHONE, asked for once. Without that
+     * permission the dialer opens with the number and the user presses call.
      */
-    private suspend fun contactNumber(name: String): String? {
-        val act = activity ?: return ""
-        if (!act.ensurePermission(android.Manifest.permission.READ_CONTACTS)) return ""
+    private suspend fun call(target: String): String? {
+        val isNumber = target.any { it.isDigit() } && target.all { it.isDigit() || it == '+' || it == ' ' }
+        val (name, number) = if (isNumber) target to target.filterNot { it == ' ' } else when (val c = contact(target)) {
+            null -> return "Rehberde \"$target\" adında birini bulamadım. Rehberdeki adıyla söyler misiniz?"
+            CONTACTS_REFUSED -> return "Rehbere bakmak için izin gerekli; izin verirseniz kişileri adıyla arayabilirim."
+            else -> c
+        }
+        val act = activity ?: return "Uygulama ön planda değil"
+        val uri = android.net.Uri.parse("tel:" + android.net.Uri.encode(number))
+        if (act.ensurePermission(android.Manifest.permission.CALL_PHONE)) {
+            start(Intent(Intent.ACTION_CALL, uri), "Telefon uygulaması bulunamadı")?.let { return it }
+            return "$name aranıyor."
+        }
+        return start(Intent(Intent.ACTION_DIAL, uri), "Telefon uygulaması bulunamadı")
+            ?: "Arama izni verilmedi; $name numarasını çevirdim, aramak için yeşil tuşa basın."
+    }
+
+    /**
+     * Display name and number of the contact meant by [said] (read on the device, nothing leaves
+     * it). Null: no such contact; [CONTACTS_REFUSED]: the contacts permission was refused.
+     */
+    private suspend fun contact(said: String): Pair<String, String>? {
+        val act = activity ?: return CONTACTS_REFUSED
+        if (!act.ensurePermission(android.Manifest.permission.READ_CONTACTS)) return CONTACTS_REFUSED
         return withContext(Dispatchers.IO) {
-            val want = Turkish.normalize(name)
             val phone = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
             val cols = arrayOf(
                 android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
@@ -354,13 +367,18 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
                 while (c.moveToNext()) {
                     val n = c.getString(0) ?: continue
                     val num = c.getString(1) ?: continue
-                    all += Turkish.normalize(n) to num
+                    all += n to num
                 }
             }
-            all.firstOrNull { it.first == want }?.second
-                ?: all.firstOrNull { it.first.split(' ').any { w -> w == want } }?.second
-                ?: all.firstOrNull { it.first.startsWith(want) || (want.length >= 4 && it.first.contains(want)) }?.second
+            io.github.ahmetdurmus1218.jarvis.core.device.DeviceCommands.findContact(said, all)
         }
+    }
+
+    /** The phone number of the contact meant by [name]; null: none; "": no permission. */
+    private suspend fun contactNumber(name: String): String? = when (val c = contact(name)) {
+        null -> null
+        CONTACTS_REFUSED -> ""
+        else -> c.second
     }
 
     private fun start(intent: Intent, notFound: String): String? {
@@ -376,6 +394,7 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
     }
 
     private companion object Packages {
+        val CONTACTS_REFUSED = "" to ""
         const val YOUTUBE = "com.google.android.youtube"
         const val YOUTUBE_MUSIC = "com.google.android.apps.youtube.music"
         const val SPOTIFY = "com.spotify.music"

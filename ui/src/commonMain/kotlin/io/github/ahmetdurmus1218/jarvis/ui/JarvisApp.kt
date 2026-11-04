@@ -274,6 +274,8 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         }
 
         LaunchedEffect(settings.memoryEnabled) { graph.memory.setEnabled(settings.memoryEnabled) }
+        // The voice chosen in Settings (man / woman, Rick's own or the phone's).
+        LaunchedEffect(settings.voiceId) { graph.bridge.speechOutput?.choose(settings.voiceId) }
         LaunchedEffect(Unit) { graph.bridge.downloader.refresh() }
         // Load the language model and the speech recognizer as soon as the app is open (and again
         // after the wizard installed them), so the first question is answered without a long wait.

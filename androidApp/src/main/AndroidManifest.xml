@@ -20,8 +20,10 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <!-- "Annemi ara" / "Ahmet'e mesaj at": the number is looked up on the phone (asked only then).
-         Rick only opens the dialer / composer; it cannot call or send by itself (no CALL_PHONE, no SEND_SMS). -->
+         Messages are only prepared in the composer (no SEND_SMS); the user presses send. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- "Ahmet'i ara" places the call (asked once at the first call); refused → the dialer opens instead. -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <!-- Defined by both Kale and Kapı (same signing key) so install order does not matter. -->
     <permission

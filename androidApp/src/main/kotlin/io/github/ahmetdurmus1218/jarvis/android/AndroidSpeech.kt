@@ -255,9 +255,12 @@ class AndroidSpeechInput(
  * network connection. Piper via sherpa-onnx replaces it in v0.4.
  */
 class AndroidSpeechOutput(context: Context) : SpeechOutput {
-    override val engineName: String get() = "Android TTS (tr-TR, yalnızca cihaz içi ses)" + if (ready && voice == null) " — Türkçe ses bulunamadı" else ""
+    private val appContext = context.applicationContext
+    override val engineName: String get() = "Telefonun sesi (${voice?.name ?: "tr-TR"}, yalnızca cihaz içi)" + if (ready && voice == null) " — Türkçe ses bulunamadı" else ""
     @Volatile private var ready = false
     @Volatile private var voice: Voice? = null
+    /** The voice name the user chose (applied once the engine is up). */
+    @Volatile private var wanted: String? = null
 
     override val silentReason: String?
         get() = when {
@@ -272,7 +275,7 @@ class AndroidSpeechOutput(context: Context) : SpeechOutput {
     private val tts: TextToSpeech = TextToSpeech(context.applicationContext) { status ->
         if (status == TextToSpeech.SUCCESS) {
             ready = true
-            voice = pickOfflineTurkishVoice()
+            voice = offlineTurkishVoices().firstOrNull { it.name == wanted } ?: pickOfflineTurkishVoice()
             val v = voice
             if (v != null) tts.setVoice(v) else tts.setLanguage(TURKISH)
         }
@@ -290,12 +293,45 @@ class AndroidSpeechOutput(context: Context) : SpeechOutput {
         })
     }
 
-    private fun pickOfflineTurkishVoice(): Voice? = runCatching {
+    private fun pickOfflineTurkishVoice(): Voice? = offlineTurkishVoices().firstOrNull()
+
+    /** Turkish voices that work without a network, best first. */
+    fun offlineTurkishVoices(): List<Voice> = if (!ready) emptyList() else runCatching {
         tts.voices.orEmpty()
             .filter { it.locale.language == "tr" && !it.isNetworkConnectionRequired }
             .filterNot { TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED in it.features.orEmpty() }
-            .maxByOrNull { it.quality }
-    }.getOrNull()
+            .sortedWith(compareByDescending<Voice> { it.quality }.thenBy { it.name })
+    }.getOrDefault(emptyList())
+
+    override fun voices(): List<io.github.ahmetdurmus1218.jarvis.ui.VoiceChoice> = offlineTurkishVoices().mapIndexed { i, v ->
+        io.github.ahmetdurmus1218.jarvis.ui.VoiceChoice(
+            SYSTEM_PREFIX + v.name,
+            "Telefonun sesi ${i + 1}",
+            io.github.ahmetdurmus1218.jarvis.ui.VoiceGender.guess(v.name + " " + v.features.orEmpty().joinToString(" ")),
+            "internetsiz · ${v.name}",
+        )
+    }
+
+    override fun choose(id: String?) {
+        val name = id?.takeIf { it.startsWith(SYSTEM_PREFIX) }?.removePrefix(SYSTEM_PREFIX)
+        wanted = name
+        if (!ready) return
+        val v = offlineTurkishVoices().firstOrNull { it.name == name } ?: pickOfflineTurkishVoice()
+        voice = v
+        v?.let { runCatching { tts.setVoice(it) } }
+    }
+
+    /** The phone's text-to-speech settings, where offline Turkish voices are added. */
+    override fun openVoiceSettings(): Boolean = listOf(
+        Intent("com.android.settings.TTS_SETTINGS"),
+        Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA),
+    ).any { i ->
+        runCatching { appContext.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true }.getOrDefault(false)
+    }
+
+    companion object {
+        const val SYSTEM_PREFIX = "system:"
+    }
 
     override suspend fun speak(text: String, rate: Float) {
         if (!initDone.await()) return

@@ -5,9 +5,9 @@ import io.github.ahmetdurmus1218.jarvis.core.text.Turkish
 /**
  * Things the user asks the device itself to do, answered at once without the language model:
  * the torch, volume, music, system setting panels, the battery, preparing a call / a message,
- * directions. The platform carries them out with plain system calls and Intents. Calls and
- * messages are only PREPARED (dialer / composer opens with the number and text); the user presses
- * call or send there, Rick has no permission to do either by itself.
+ * directions. The platform carries them out with plain system calls and Intents. A call the user
+ * asks for is placed (the phone asks once for the call permission); a message is only PREPARED in
+ * the composer and the user presses send.
  */
 sealed interface DeviceAction {
     data class Torch(val on: Boolean) : DeviceAction
@@ -72,7 +72,10 @@ object DeviceCommands {
     private val PANEL = Regex("^(wi ?fi|wifi|kablosuz|bluetooth|mobil veri|internet|konum|gps|ucak modu|parlaklik|parlaklig|ekran parlakligi|pil tasarrufu|guc tasarrufu|rahatsiz etme\\w*|ses ayarlari)(?:i|ni|yi|u|nu|yu)?\\s+(ac|kapat|kapa|ayar\\w*|goster|duzenle)\\w*$")
     private val BATTERY = Regex("^(?:pil|sarj|batarya)(?:im|in|imiz)?(?: durumu| seviyesi| yuzdesi)?(?: kac| ne kadar| ne durumda| yuzde kac| kac kaldi| bitti mi| ne)?$|^kac sarjim (?:var|kaldi)$|^(?:pil|sarj) yuzde kac$")
     private val CALL_NUMBER = Regex("^([+0-9][0-9 ]{1,16}[0-9])(?:'?(?:i|u|yi|yu|ı))?\\s+(?:numarasini\\s+)?(?:ara|arar misin|cevir)$")
-    private val CALL_NAME = Regex("^(.{2,30}?)\\s+(?:ara|arar misin|arasana|telefon et|telefonla)$")
+    private val CALL_NAME = Regex(
+        "^(.{2,30}?)\\s+(?:(?:telefonla|cepten|hemen) )?(ara|arar misin|arayabilir misin|arayiver|arasana|aramak istiyorum|telefon et|telefon eder misin|" +
+            "telefon ac|telefon acar misin|telefonla|cevir)(?: (?:hemen|simdi|lutfen|bakalim))?$",
+    )
     private val MESSAGE = Regex("^(?:(.{2,30}?)'?(?:e|a|ye|ya|ne|na)\\s+)?(?:mesaj|sms)\\s+(?:at|gonder|yaz|yolla)\\w*[: ,]+(.+)$")
     private val NAVIGATE = Regex("^(.{2,40}?)'?(?:e|a|ye|ya|ne|na)?\\s+(?:yol tarifi(?: ver)?|nasil gidilir|nasil giderim|navigasyon(?: ac)?|navigasyonu ac)$|^(?:haritada|haritadan)\\s+(.{2,40})\\s+(?:goster|ac|bul)$")
 
@@ -168,8 +171,10 @@ object DeviceCommands {
         }
         CALL_NAME.matchEntire(n)?.let { m ->
             val who = m.groupValues[1]
-            // "beni ara", "Wikipedia'da kedi ara", "belgelerimde vergi ara" are not calls.
-            if (looksLikePerson(who)) {
+            // "beni ara", "Wikipedia'da kedi ara", "belgelerimde vergi ara" are not calls; "Ahmet'e
+            // telefon et" names the person in the dative ("-e"), which is not a place.
+            val dative = m.groupValues[2].startsWith("telefon")
+            if (looksLikePerson(who, dative)) {
                 return DeviceAction.Call(contactName(original(raw, who)))
             }
         }
@@ -183,9 +188,10 @@ object DeviceCommands {
 
     private val NOT_PEOPLE = setOf("beni", "bunu", "sunu", "onu", "bunlari", "internette", "googleda", "wikipediada", "kutuphanede", "kitaplikta", "hafizada", "belgelerde", "belgelerimde", "dosyalarda")
 
-    private fun looksLikePerson(who: String): Boolean {
+    private fun looksLikePerson(who: String, dative: Boolean = false): Boolean {
         val words = who.split(' ')
         if (words.size > 2 || words.first() in NOT_PEOPLE || " ve " in who) return false
+        if (dative) return words.none { it in NOT_PEOPLE }
         // A place in the sentence ("Ankara'da otel ara") means searching, not calling: a person to call
         // carries the object ending ("Ahmet'i", "annemi") instead.
         return words.none { (it.length > 3 && Regex("(?:da|de|ta|te)$").containsMatchIn(it)) || it in NOT_PEOPLE }
@@ -203,6 +209,42 @@ object DeviceCommands {
             lower.length > 3 && lower.last() in "iu" && lower[lower.length - 2] !in vowels -> s.dropLast(1)
             else -> s
         }
+    }
+
+    /**
+     * The contact meant by [said] ("annemi", "Ahmet'e", "babam", "ahmete") among [contacts] (display
+     * name → number), read on the device: case endings and "my" are tried off one by one, then the
+     * name is matched whole, by one of its words, by its start, by a part.
+     */
+    fun findContact(said: String, contacts: List<Pair<String, String>>): Pair<String, String>? {
+        val all = contacts.map { Triple(Turkish.normalize(it.first).replace(Regex("[^a-z0-9 ]"), " ").trim(), it.first, it.second) }
+        for (want in nameForms(said)) {
+            val hit = all.firstOrNull { it.first == want }
+                ?: all.firstOrNull { it.first.split(Regex(" +")).any { w -> w == want } }
+                ?: all.filter { want.length >= 3 && it.first.startsWith(want) }.minByOrNull { it.first.length }
+                ?: all.filter { want.length >= 4 && it.first.contains(want) }.minByOrNull { it.first.length }
+            if (hit != null) return hit.second to hit.third
+        }
+        return null
+    }
+
+    /** "annemi" → annemi, annem, anne; "ahmete" → ahmete, ahmet; "Ahmet'i" → ahmet. */
+    fun nameForms(said: String): List<String> {
+        val base = Turkish.normalize(said.substringBefore('\'').substringBefore('’')).replace(Regex("[^a-z0-9 ]"), " ").replace(Regex(" +"), " ").trim()
+        if (base.isEmpty()) return emptyList()
+        val out = linkedSetOf(base)
+        fun strip(s: String): List<String> = listOf("yi", "yu", "ye", "ya", "ni", "nu", "ne", "na", "i", "u", "e", "a")
+            .filter { s.length - it.length >= 3 && s.endsWith(it) }.map { s.dropLast(it.length) }
+        val endings = strip(base)
+        out += endings
+        // "my": annem → anne, babam → baba, kardesim → kardes, ablam → abla.
+        (listOf(base) + endings).forEach { s ->
+            if (s.length >= 4 && s.endsWith("m")) {
+                out += s.dropLast(1)
+                if (s.length >= 5 && s[s.length - 2] in "iu") out += s.dropLast(2)
+            }
+        }
+        return out.toList()
     }
 
     private fun original(raw: String, normalizedPart: String): String = Turkish.cutOriginal(raw, normalizedPart)
@@ -229,7 +271,7 @@ object DeviceCommands {
             null -> "."
         }
         DeviceAction.Battery -> "Pil durumuna bakıyorum."
-        is DeviceAction.Call -> "${a.target} için arama hazır; aramak için yeşil tuşa basın."
+        is DeviceAction.Call -> "${a.target} aranıyor."
         is DeviceAction.Message -> "Mesaj hazır" + (a.target?.let { ", alıcı $it" } ?: "") + "; göndermek için gönder tuşuna basın."
         is DeviceAction.Navigate -> "${a.place} için harita açılıyor."
         is DeviceAction.OpenIn -> when {

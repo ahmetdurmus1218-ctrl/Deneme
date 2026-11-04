@@ -41,6 +41,8 @@ import io.github.ahmetdurmus1218.jarvis.ui.ModelInstaller
 import io.github.ahmetdurmus1218.jarvis.ui.PlatformBridge
 import io.github.ahmetdurmus1218.jarvis.ui.SettingsStore
 import io.github.ahmetdurmus1218.jarvis.ui.SpeechInput
+import io.github.ahmetdurmus1218.jarvis.ui.VoiceChoice
+import io.github.ahmetdurmus1218.jarvis.ui.VoiceGender
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisColors
 import kotlinx.coroutines.launch
 
@@ -247,6 +249,7 @@ fun SettingsScreen(bridge: PlatformBridge, settings: SettingsStore, registry: Mo
             else -> {}
         }
         packNote?.let { Text(it, fontSize = 12.sp) }
+        VoicePicker(bridge, settings)
         Text("Ses sentezi: ${bridge.speechOutput?.engineName ?: "yok"}", color = JarvisColors.TextDim, fontSize = 12.sp)
         VoiceTest(bridge, s.speechRate)
         DisplaySettings(settings)
@@ -270,6 +273,80 @@ fun foundText(n: Int): String? = when {
     n < 0 -> null
     n == 0 -> "Eşleşen model dosyası bulunamadı (dosya adı, boyutu ve SHA-256 özeti kilit dosyasıyla aynı olmalı)."
     else -> "$n dosya bu cihazda bulundu ve doğrulandı; indirilmeyecek."
+}
+
+/**
+ * "Rick'in sesi": a man's or a woman's voice. Rick's own Piper voice is a man's; the phone's own
+ * offline Turkish voices (Google / Samsung) are often more natural and include women's voices.
+ * Each one can be heard before it is chosen.
+ */
+@Composable
+private fun VoicePicker(bridge: PlatformBridge, settings: SettingsStore) {
+    val tts = bridge.speechOutput ?: return
+    val s by settings.state.collectAsState()
+    val scope = rememberCoroutineScope()
+    var voices by remember { mutableStateOf(tts.voices()) }
+    var note by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        // The phone's voice engine starts in the background: look again shortly.
+        repeat(3) { kotlinx.coroutines.delay(1_000); voices = tts.voices() }
+    }
+    Text("Rick'in sesi", fontWeight = FontWeight.SemiBold)
+    if (voices.size <= 1) {
+        Text(
+            if (bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.ANDROID) {
+                "Şu an yalnızca bir ses var. Kadın sesi ve daha doğal sesler için telefona internetsiz Türkçe ses ekleyin."
+            } else {
+                "Bilgisayarda şimdilik Rick'in kendi (erkek) sesi var; açık kaynakta internetsiz Türkçe kadın sesi bulunmuyor."
+            },
+            color = JarvisColors.TextDim, fontSize = 12.sp,
+        )
+    }
+    fun pick(v: VoiceChoice) {
+        settings.update { it.copy(voiceId = v.id) }
+        tts.choose(v.id)
+        scope.launch { runCatching { tts.speak("Merhaba, artık bu sesle konuşacağım.", s.speechRate) } }
+    }
+    Row {
+        listOf(VoiceGender.KADIN, VoiceGender.ERKEK).forEach { g ->
+            OutlinedButton(onClick = {
+                val v = voices.firstOrNull { it.gender == g && it.id == s.voiceId } ?: voices.firstOrNull { it.gender == g }
+                if (v != null) { note = null; pick(v) } else {
+                    note = "Hangisinin ${g.label.lowercase()} sesi olduğunu telefon söylemiyor: aşağıdaki sesleri ▶ ile dinleyip beğendiğinizi seçin." +
+                        if (voices.size <= 1) " Liste boşsa önce \"Telefona ses ekle\"." else ""
+                }
+            }, modifier = Modifier.padding(end = 8.dp)) { Text("${g.label} sesi") }
+        }
+    }
+    voices.forEach { v ->
+        val selected = (s.voiceId ?: voices.firstOrNull()?.id) == v.id
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text((if (selected) "● " else "○ ") + v.label + (v.gender?.let { " · ${it.label}" } ?: ""), fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
+                if (v.note.isNotBlank()) Text(v.note, color = JarvisColors.TextDim, fontSize = 11.sp)
+            }
+            OutlinedButton(onClick = {
+                val before = s.voiceId
+                tts.choose(v.id)
+                scope.launch {
+                    runCatching { tts.speak("Merhaba, ben Rick. Sesim böyle.", s.speechRate) }
+                    if (settings.state.value.voiceId != v.id) tts.choose(before)
+                }
+            }, modifier = Modifier.padding(end = 6.dp)) { Text("▶") }
+            if (!selected) OutlinedButton(onClick = { pick(v) }) { Text("Seç") }
+        }
+    }
+    if (bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.ANDROID) {
+        OutlinedButton(onClick = {
+            note = if (tts.openVoiceSettings()) {
+                "Açılan ekranda: Tercih edilen motor → (Google) ayarlar → Ses verilerini yükle → Türkçe. İndirince buraya dönün; yeni sesler listede çıkar."
+            } else {
+                "Telefonun ses ayarları açılamadı: Ayarlar → Erişilebilirlik → Metin okuma çıkışı'ndan Türkçe ses ekleyebilirsiniz."
+            }
+            scope.launch { repeat(30) { kotlinx.coroutines.delay(2_000); voices = tts.voices() } }
+        }) { Text("Telefona ses ekle") }
+    }
+    note?.let { Text(it, color = JarvisColors.Amber, fontSize = 12.sp) }
 }
 
 /** "🔊 Sesi dene": speaks the test sentence and says plainly why nothing was heard, if so. */

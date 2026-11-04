@@ -142,7 +142,35 @@ interface SpeechOutput {
 
     /** Something the voice did by itself that the user should know (e.g. "medya sesi kapalıydı, açtım"), once. */
     fun takeNotice(): String? = null
+
+    /** Voices the user can choose in Settings (empty: only the one in use). */
+    fun voices(): List<VoiceChoice> = emptyList()
+
+    /** Speaks with [id] from [voices] from now on; null = Rick's default voice. */
+    fun choose(id: String?) {}
+
+    /** Opens the device's own voice settings, where more (offline) voices can be added; false: not here. */
+    fun openVoiceSettings(): Boolean = false
 }
+
+enum class VoiceGender(val label: String) {
+    KADIN("Kadın"), ERKEK("Erkek");
+
+    companion object {
+        /** From a voice's name / features, when the engine says it ("female", "tr-tr-f01", "#male_2"); null otherwise. */
+        fun guess(text: String): VoiceGender? {
+            val t = text.lowercase()
+            return when {
+                Regex("female|kadin|kadın|woman|(?:^|[-_#\\s])f\\d{1,2}(?:$|[-_\\s])").containsMatchIn(t) -> KADIN
+                Regex("(?:^|[^e])male|erkek|\\bman\\b|(?:^|[-_#\\s])m\\d{1,2}(?:$|[-_\\s])").containsMatchIn(t) -> ERKEK
+                else -> null
+            }
+        }
+    }
+}
+
+/** A voice Rick can speak with. [gender] is null when the voice does not say (then the user listens and picks). */
+data class VoiceChoice(val id: String, val label: String, val gender: VoiceGender?, val note: String = "")
 
 enum class ApprovalMethod(val label: String) {
     BIOMETRIC("biyometrik / PIN"),

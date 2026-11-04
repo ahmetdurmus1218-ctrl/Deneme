@@ -43,6 +43,7 @@ class OffersTest {
         assertEquals(QuickCommand.Device(DeviceAction.Media(MediaKey.PLAY)), need("Canım çok sıkılıyor"))
         assertEquals(QuickCommand.Device(DeviceAction.Volume(VolumeChange.SILENT_PHONE)), need("Ben artık yatıyorum"))
         assertEquals(QuickCommand.Device(DeviceAction.Call("Annem")), need("Annemi aramam lazım"))
+        assertEquals("Annem aransın mı?", NeedDetector.detect("Annemi aramam lazım")!!.say)
         assertEquals("Saat 07:00 için alarm kurayım mı?", NeedDetector.detect("Yarın 7'de kalkmam lazım")!!.say)
     }
 
@@ -206,5 +207,24 @@ class OffersTest {
         assertTrue(FactExtractor.worthAsking("Kahveyi hep şekersiz içerim, unutma"))
         assertFalse(FactExtractor.worthAsking("Bana bir fıkra anlatır mısın?"))
         assertFalse(FactExtractor.worthAsking("Bugün hava güzel"))
+    }
+
+    @Test
+    fun callsFindThePersonAsSaid() {
+        fun call(t: String) = (QuickCommandRouter.route(t) as? QuickCommand.Device)?.action
+        assertEquals(DeviceAction.Call("Ahmet"), call("Ahmet'e telefon et"))
+        assertEquals(DeviceAction.Call("Annem"), call("Annemi ara hemen"))
+        assertEquals(DeviceAction.Call("Ahmet"), call("Ahmet'i telefonla ara"))
+        assertEquals(DeviceAction.Call("babam"), call("babamı arayabilir misin"))
+        assertEquals(DeviceAction.Call("Ayşe"), call("Ayşe'yi aramak istiyorum"))
+        assertEquals("Ahmet aranıyor.", DeviceCommands.describe(DeviceAction.Call("Ahmet")))
+        val book = listOf("Anne" to "0532 1", "Baba" to "0533 2", "Ahmet Yılmaz" to "0534 3", "Ayşe Kara" to "0535 4", "Mehmet" to "0536 5")
+        assertEquals("Anne", DeviceCommands.findContact("Annem", book)?.first)
+        assertEquals("Baba", DeviceCommands.findContact("babam", book)?.first)
+        assertEquals("Ahmet Yılmaz", DeviceCommands.findContact("ahmete", book)?.first)
+        assertEquals("Ahmet Yılmaz", DeviceCommands.findContact("Ahmet'i", book)?.first)
+        assertEquals("Ayşe Kara", DeviceCommands.findContact("ayseyi", book)?.first)
+        assertEquals("Mehmet", DeviceCommands.findContact("Mehmet", book)?.first)
+        assertNull(DeviceCommands.findContact("Zeynep", book))
     }
 }
