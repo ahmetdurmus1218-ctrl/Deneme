@@ -47,6 +47,8 @@ sealed interface AssistantEvent {
     data class Failed(val message: String) : AssistantEvent
     /** Rick proposes something ([scene] asks); it is done only if the user says yes. */
     data class Offered(val offer: Offer, val scene: VerifiedScene) : AssistantEvent
+    /** "Günün haberleri": the headlines feed is read after the approval (gate + fingerprint / PIN). */
+    data class NewsRequested(val scene: VerifiedScene) : AssistantEvent
     /** The user asked for an online lookup in so many words: go straight to the approval. */
     data class WebRequested(val lookup: Offer.WebLookup, val scene: VerifiedScene) : AssistantEvent
 }
@@ -96,6 +98,11 @@ class Assistant(
     }
 
     fun ask(userText: String, history: List<ChatMessage> = emptyList()): Flow<AssistantEvent> = flow {
+        // "Günün haberleri", "gündemde ne var": the headlines, after the approval.
+        if (OnlineNews.matches(userText)) {
+            emit(AssistantEvent.NewsRequested(VerifiedScene(Sahne("Günün haberlerine bakıyorum."))))
+            return@flow
+        }
         // "internette … ara", "online ol, bak": the user asked to go online; only the approval is left.
         WebCommand.parse(userText)?.let { said ->
             val question = said.ifEmpty { lastQuestion(history).orEmpty() }
@@ -219,6 +226,28 @@ class Assistant(
             }
         }
         generate(turn, config, knowledge)
+    }
+
+    /**
+     * The headlines, read as they are (no model, nothing to make up): a short opening, then one
+     * scene per headline with its source card.
+     */
+    fun newsReply(items: List<NewsItem>): Flow<AssistantEvent> = flow {
+        if (items.isEmpty()) {
+            val scene = VerifiedScene(Sahne("Haber listesini okuyamadım; biraz sonra tekrar deneyelim.", Gorsel(GorselTip.BASLIK, baslik = "Haber yok")))
+            emit(AssistantEvent.SceneReady(0, scene))
+            emit(AssistantEvent.Completed(VerifiedReply(listOf(scene), null, emptyList()), ""))
+            return@flow
+        }
+        val top = items.take(OnlineNews.READ)
+        val scenes = listOf(
+            VerifiedScene(Sahne("${OnlineNews.SOURCE}'den günün başlıkları.", Gorsel(GorselTip.LISTE, baslik = "Günün haberleri", ogeler = top.map { it.title }))),
+        ) + top.map { n ->
+            VerifiedScene(Sahne(n.title.trimEnd('.') + ".", Gorsel(GorselTip.KAYNAK_KARTI, baslik = n.title, kaynak = OnlineNews.SOURCE, konum = n.url, metin = n.summary.ifBlank { null })))
+        }
+        scenes.forEachIndexed { i, s -> emit(AssistantEvent.SceneReady(i, s)) }
+        val detay = items.joinToString("\n") { "- " + it.title + (if (it.summary.isNotBlank()) ": " + it.summary else "") }
+        emit(AssistantEvent.Completed(VerifiedReply(scenes, detay, top.map { Kaynak(it.title, "web", it.url) }), ""))
     }
 
     private fun googleSearch(q: String) = QuickCommand.Device(

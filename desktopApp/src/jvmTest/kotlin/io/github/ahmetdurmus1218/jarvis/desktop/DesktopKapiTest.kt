@@ -211,4 +211,22 @@ class DesktopKapiTest {
             }
         }
     }
+
+    @Test
+    fun liveNewsThroughThePins() {
+        when (val r = DesktopKapi(Files.createTempDirectory("kapi").toFile()).query(io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineNews.URL)) {
+            is io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Ok -> {
+                val items = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineNews.parse(r.body)
+                assertTrue(items.size >= 3, r.body.take(300))
+                println("live news (PC): ${r.bytes} bytes, ${items.first().title}")
+            }
+            is io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed -> {
+                val offline = listOf("ConnectException", "UnknownHost", "timed out", "HttpTimeout", "Network is unreachable", "Tunnel failed").any { it in r.message }
+                if (!offline) error("live news failed: ${r.message}")
+                println("live news test skipped: ${r.message}")
+            }
+        }
+        val refused = DesktopKapi(Files.createTempDirectory("kapi").toFile()).query("https://feeds.bbci.co.uk/news/rss.xml")
+        assertTrue(refused is io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed)
+    }
 }

@@ -373,3 +373,29 @@ etmesini, kadın/erkek ses seçimini ve daha doğal sesi istedi.
   ses paketi). Yalnızca internet gerektirmeyen sesler listelenir; seçim `Settings.voiceId`. Motor cinsiyeti
   adında söylemiyorsa (ör. Google "tr-tr-x-…") kullanıcı dinleyip seçer. PC'de şimdilik yalnızca Rick'in sesi.
 
+## D42 — Canlı yüz, ekranda Rick, alkışla uyanma ve günün haberleri
+Kullanıcı karşısında biri varmış gibi hareket eden bir yüz, ekranda duran ve konuşunca tepki veren bir simge,
+alkışla uyanıp günün haberlerini söyleyen bir asistan istedi; WhatsApp'tan mesaj gönderme ve bankacılık gibi
+şeylerin olmamasını açıkça söyledi.
+- **Canlı yüz (`RickFace`):** tek Canvas, tek saat. Kendi hızında göz kırpar (bazen iki kez), beklerken
+  etrafa bakar ve kullanıcıya döner, dinlerken göz bebekleri büyür ve kaşlar kalkar (mikrofon seviyesiyle
+  halka), düşünürken yukarı bakar ve üç nokta döner, konuşurken ağız hece ritminde açılır, uykuda gözler
+  kapanır ve "z"ler yükselir. Ayarlar → Görünüm'den çekirdeğe dönülebilir; "Hareketi azalt" bakınmayı durdurur.
+- **Ekranda Rick (Android):** `SYSTEM_ALERT_WINDOW` ile her uygulamanın üstünde küçük yüz; ön plan servisi
+  (`microphone|specialUse`), bildirimden kapatılır. Dokun: konuş; basılı tut: Rick'i aç; sürükle: taşı.
+  Sohbet uygulama ölçeğinde tek denetleyicide (`AppGraph.sharedController`), pencere de yüz de aynı sohbeti
+  gösterir. Varsayılan kapalıdır; açarken izin ekranı ve mikrofon izni istenir.
+- **Alkışla uyanma:** sessiz geçen süreden sonra (en az 2 dk) yüz uyur; izin verildiyse mikrofon yalnızca
+  ses yüksekliği sıçramalarına bakar (`ClapDetector`, kayıt yok). İki alkış ya da dokunuş: "Günaydın…
+  Günün haberlerini okuyayım mı?" ve dinler.
+- **Günün haberleri:** tek ve sabit adres: BBC Türkçe RSS (`feeds.bbci.co.uk/turkce/rss.xml`). Kullanıcıdan
+  hiçbir metin gitmez; yine her okumada parmak izi/PIN (PC'de UAC) ister, Ağ sekmesine yazılır, başlıklar
+  oldukları gibi okunur (model yorum katmaz). Kapı ve rick-kapi yalnızca bu adresi ve Wikipedia aramasını
+  kabul eder (`WebSources`); XML dışı yanıt, yönlendirme ve 600 KB üstü reddedilir. CDN'in sertifika
+  otoritesi değişebildiği için yaygın kök anahtarlar sabitlendi (DigiCert, GlobalSign, Let's Encrypt,
+  Sectigo, Amazon, Google); tanınmayan otorite yine kapalı kalır.
+- **Kısıtlar:** Rick başka uygulamaların içinde işlem yapmaz: erişilebilirlik izni yok, WhatsApp/SMS
+  göndermez (yalnızca hazırlar), bankacılık ve ödeme yok.
+- **PC:** aynı yüz ana pencerede; "Ekranda Rick" her zaman üstte, kenarsız küçük bir pencere (tıkla: konuş,
+  çift tıkla: Rick).
+

@@ -49,6 +49,12 @@ data class Settings(
     val fontScale: Float = 1f,
     /** Calmer animations. */
     val reduceMotion: Boolean = false,
+    /** Rick shown as a living face (true) or as the HUD core. */
+    val face: Boolean = true,
+    /** The floating Rick over other apps (Android), started from Settings. */
+    val bubble: Boolean = false,
+    /** While the floating Rick sleeps, two claps wake it (microphone stays on, on the device only). */
+    val bubbleClapWake: Boolean = true,
     /** Learning from corrections / likes and reading while idle (all on the device). */
     val selfLearning: Boolean = true,
 )

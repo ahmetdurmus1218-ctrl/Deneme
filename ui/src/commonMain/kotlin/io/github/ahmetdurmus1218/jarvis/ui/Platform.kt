@@ -34,6 +34,9 @@ interface PlatformBridge {
     /** Raw 16 kHz microphone samples for the clap wake-up (sleep mode); null if the device has none. */
     val micStream: MicStream? get() = null
 
+    /** Rick floating over other apps (Android); null where there is none. */
+    val floating: FloatingRick? get() = null
+
     /** A screenshot of this screen as JPEG (the PC), for "ekranda ne var / ekranı oku". */
     suspend fun screenshotJpeg(): ByteArray? = null
 
@@ -83,6 +86,21 @@ interface FirewallControl {
 }
 
 /** The microphone as a stream of 16 kHz mono samples (−1..1), only while started; nothing is stored. */
+/**
+ * The small living face over other apps: tap to talk, hold to open Rick, drag to move. While it
+ * sleeps, two claps wake it (if allowed). Runs as a foreground service with a notification.
+ */
+interface FloatingRick {
+    /** True when the system lets Rick draw over other apps. */
+    fun allowed(): Boolean
+    /** Opens the system screen where the user allows it. */
+    fun askPermission()
+    /** Starts it (asks for the microphone first); a reason when it could not. */
+    suspend fun start(): String?
+    fun stop()
+    val running: kotlinx.coroutines.flow.StateFlow<Boolean>
+}
+
 interface MicStream {
     /** Starts delivering samples on a background thread; false if the microphone cannot be opened. */
     suspend fun start(onSamples: (FloatArray, Int) -> Unit): Boolean

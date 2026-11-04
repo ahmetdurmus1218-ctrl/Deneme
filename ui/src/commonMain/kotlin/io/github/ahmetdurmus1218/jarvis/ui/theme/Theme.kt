@@ -101,6 +101,9 @@ object JarvisColors {
 object JarvisUi {
     /** Calmer core and effects (fewer moving parts) for people sensitive to motion, or slow devices. */
     var reduceMotion by mutableStateOf(false)
+
+    /** Rick as a living face instead of the HUD core (Settings → Görünüm). */
+    var face by mutableStateOf(true)
 }
 
 private fun scheme(p: Palette) = if (p.light) {

@@ -518,6 +518,62 @@ def main():
         wait_for(text_has("Ses tanıma: Whisper small"), "Whisper is the active recognizer")
         check_no_crash()
 
+        step("the day's news: 'Gunun haberleri' → PIN → Kapı → feeds.bbci.co.uk (pinned) → headlines read aloud → Ağ log")
+        tap(wait_for(tab("Sohbet"), "chat tab"))
+        type_into(lambda n: n.get("class") == "android.widget.EditText", "Gunun haberleri")
+        tap(wait_for(text_is("Gönder"), "send button"))
+        time.sleep(4)
+        shot("18-haber-pin")
+        adb("shell", "input", "text", PIN)
+        adb("shell", "input", "keyevent", "66")
+        wait_for(text_has("günün başlıkları"), "headlines from BBC Türkçe", timeout=120)
+        shot("18b-haberler")
+        tap(wait_for(tab("Ağ"), "network tab"))
+        wait_for(text_has("Günün haberleri (BBC Türkçe)"), "news read in the network log")
+        check_no_crash()
+
+        step("floating Rick: overlay permission → Settings toggle → face over the home screen → tap / hold")
+        adb("shell", "appops", "set", KALE, "SYSTEM_ALERT_WINDOW", "allow")
+        tap(wait_for(tab("Ayarlar"), "settings tab"))
+        row = scroll_find(text_is("Ekranda Rick'i göster"), "floating Rick toggle")
+        y = (bounds(row)[1] + bounds(row)[3]) // 2
+        sw = find(lambda n: n.get("checkable") == "true" and bounds(n)[1] <= y <= bounds(n)[3])
+        tap(sw if sw is not None else row)
+        # Android 13+ asks once for notifications (the service's notification).
+        allow = text_is("Allow")
+        for _ in range(6):
+            time.sleep(1.5)
+            a = find(allow)
+            if a is not None:
+                tap(a)
+                break
+        time.sleep(2)
+        windows = adb("shell", "dumpsys", "window", "windows", check=False)
+        if "RickBubble" not in windows:
+            raise SystemExit("floating Rick window not found")
+        services = adb("shell", "dumpsys", "activity", "services", KALE, check=False)
+        if "BubbleService" not in services:
+            raise SystemExit("floating Rick service not running")
+        adb("shell", "input", "keyevent", "3")  # home: Rick stays on top of the launcher
+        time.sleep(2)
+        shot("19-ekranda-rick")
+        # The face starts at the right edge, a third down (see BubbleService.show): tap it to talk.
+        size = re.findall(r"(\d+)x(\d+)", adb("shell", "wm", "size"))[-1]
+        dens = int(re.findall(r"(\d+)", adb("shell", "wm", "density"))[-1]) / 160
+        w, h = int(size[0]), int(size[1])
+        fx, fy = int(w - 120 * dens + 48 * dens), int(h * 0.35 + 48 * dens)
+        adb("shell", "input", "tap", str(fx), str(fy))
+        time.sleep(3)
+        shot("19b-ekranda-rick-dinliyor")
+        if "BubbleService" not in adb("shell", "dumpsys", "activity", "services", KALE, check=False):
+            raise SystemExit("floating Rick stopped after a tap")
+        adb("shell", "input", "tap", str(fx), str(fy))  # stop listening
+        time.sleep(1)
+        # Hold: Rick's window comes back.
+        adb("shell", "input", "swipe", str(fx), str(fy), str(fx), str(fy), "1200")
+        wait_for(tab("Sohbet"), "Rick opened from the floating face", timeout=20)
+        check_no_crash()
+
     print("\nSMOKE TEST PASSED", flush=True)
 
 

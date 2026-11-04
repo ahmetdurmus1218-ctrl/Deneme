@@ -22,6 +22,9 @@ sealed interface Offer {
      */
     data class WebLookup(val query: String, val question: String) : Offer
 
+    /** "Günün haberlerini okuyayım mı?" (offered after waking up). */
+    data object News : Offer
+
     /** "Hangisini açayım?": the user's next sentence is what to open in [app]. */
     data class AskWhat(val app: io.github.ahmetdurmus1218.jarvis.core.device.OutsideApp) : Offer
 }
@@ -148,7 +151,7 @@ object WebCommand {
 object LiveInfo {
     private val LIVE = Regex(
         "\\b(?:hava durumu\\w*|hava nasil|hava kac derece|disarisi kac derece|yagmur yagacak|kar yagacak|dolar\\w*|euro\\w*|avro\\w*|sterlin\\w*|doviz\\w*|kur(?:u|lari) ne|" +
-            "altin fiyat\\w*|gram altin\\w*|ceyrek altin\\w*|bitcoin\\w*|borsa\\w*|bist|haberler\\w*|son dakika|gundem\\w*|mac(?:i|in)? (?:sonucu|skoru|kac kac|ne oldu|ne zaman|saat kacta)|" +
+            "altin fiyat\\w*|gram altin\\w*|ceyrek altin\\w*|bitcoin\\w*|borsa\\w*|bist|mac(?:i|in)? (?:sonucu|skoru|kac kac|ne oldu|ne zaman|saat kacta)|" +
             "skor\\w*|puan durumu|trafik durumu|yol durumu|nobetci eczane\\w*|benzin fiyat\\w*|akaryakit\\w*|namaz vakti\\w*|ezan\\w* ne zaman)\\b",
     )
 
@@ -178,7 +181,7 @@ object OnlineWikipedia {
     const val MAX_QUERY = 120
 
     /** Wikimedia asks every client to name itself; no personal data in it. */
-    const val USER_AGENT = "RickKapi/1.1 (offline Turkish assistant; one approved search; https://github.com/ahmetdurmus1218-ctrl/Deneme)"
+    const val USER_AGENT = "RickKapi/1.3 (offline Turkish assistant; one approved search; https://github.com/ahmetdurmus1218-ctrl/Deneme)"
 
     fun searchUrl(query: String): String = PREFIX + encode(query.trim().take(MAX_QUERY)) + SUFFIX
 

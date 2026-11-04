@@ -32,6 +32,7 @@ import io.github.ahmetdurmus1218.jarvis.ui.DeviceInfo
 import io.github.ahmetdurmus1218.jarvis.ui.PlatformBridge
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
@@ -69,11 +70,18 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
         lifecycleOwner = { activity },
     )
     override val zim = AndroidZim { AndroidZim.installedZim(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled) }
-    private val micPermission: suspend () -> Boolean = { activity?.ensurePermission(android.Manifest.permission.RECORD_AUDIO) ?: false }
+    // Already granted (the floating Rick has no activity): no need to ask.
+    private val micPermission: suspend () -> Boolean = {
+        ContextCompat.checkSelfPermission(app, android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED ||
+            activity?.ensurePermission(android.Manifest.permission.RECORD_AUDIO) == true
+    }
+    private val mainScope = kotlinx.coroutines.MainScope()
+
+    override val floating: io.github.ahmetdurmus1218.jarvis.ui.FloatingRick by lazy { AndroidFloatingRick(app) { activity } }
     /** Whisper (Rick's own, hash-verified model) when installed, else the phone's on-device recognizer. */
     override val speechInput = PreferWhisperSpeechInput(
         WhisperSpeechInput(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, micPermission),
-        AndroidSpeechInput(app, ensureMicPermission = micPermission, launch = { block -> activity?.launchOnUi(block) }),
+        AndroidSpeechInput(app, ensureMicPermission = micPermission, launch = { block -> activity?.launchOnUi(block) ?: mainScope.launch { block() } }),
     )
     override val micStream = AndroidMicStream(micPermission)
 
@@ -156,6 +164,12 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
         }
 
         private suspend fun confirmOnMain(title: String, subtitle: String): ApprovalResult {
+            // Asked from the floating Rick: open Rick's window for the fingerprint / PIN.
+            if (activity == null) {
+                runCatching { app.startActivity(Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)) }
+                repeat(50) { if (activity == null) kotlinx.coroutines.delay(100) }
+                kotlinx.coroutines.delay(400)
+            }
             val act = activity ?: return ApprovalResult.Rejected("Uygulama ön planda değil")
             val allowed = BIOMETRIC_STRONG or DEVICE_CREDENTIAL
             if (BiometricManager.from(act).canAuthenticate(allowed) != BiometricManager.BIOMETRIC_SUCCESS) {
@@ -297,8 +311,8 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
      * support "play from search" start playing at once; YouTube shows its results.
      */
     private fun openIn(a: DeviceAction.OpenIn): String? {
-        val act = activity ?: return "Uygulama ön planda değil"
         fun installed(pkg: String) = app.packageManager.getLaunchIntentForPackage(pkg) != null
+        fun installedFor(i: Intent) = i.`package`?.let { installed(it) } ?: true
         fun playFromSearch(pkg: String) = Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH)
             .setPackage(pkg)
             .putExtra(android.app.SearchManager.QUERY, a.query)
@@ -315,15 +329,8 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
             }
             OutsideApp.GOOGLE -> null
         }
-        if (first != null) {
-            try {
-                act.startActivity(first)
-                return null
-            } catch (_: ActivityNotFoundException) {
-                // not installed: the same search on the web below
-            } catch (_: SecurityException) {
-            }
-        }
+        // The app itself when it is there (an empty error means it opened); else the same search on the web.
+        if (first != null && installedFor(first) && start(first, "-") == null) return null
         return start(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(a.app.webUrl(a.query))), "Bu telefonda ${a.app.label} da tarayıcı da bulunamadı")
     }
 
@@ -339,9 +346,10 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
             CONTACTS_REFUSED -> return "Rehbere bakmak için izin gerekli; izin verirseniz kişileri adıyla arayabilirim."
             else -> c
         }
-        val act = activity ?: return "Uygulama ön planda değil"
         val uri = android.net.Uri.parse("tel:" + android.net.Uri.encode(number))
-        if (act.ensurePermission(android.Manifest.permission.CALL_PHONE)) {
+        val mayCall = ContextCompat.checkSelfPermission(app, android.Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED ||
+            activity?.ensurePermission(android.Manifest.permission.CALL_PHONE) == true
+        if (mayCall) {
             start(Intent(Intent.ACTION_CALL, uri), "Telefon uygulaması bulunamadı")?.let { return it }
             return "$name aranıyor."
         }
@@ -354,8 +362,9 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
      * it). Null: no such contact; [CONTACTS_REFUSED]: the contacts permission was refused.
      */
     private suspend fun contact(said: String): Pair<String, String>? {
-        val act = activity ?: return CONTACTS_REFUSED
-        if (!act.ensurePermission(android.Manifest.permission.READ_CONTACTS)) return CONTACTS_REFUSED
+        val granted = ContextCompat.checkSelfPermission(app, android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED ||
+            activity?.ensurePermission(android.Manifest.permission.READ_CONTACTS) == true
+        if (!granted) return CONTACTS_REFUSED
         return withContext(Dispatchers.IO) {
             val phone = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
             val cols = arrayOf(
@@ -381,10 +390,12 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
         else -> c.second
     }
 
+    /** Starts [intent] from Rick's window, or (the floating Rick, no window) from the app itself. */
     private fun start(intent: Intent, notFound: String): String? {
-        val act = activity ?: return "Uygulama ön planda değil"
+        val ctx: Context = activity ?: app
+        if (ctx !== activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return try {
-            act.startActivity(intent)
+            ctx.startActivity(intent)
             null
         } catch (_: ActivityNotFoundException) {
             notFound

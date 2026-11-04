@@ -483,4 +483,27 @@ class JarvisControllerTest {
         assertEquals(VoiceGender.ERKEK, VoiceGender.guess("tur-tr-m00 embedded"))
         assertEquals(null, VoiceGender.guess("tr-tr-x-cfs-local"))
     }
+
+    @Test
+    fun theNewsIsReadAfterTheApprovalAndLogged() = runTest {
+        val scope = controllerScope()
+        val rss = """<rss><channel><item><title>Meclis'te yeni bütçe görüşmeleri başladı</title><link>https://www.bbc.com/turkce/a1</link></item>
+            <item><title>Deprem bölgesinde konut teslimleri sürüyor</title><link>https://www.bbc.com/turkce/a2</link></item></channel></rss>"""
+        val (c, bridge, log) = webSetup(scope, rss)
+        c.send("Günün haberleri")
+        advanceUntilIdle()
+        assertEquals(io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineNews.URL, bridge.fetched.single())
+        val turn = c.turns.value.last()
+        assertEquals("Meclis'te yeni bütçe görüşmeleri başladı.", turn.scenes[1].sahne.ses)
+        assertEquals("Günün haberleri (BBC Türkçe)", log.events.value.single().what)
+        // Offered on waking up: nothing goes out before the yes.
+        c.offerNews("Günaydın.")
+        advanceUntilIdle()
+        assertEquals(1, bridge.fetched.size)
+        assertTrue(c.turns.value.last().scenes.single().sahne.ses.endsWith("Günün haberlerini okuyayım mı?"))
+        c.send("evet")
+        advanceUntilIdle()
+        assertEquals(2, bridge.fetched.size)
+        scope.cancel()
+    }
 }

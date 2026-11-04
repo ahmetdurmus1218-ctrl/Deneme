@@ -19,6 +19,8 @@ import io.github.ahmetdurmus1218.jarvis.core.memory.InMemoryMemoryStore
 import io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand
 import io.github.ahmetdurmus1218.jarvis.core.router.QuickCommandRouter
 import io.github.ahmetdurmus1218.jarvis.core.assistant.LiveInfo
+import io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineNews
+import io.github.ahmetdurmus1218.jarvis.core.assistant.WebSources
 import io.github.ahmetdurmus1218.jarvis.core.assistant.WebCommand
 import io.github.ahmetdurmus1218.jarvis.core.llm.ChatMessage
 import io.github.ahmetdurmus1218.jarvis.core.llm.Role
@@ -105,7 +107,7 @@ class OffersTest {
 
     @Test
     fun liveQuestionsAreNotGuessed() {
-        listOf("Bugün hava nasıl?", "Dolar kaç TL", "Galatasaray maçı kaç kaç bitti", "son dakika haberleri").forEach { assertTrue(LiveInfo.matches(it), it) }
+        listOf("Bugün hava nasıl?", "Dolar kaç TL", "Galatasaray maçı kaç kaç bitti").forEach { assertTrue(LiveInfo.matches(it), it) }
         listOf("Borsa nedir?", "Atatürk kimdir?", "Su kaç derecede kaynar?").forEach { assertFalse(LiveInfo.matches(it), it) }
     }
 
@@ -226,5 +228,44 @@ class OffersTest {
         assertEquals("Ayşe Kara", DeviceCommands.findContact("ayseyi", book)?.first)
         assertEquals("Mehmet", DeviceCommands.findContact("Mehmet", book)?.first)
         assertNull(DeviceCommands.findContact("Zeynep", book))
+    }
+
+    @Test
+    fun theDaysNewsIsAskedInPlainWords() {
+        listOf("Günün haberleri", "Rick, bugünün haberleri neler?", "haberleri oku", "Son dakika haberler", "gündemde ne var", "neler oluyor", "haberler").forEach {
+            assertTrue(OnlineNews.matches(it), it)
+        }
+        listOf("Haber kanalını aç", "Bu haberi kim yazdı?", "Atatürk kimdir?", "haberleşme nasıl çalışır").forEach { assertFalse(OnlineNews.matches(it), it) }
+        assertTrue(WebSources.allowed(OnlineNews.URL))
+        assertFalse(WebSources.allowed(OnlineNews.URL + "?x=1"))
+        assertFalse(WebSources.allowed("https://feeds.bbci.co.uk/news/rss.xml"))
+        assertEquals("feeds.bbci.co.uk", WebSources.hostOf(OnlineNews.URL))
+    }
+
+    @Test
+    fun headlinesAreReadFromTheFeedAsTheyAre() {
+        val rss = """<?xml version="1.0"?><rss><channel><title>BBC News Türkçe</title>
+            <item><title><![CDATA[Meclis'te yeni bütçe görüşmeleri başladı]]></title><description><![CDATA[Görüşmeler 12 gün sürecek.]]></description><link>https://www.bbc.com/turkce/articles/a1</link></item>
+            <item><title>Deprem bölgesinde &amp; konut teslimleri sürüyor</title><description>Ayrıntılar &lt;b&gt;haberde&lt;/b&gt;.</description><link>https://www.bbc.com/turkce/articles/a2</link></item>
+            <item><title>Kısa</title></item>
+            </channel></rss>"""
+        val items = OnlineNews.parse(rss)
+        assertEquals(listOf("Meclis'te yeni bütçe görüşmeleri başladı", "Deprem bölgesinde & konut teslimleri sürüyor"), items.map { it.title })
+        assertEquals("Ayrıntılar haberde .".replace(" .", "."), items[1].summary.replace(" .", "."))
+        assertEquals("https://www.bbc.com/turkce/articles/a1", items[0].url)
+        assertTrue(OnlineNews.parse("<html>nope</html>").isEmpty())
+    }
+
+    @Test
+    fun newsGoesStraightToTheApprovalAndIsReadVerbatim() = runTest {
+        val ev = assistant(web = true).ask("Günün haberleri neler?").toList().single()
+        assertTrue(ev is AssistantEvent.NewsRequested)
+        val items = listOf(io.github.ahmetdurmus1218.jarvis.core.assistant.NewsItem("Meclis'te yeni bütçe görüşmeleri başladı", "Görüşmeler 12 gün sürecek.", "https://www.bbc.com/turkce/a1"))
+        val done = assistant(web = true).newsReply(items).toList().filterIsInstance<AssistantEvent.Completed>().single()
+        assertEquals("Meclis'te yeni bütçe görüşmeleri başladı.", done.reply.scenes[1].sahne.ses)
+        assertTrue(done.reply.scenes[0].sahne.ses.contains("BBC Türkçe"))
+        assertEquals("web", done.reply.kaynaklar.single().tur)
+        val none = assistant(web = true).newsReply(emptyList()).toList().filterIsInstance<AssistantEvent.Completed>().single()
+        assertTrue(none.reply.scenes.single().sahne.ses.contains("okuyamadım"))
     }
 }

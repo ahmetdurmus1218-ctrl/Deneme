@@ -239,4 +239,34 @@ class GateDownloaderTest {
         assertTrue(pages.any { "Atatürk" in it.title }, pages.map { it.title }.toString())
         println("live Wikipedia: ${r.bytes} bytes, first: ${pages.first().title}: ${pages.first().text.take(80)}")
     }
+
+    @Test
+    fun theNewsFeedIsTheOnlyNewsAddressAndMustBeXml() {
+        val url = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineNews.URL
+        val xml = mapOf("Content-Type" to "application/rss+xml; charset=utf-8")
+        val ok = GateQuery(client { req -> respond(req, 200, "<rss></rss>".toByteArray(), xml) }).fetch(url)
+        assertEquals("feeds.bbci.co.uk", ok.host)
+        assertFailsWith<GateException> { GateQuery(client { req -> respond(req, 200, "{}".toByteArray(), mapOf("Content-Type" to "application/json")) }).fetch(url) }
+        for (other in listOf("https://feeds.bbci.co.uk/news/rss.xml", "$url?q=x", url.replace("https://", "http://"))) {
+            assertFailsWith<GateException> { GateQuery(client { req -> respond(req, 200, ByteArray(0), xml) }).fetch(other) }
+        }
+        assertTrue(Pins.pinner.findMatchingPins("feeds.bbci.co.uk").isNotEmpty())
+    }
+
+    /** Against the real BBC Türkçe feed: the pins accept its chain and the feed has headlines. */
+    @Test
+    fun liveNewsThroughThePins() {
+        val r = try {
+            GateQuery().fetch(io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineNews.URL)
+        } catch (e: GateException) {
+            throw e
+        } catch (e: java.io.IOException) {
+            if (e is SSLPeerUnverifiedException || e is javax.net.ssl.SSLHandshakeException) throw e
+            println("live news test skipped: ${e.javaClass.simpleName} ${e.message}")
+            return
+        }
+        val items = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineNews.parse(r.body)
+        assertTrue(items.size >= 3, r.body.take(300))
+        println("live news: ${r.bytes} bytes, ${items.size} headlines, first: ${items.first().title}")
+    }
 }

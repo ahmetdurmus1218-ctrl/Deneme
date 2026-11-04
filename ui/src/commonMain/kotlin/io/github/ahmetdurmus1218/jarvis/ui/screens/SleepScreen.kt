@@ -103,7 +103,13 @@ fun SleepScreen(bridge: PlatformBridge, settings: Settings, onWake: () -> Unit) 
         Modifier.fillMaxSize().background(Color.Black).pointerInput(Unit) { detectTapGestures(onDoubleTap = { onWake() }) },
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.size(220.dp)) {
+        if (io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.face) {
+            val listening = phase == Phase.PHRASE
+            io.github.ahmetdurmus1218.jarvis.ui.components.RickFace(
+                if (listening) io.github.ahmetdurmus1218.jarvis.ui.CoreMode.LISTENING else io.github.ahmetdurmus1218.jarvis.ui.CoreMode.IDLE,
+                level, Modifier, size = 220.dp, sleeping = !listening,
+            )
+        } else Canvas(Modifier.size(220.dp)) {
             val c = Offset(size.width / 2, size.height / 2)
             val listening = phase == Phase.PHRASE
             val r = (if (listening) 22.dp.toPx() else 7.dp.toPx()) * (0.85f + 0.15f * breath)

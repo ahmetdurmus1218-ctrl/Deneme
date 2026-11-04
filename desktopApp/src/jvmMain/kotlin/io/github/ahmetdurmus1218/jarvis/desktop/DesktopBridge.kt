@@ -120,6 +120,8 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
      * Approved Wikipedia searches go out through rick-kapi.exe (its firewall gate is opened by the
      * UAC approval and closed again right after); in development, through the same code in-process.
      */
+    override val floating: io.github.ahmetdurmus1218.jarvis.ui.FloatingRick = DesktopFloating
+
     override val web: io.github.ahmetdurmus1218.jarvis.ui.WebGate = object : io.github.ahmetdurmus1218.jarvis.ui.WebGate {
         override suspend fun fetch(url: String): io.github.ahmetdurmus1218.jarvis.ui.WebFetch = when (val d = downloader) {
             is io.github.ahmetdurmus1218.jarvis.desktop.kapi.KapiProcessDownloader -> d.query(url)

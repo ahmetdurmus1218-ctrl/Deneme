@@ -56,6 +56,7 @@ object Pins {
     )
 
     private val GOOGLE = arrayOf(GTS_ROOT_R1, GTS_ROOT_R3, GTS_ROOT_R4)
+    private val NEWS by lazy { (WIKIMEDIA + SECTIGO + AMAZON + GOOGLE).distinct().toTypedArray() }
     private val AMAZON = arrayOf(AMAZON_ROOT_CA_1, AMAZON_ROOT_CA_2, AMAZON_ROOT_CA_3, AMAZON_ROOT_CA_4, AMAZON_RSA_2048_M01)
     private val LETS_ENCRYPT = arrayOf(ISRG_ROOT_X1, ISRG_ROOT_X2, ISRG_ROOT_YR, LE_YR1, LE_YR2)
     private val SECTIGO = arrayOf(SECTIGO_ROOT_E46, SECTIGO_ROOT_R46, SECTIGO_DV_E36, USERTRUST_ECC, USERTRUST_RSA)
@@ -72,5 +73,8 @@ object Pins {
         .add("release-assets.githubusercontent.com", *LETS_ENCRYPT)
         .add("storage.googleapis.com", *GOOGLE)
         .add("tr.wikipedia.org", *WIKIMEDIA)
+        // BBC Türkçe's RSS (the day's headlines, since 1.3): served through CDNs whose CA can change,
+        // so the widely used public roots are pinned (an unknown CA still fails closed).
+        .add("feeds.bbci.co.uk", *NEWS)
         .build()
 }

@@ -125,7 +125,7 @@ class KapiProcessDownloader(
                     "TEXT" -> if (parts.size == 3) {
                         val body = runCatching { java.util.Base64.getDecoder().decode(parts[2]).decodeToString() }.getOrNull()
                             ?: return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("rick-kapi bozuk yanıt verdi")
-                        if (body.length > io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.MAX_BYTES) {
+                        if (body.length > io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineNews.MAX_BYTES) {
                             return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("Yanıt boyut sınırını aştı")
                         }
                         return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Ok(body, parts[1], body.encodeToByteArray().size.toLong())

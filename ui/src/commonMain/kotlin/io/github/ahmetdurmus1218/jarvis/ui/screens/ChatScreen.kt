@@ -388,7 +388,11 @@ private fun Stage(
         val coreModifier = if (onCoreTap != null) Modifier.clip(CircleShape).clickable(onClick = onCoreTap) else Modifier
         // Large while waiting; smaller once there is an answer to read.
         val coreSize by animateDpAsState(if (last == null) 250.dp else 170.dp, tween(600))
-        HudCore(mode, level, coreModifier, size = coreSize)
+        if (io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.face) {
+            io.github.ahmetdurmus1218.jarvis.ui.components.RickFace(mode, level, coreModifier, size = coreSize)
+        } else {
+            HudCore(mode, level, coreModifier, size = coreSize)
+        }
         Text(
             when (mode) {
                 CoreMode.IDLE -> "HAZIR"

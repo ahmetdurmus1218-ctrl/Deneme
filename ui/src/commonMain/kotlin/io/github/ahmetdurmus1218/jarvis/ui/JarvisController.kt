@@ -159,9 +159,12 @@ class JarvisController(
     private var continueAfter: Long? = null
 
     /** Conversation mode: once a spoken question is fully answered and spoken, listen again. */
+    /** A turn after which Rick listens once even without conversation mode (the floating Rick's wake-up). */
+    private var listenOnce: Long? = null
+
     private fun maybeContinueConversation() {
         val id = continueAfter ?: return
-        if (!settings.state.value.conversationMode) return
+        if (!settings.state.value.conversationMode && listenOnce != id) return
         val turn = _turns.value.firstOrNull { it.id == id } ?: return
         if (!turn.done || queued > 0 || _mode.value != CoreMode.IDLE) return
         continueAfter = null
@@ -355,6 +358,10 @@ class JarvisController(
                 updateTurn(id) { it.copy(scenes = listOf(ev.scene), offer = ev.offer, done = true) }
                 say(ev.scene.sahne.ses)
             }
+            is AssistantEvent.NewsRequested -> {
+                updateTurn(id) { it.copy(scenes = listOf(ev.scene)) }
+                runNews(id)
+            }
             is AssistantEvent.WebRequested -> {
                 updateTurn(id) { it.copy(scenes = listOf(ev.scene)) }
                 runLookup(id, ev.lookup)
@@ -402,6 +409,10 @@ class JarvisController(
             }
             is io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.WebLookup -> lookUpOnline(id, offer)
             is io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.AskWhat -> finishWith(id, "Peki.")
+            io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.News -> {
+                _mode.value = CoreMode.THINKING
+                askJob = scope.launch { runNews(id) }
+            }
         }
     }
 
@@ -471,59 +482,121 @@ class JarvisController(
 
     private suspend fun runLookup(id: Long, offer: io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.WebLookup) {
         val host = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.HOST
-        val what = "Wikipedia araması: \"${offer.query}\""
+        approvedFetch(
+            id,
+            url = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.searchUrl(offer.query),
+            host = host,
+            what = "Wikipedia araması: \"${offer.query}\"",
+            chip = "🌐 $host ← \"${offer.query}\"",
+            waiting = "🌐 Yalnızca \"${offer.query}\" araması $host adresine gidecek. Onayınızı bekliyorum…",
+            title = "İnternette ara · $host",
+            subtitle = "Gidecek metin yalnızca: \"${offer.query}\". Başka hiçbir şey gönderilmez.",
+            busy = "🌐 Wikipedia'da bakıyorum…",
+            browserQuery = offer.query,
+        ) { body ->
+            val pages = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.parse(body, offer.query)
+            assistant.answerFromWeb(offer.question, pages, history()).collect { ev -> handle(id, ev) }
+        }
+    }
+
+    /** "Günün haberleri": the fixed headlines feed (no text of the user's goes out), after the approval. */
+    private suspend fun runNews(id: Long) {
+        val host = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineNews.HOST
+        approvedFetch(
+            id,
+            url = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineNews.URL,
+            host = host,
+            what = "Günün haberleri (${io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineNews.SOURCE})",
+            chip = "📰 $host",
+            waiting = "📰 ${io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineNews.SOURCE} başlıkları okunacak; sizden hiçbir şey gönderilmez. Onayınızı bekliyorum…",
+            title = "Günün haberleri · $host",
+            subtitle = "Yalnızca ${io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineNews.SOURCE}'nin herkese açık haber listesi alınır. Sizinle ilgili hiçbir şey gönderilmez.",
+            busy = "📰 Haberlere bakıyorum…",
+            browserQuery = "son dakika haberler",
+        ) { body ->
+            assistant.newsReply(io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineNews.parse(body)).collect { ev -> handle(id, ev) }
+        }
+    }
+
+    /** Rick offers the news (for example right after waking up in the morning); nothing goes out before a yes. */
+    fun offerNews(greeting: String, listen: Boolean = false) {
+        val id = nextId++
+        currentTurnId = id
+        if (listen) { continueAfter = id; listenOnce = id }
+        val scene = VerifiedScene(Sahne("$greeting Günün haberlerini okuyayım mı?"))
+        _turns.value = _turns.value + Turn(id, "👏 Uyandırdınız", scenes = listOf(scene), done = true, offer = io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.News)
+        say(scene.sahne.ses)
+        maybeContinueConversation()
+    }
+
+    /**
+     * One approved request through the gate: full offline mode and a missing gate are said plainly
+     * (with the browser offered instead), the platform approval is asked for this request only, and
+     * the result is written to the network log before [onBody] reads it.
+     */
+    private suspend fun approvedFetch(
+        id: Long,
+        url: String,
+        host: String,
+        what: String,
+        chip: String,
+        waiting: String,
+        title: String,
+        subtitle: String,
+        busy: String,
+        browserQuery: String,
+        onBody: suspend (String) -> Unit,
+    ) {
         _mode.value = CoreMode.THINKING
-        run {
-            try {
-                val gate = bridge.web
-                if (settings.state.value.fullOffline) {
-                    finishWith(id, "Tam çevrimdışı mod açık, o yüzden internete çıkmadım. İsterseniz Ayarlar'dan kapatabilirsiniz.")
-                    return@run
-                }
-                if (gate == null || bridge.downloader.state.value !is DownloadState.Ready) {
-                    val reason = if (bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.ANDROID) {
-                        "Ben internete yalnızca Rick Kapı uygulamasıyla çıkabiliyorum ve o bu telefonda kurulu değil (Releases sayfasındaki rick-kapi.apk)."
-                    } else {
-                        "İnternet kapım (rick-kapi) şu an hazır değil."
-                    }
-                    offerBrowser(id, reason, offer.query)
-                    return@run
-                }
-                updateTurn(id) { it.copy(tools = listOf("🌐 $host ← \"${offer.query}\"")) }
-                _partial.value = "🌐 Yalnızca \"${offer.query}\" araması $host adresine gidecek. Onayınızı bekliyorum…"
-                val approval = bridge.approver.confirm("İnternette ara · $host", "Gidecek metin yalnızca: \"${offer.query}\". Başka hiçbir şey gönderilmez.")
-                val now = io.github.ahmetdurmus1218.jarvis.core.time.NowProvider.System.now().epochMillis
-                if (approval !is ApprovalResult.Approved) {
-                    netLog?.record(io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent(now, host, 0, what, "-", "reddedildi"))
-                    _partial.value = ""
-                    finishWith(id, "Peki, internete çıkmadım.")
-                    return@run
-                }
-                _partial.value = "🌐 Wikipedia'da bakıyorum…"
-                val result = try {
-                    gate.fetch(io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.searchUrl(offer.query))
-                } finally {
-                    runCatching { gate.done() }
-                }
-                _partial.value = ""
-                when (result) {
-                    is WebFetch.Failed -> {
-                        netLog?.record(io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent(now, host, 0, what, approval.method.label, "hata: ${result.message}"))
-                        offerBrowser(id, "İnternete ulaşamadım: ${result.message.trimEnd('.')}.", offer.query)
-                    }
-                    is WebFetch.Ok -> {
-                        netLog?.record(io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent(now, result.host, result.bytes, what, approval.method.label, "tamam"))
-                        val pages = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.parse(result.body, offer.query)
-                        assistant.answerFromWeb(offer.question, pages, history()).collect { ev -> handle(id, ev) }
-                    }
-                }
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                updateTurn(id) { it.copy(done = true, error = e.message ?: "Beklenmeyen hata") }
-            } finally {
-                if (currentTurnId == id && _mode.value == CoreMode.THINKING) _mode.value = CoreMode.IDLE
+        try {
+            val gate = bridge.web
+            if (settings.state.value.fullOffline) {
+                finishWith(id, "Tam çevrimdışı mod açık, o yüzden internete çıkmadım. İsterseniz Ayarlar'dan kapatabilirsiniz.")
+                return
             }
+            if (gate == null || bridge.downloader.state.value !is DownloadState.Ready) {
+                val reason = if (bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.ANDROID) {
+                    "Ben internete yalnızca Rick Kapı uygulamasıyla çıkabiliyorum ve o bu telefonda kurulu değil (Releases sayfasındaki rick-kapi.apk)."
+                } else {
+                    "İnternet kapım (rick-kapi) şu an hazır değil."
+                }
+                offerBrowser(id, reason, browserQuery)
+                return
+            }
+            updateTurn(id) { it.copy(tools = listOf(chip)) }
+            _partial.value = waiting
+            val approval = bridge.approver.confirm(title, subtitle)
+            val now = io.github.ahmetdurmus1218.jarvis.core.time.NowProvider.System.now().epochMillis
+            if (approval !is ApprovalResult.Approved) {
+                netLog?.record(io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent(now, host, 0, what, "-", "reddedildi"))
+                _partial.value = ""
+                finishWith(id, "Peki, internete çıkmadım.")
+                return
+            }
+            _partial.value = busy
+            val result = try {
+                gate.fetch(url)
+            } finally {
+                runCatching { gate.done() }
+            }
+            _partial.value = ""
+            when (result) {
+                is WebFetch.Failed -> {
+                    netLog?.record(io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent(now, host, 0, what, approval.method.label, "hata: ${result.message}"))
+                    offerBrowser(id, "İnternete ulaşamadım: ${result.message.trimEnd('.')}.", browserQuery)
+                }
+                is WebFetch.Ok -> {
+                    netLog?.record(io.github.ahmetdurmus1218.jarvis.core.netlog.NetworkEvent(now, result.host, result.bytes, what, approval.method.label, "tamam"))
+                    onBody(result.body)
+                }
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            updateTurn(id) { it.copy(done = true, error = e.message ?: "Beklenmeyen hata") }
+        } finally {
+            _partial.value = ""
+            if (currentTurnId == id && _mode.value == CoreMode.THINKING) _mode.value = CoreMode.IDLE
         }
     }
 
@@ -572,6 +645,16 @@ class JarvisController(
     }
 
     fun speakTest(text: String) = say(text)
+
+    /** Rick woken up (two claps at the floating Rick): says [text], then listens once. */
+    fun greet(text: String, listen: Boolean) {
+        val id = nextId++
+        currentTurnId = id
+        if (listen) { continueAfter = id; listenOnce = id }
+        _turns.value = _turns.value + Turn(id, "👏 Uyandırdınız", scenes = listOf(VerifiedScene(Sahne(text))), done = true)
+        say(text)
+        maybeContinueConversation()
+    }
 
     /**
      * Section 5.5: lasting facts from the user's own words, in the background after the answer

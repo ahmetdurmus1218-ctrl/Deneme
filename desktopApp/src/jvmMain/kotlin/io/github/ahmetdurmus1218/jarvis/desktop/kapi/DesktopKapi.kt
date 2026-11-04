@@ -143,19 +143,24 @@ class DesktopKapi(
      */
     fun query(url: String): io.github.ahmetdurmus1218.jarvis.ui.WebFetch {
         val wiki = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia
-        if (!wiki.allowed(url)) return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("İzin verilmeyen web isteği")
+        val sources = io.github.ahmetdurmus1218.jarvis.core.assistant.WebSources
+        val news = io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineNews.allowed(url)
+        if (!sources.allowed(url)) return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("İzin verilmeyen web isteği")
         val uri = URI(url)
-        if (!"https".equals(uri.scheme, true) || uri.host != wiki.HOST) return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("İzin listesinde olmayan alan adı")
+        if (!"https".equals(uri.scheme, true) || uri.host != sources.hostOf(url)) return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("İzin listesinde olmayan alan adı")
+        val max = sources.maxBytes(url)
         return try {
             val req = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(30))
-                .header("User-Agent", wiki.USER_AGENT).header("Accept", "application/json").GET().build()
+                .header("User-Agent", wiki.USER_AGENT)
+                .header("Accept", if (news) "application/rss+xml, application/xml, text/xml" else "application/json").GET().build()
             val r = client.send(req, HttpResponse.BodyHandlers.ofInputStream())
             r.body().use { input ->
                 if (r.statusCode() != 200) return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("HTTP ${r.statusCode()}")
                 val type = r.headers().firstValue("content-type").orElse("")
-                if (!type.startsWith("application/json")) return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("Beklenmeyen yanıt türü: $type")
-                val bytes = input.readNBytes(wiki.MAX_BYTES + 1)
-                if (bytes.size > wiki.MAX_BYTES) return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("Yanıt boyut sınırını aştı")
+                val typeOk = if (news) Regex("^(?:application/(?:rss\\+)?xml|text/xml)").containsMatchIn(type) else type.startsWith("application/json")
+                if (!typeOk) return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("Beklenmeyen yanıt türü: $type")
+                val bytes = input.readNBytes(max + 1)
+                if (bytes.size > max) return io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Failed("Yanıt boyut sınırını aştı")
                 io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Ok(bytes.decodeToString(), uri.host, bytes.size.toLong())
             }
         } catch (e: Exception) {
@@ -243,6 +248,7 @@ internal object PinningTrust {
             h == "objects.githubusercontent.com" || h == "release-assets.githubusercontent.com" -> LETS_ENCRYPT
             h == "storage.googleapis.com" -> GOOGLE
             h == "tr.wikipedia.org" -> WIKIMEDIA
+            h == "feeds.bbci.co.uk" -> WIKIMEDIA + SECTIGO + AMAZON + GOOGLE
             else -> emptySet()
         }
     }

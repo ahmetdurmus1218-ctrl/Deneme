@@ -131,6 +131,13 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] `v1.2.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.2.0 (rick.apk 81 MB, rick-kapi.apk 8,6 MB, Rick-Setup-1.2.0.msi 111 MB). CI'nın tamamı yeşil; emülatörde YouTube'a aktarma ve "Online ol onay verdim bak" → Wikipedia çalıştı.
 - [ ] Sıradaki (kullanıcı onayı bekliyor): Erişilebilirlik hizmetiyle başka uygulamaların ekranlarını kullanma (bankalar engelli listede); gerçek telefonda arama ve ses seçimi geri bildirimi.
 
+## v1.3 — karşısında biri varmış gibi
+- [x] Canlı yüz: göz kırpma, bakış, nefes, dinlerken dikkat, düşünürken yukarı bakma, konuşurken ağız, uykuda "zzz" (D42).
+- [x] Ekranda Rick (Android): her uygulamanın üstünde yüz; dokun konuş, basılı tut aç, sürükle taşı; uyuyunca iki alkışla uyanır, günaydın der, haberleri sorar.
+- [x] PC'de her zaman üstte küçük yüz penceresi.
+- [x] Günün haberleri: BBC Türkçe RSS, Kapı / rick-kapi üzerinden, her okumada onay, Ağ kaydı; uyanınca teklif.
+- [x] Testler: haber ayrıştırma ve tetikleyiciler, denetleyicide haber akışı, Kapı ve PC'de canlı BBC sertifika testi, emülatörde haber (PIN) ve ekranda Rick (pencere, dokunma, basılı tutma).
+
 ## Kaldığım yer
 Oturum 2 (2026-11-03): v0.3–v0.5 ve halilozat özellikleri yayımlandı (v0.5.0). Ardından kullanıcının telefon
 denemesine göre v1.0: ad Rick, sesli cevap, küçük ekran, indirmeden önce cihazda arama, modelsiz cihaz

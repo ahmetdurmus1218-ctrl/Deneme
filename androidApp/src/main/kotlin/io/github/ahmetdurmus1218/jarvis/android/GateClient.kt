@@ -162,7 +162,7 @@ class GateClient(private val context: Context, private val storage: AndroidModel
      */
     override suspend fun fetch(url: String): io.github.ahmetdurmus1218.jarvis.ui.WebFetch = run {
         val failed = io.github.ahmetdurmus1218.jarvis.ui.WebFetch::Failed
-        if (!io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.allowed(url)) return@run failed("İzin verilmeyen web isteği")
+        if (!io.github.ahmetdurmus1218.jarvis.core.assistant.WebSources.allowed(url)) return@run failed("İzin verilmeyen web isteği")
         refresh()
         if (_state.value !is DownloadState.Ready) return@run failed("Rick Kapı yüklü değil (rick-kapi.apk)")
         val (service, conn) = withTimeoutOrNull(BIND_TIMEOUT_MS) { bind() } ?: return@run failed("Kapı servisine bağlanılamadı")
@@ -174,7 +174,7 @@ class GateClient(private val context: Context, private val storage: AndroidModel
                     GateProtocol.MSG_QUERY_DONE -> result.complete(
                         io.github.ahmetdurmus1218.jarvis.ui.WebFetch.Ok(
                             data.getString(GateProtocol.KEY_TEXT).orEmpty(),
-                            data.getString(GateProtocol.KEY_HOST) ?: io.github.ahmetdurmus1218.jarvis.core.assistant.OnlineWikipedia.HOST,
+                            data.getString(GateProtocol.KEY_HOST) ?: io.github.ahmetdurmus1218.jarvis.core.assistant.WebSources.hostOf(url).orEmpty(),
                             data.getLong(GateProtocol.KEY_BYTES),
                         ),
                     )

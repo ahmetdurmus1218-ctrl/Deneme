@@ -200,6 +200,14 @@ fun DisplaySettings(settings: SettingsStore) {
             Text("Hareketi azalt (sakin çekirdek, sarsıntı ve ateş yok)", fontSize = 13.sp, modifier = Modifier.weight(1f))
             androidx.compose.material3.Switch(checked = s.reduceMotion, onCheckedChange = { v -> settings.update { it.copy(reduceMotion = v) } })
         }
+        Text("Rick'in görünüşü", fontSize = 13.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf(true to "🙂 Canlı yüz", false to "◎ Çekirdek").forEach { (f, label) ->
+                OutlinedButton(onClick = { settings.update { it.copy(face = f) } }) {
+                    Text(label, color = if (s.face == f) JarvisColors.Cyan else JarvisColors.TextDim, fontSize = 12.sp)
+                }
+            }
+        }
         Text("Ekran", fontSize = 13.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(1 to "Mark 1 · sade", 2 to "Mark 2 · yoğun HUD").forEach { (m, label) ->

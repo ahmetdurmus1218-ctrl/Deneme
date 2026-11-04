@@ -249,6 +249,7 @@ fun SettingsScreen(bridge: PlatformBridge, settings: SettingsStore, registry: Mo
             else -> {}
         }
         packNote?.let { Text(it, fontSize = 12.sp) }
+        FloatingSettings(bridge, settings)
         VoicePicker(bridge, settings)
         Text("Ses sentezi: ${bridge.speechOutput?.engineName ?: "yok"}", color = JarvisColors.TextDim, fontSize = 12.sp)
         VoiceTest(bridge, s.speechRate)
@@ -273,6 +274,39 @@ fun foundText(n: Int): String? = when {
     n < 0 -> null
     n == 0 -> "Eşleşen model dosyası bulunamadı (dosya adı, boyutu ve SHA-256 özeti kilit dosyasıyla aynı olmalı)."
     else -> "$n dosya bu cihazda bulundu ve doğrulandı; indirilmeyecek."
+}
+
+/**
+ * "Ekranda Rick": the living face floating over every app. Tap it to talk, hold to open Rick;
+ * asleep, two claps wake it. It cannot act inside other apps (no messages, no banking).
+ */
+@Composable
+private fun FloatingSettings(bridge: PlatformBridge, settings: SettingsStore) {
+    val floating = bridge.floating ?: return
+    val s by settings.state.collectAsState()
+    val running by floating.running.collectAsState()
+    val scope = rememberCoroutineScope()
+    var note by remember { mutableStateOf<String?>(null) }
+    var allowed by remember { mutableStateOf(floating.allowed()) }
+    LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(1_500); allowed = floating.allowed() } }
+    Text("Ekranda Rick", fontWeight = FontWeight.SemiBold)
+    Text(
+        "Rick'in canlı yüzü her uygulamanın üstünde durur: dokunun konuşun, basılı tutun Rick açılsın, sürükleyip taşıyın. " +
+            "Bir süre konuşmazsanız uyur; iki alkışla uyanır, günaydın der, haberleri sorar. Başka uygulamaların içinde işlem yapmaz (mesaj göndermez, bankaya girmez).",
+        color = JarvisColors.TextDim, fontSize = 12.sp,
+    )
+    if (!allowed) {
+        OutlinedButton(onClick = { floating.askPermission() }) { Text("İzin ver: diğer uygulamaların üzerinde göster") }
+    }
+    Toggle(if (running) "Ekranda Rick açık" else "Ekranda Rick'i göster", s.bubble && running) { on ->
+        settings.update { it.copy(bubble = on) }
+        scope.launch {
+            note = if (on) floating.start() else { floating.stop(); null }
+            if (note != null) settings.update { it.copy(bubble = false) }
+        }
+    }
+    Toggle("Uyurken iki alkışla uyansın (mikrofon yalnızca telefonda dinler)", s.bubbleClapWake) { v -> settings.update { it.copy(bubbleClapWake = v) } }
+    note?.let { Text(it, color = JarvisColors.Amber, fontSize = 12.sp) }
 }
 
 /**

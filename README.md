@@ -94,6 +94,12 @@ yalnızca hazırlar, gönder tuşuna siz basarsınız. Bilgi kütüphanede yoksa
 Rick'in sesini Ayarlar → **Rick'in sesi**'nden kadın ya da erkek seçebilirsiniz; telefonun kendi Türkçe sesleri en
 doğal olanlardır (yoksa **Telefona ses ekle**).
 
+Rick'in **canlı bir yüzü** var: göz kırpar, siz konuşurken dinler, konuşurken ağzı oynar. Ayarlar → **Ekranda
+Rick'i göster** ile bu yüz her uygulamanın üstünde durur (dokun: konuş, basılı tut: Rick'i aç, sürükle: taşı); bir
+süre konuşmazsanız uyur, **iki alkışla** uyanır ve günün haberlerini okumayı teklif eder. "Günün haberleri" dediğinizde
+BBC Türkçe başlıklarını okur (Kapı gerekir, her seferinde onay ister). Başka uygulamaların içinde işlem yapmaz:
+WhatsApp'tan mesaj göndermez, bankaya girmez.
+
 Başka uygulamalara da iş verir: "YouTube'dan Tarkan Şımarık aç", "Spotify'dan Duman çal", "Sezen Aksu
 Gidiyorum şarkısını çal", "Google'da kedi bakımı ara". Arama o uygulamaya (yüklü değilse tarayıcıya) verilir;
 internete çıkan o uygulamadır, Rick değil, ve Ağ sekmesine yazılır. "İnternette Çanakkale Savaşı ara" ya da bir

@@ -77,7 +77,23 @@ class AppGraph(
     val bridge: PlatformBridge,
     fallback: LlmEngine = MockLlmEngine(),
     realEngine: ((AppGraph) -> LlmEngine?)? = null,
+    /**
+     * A scope that lives as long as the app process (Android): the conversation is then shared by
+     * the window and the floating Rick. Null: the window owns it (desktop, tests).
+     */
+    private val appScope: kotlinx.coroutines.CoroutineScope? = null,
 ) {
+    fun newController(scope: kotlinx.coroutines.CoroutineScope) = JarvisController(
+        scope, bridge, assistant, memory, settings,
+        factModel = { engine.current.takeIf { it.id != "mock" } },
+        learning = learning,
+        research = { recent -> researchOnce(recent) },
+        netLog = netLog,
+    )
+
+    /** The one conversation of the app, when [appScope] is given. */
+    val sharedController: JarvisController? by lazy { appScope?.let { newController(it) } }
+
     val registry: ModelRegistry = ModelRegistry.bundled
     /** Everything the app writes, sealed with the platform's key (plain only where no cipher exists, e.g. tests). */
     val files: AppFiles = bridge.cipher?.let { EncryptedFiles(bridge.files, it) } ?: bridge.files
@@ -154,14 +170,17 @@ class AppGraph(
         },
         learning = { learning.takeIf { settings.state.value.selfLearning } },
         // Offer a Wikipedia web search only when a gate exists here and the user has not turned it off.
-        webOffer = {
-            val s = settings.state.value
-            s.webOffer && !s.fullOffline && bridge.web != null && bridge.downloader.state.value is DownloadState.Ready
-        },
+        webOffer = { webReady() },
         canOffer = { cmd -> bridge.platform == io.github.ahmetdurmus1218.jarvis.core.models.Platform.ANDROID || !phoneOnly(cmd) },
         // Opening a search in the browser is the browser going online, not Rick; still not in full offline mode.
         browserOffer = { !settings.state.value.fullOffline },
     )
+
+    /** A gate is there and the user allows Rick to offer online lookups (Wikipedia, the news). */
+    fun webReady(): Boolean {
+        val s = settings.state.value
+        return s.webOffer && !s.fullOffline && bridge.web != null && bridge.downloader.state.value is DownloadState.Ready
+    }
 
     /** Things only a phone can do (the PC would only answer that it cannot). */
     private fun phoneOnly(cmd: io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand): Boolean {
@@ -223,15 +242,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
     val themeSettings by graph.settings.state.collectAsState()
     JarvisTheme(themeSettings.theme, themeSettings.fontScale, themeSettings.reduceMotion) {
         val scope = rememberCoroutineScope()
-        val controller = remember {
-            JarvisController(
-                scope, graph.bridge, graph.assistant, graph.memory, graph.settings,
-                factModel = { graph.engine.current.takeIf { it.id != "mock" } },
-                learning = graph.learning,
-                research = { recent -> graph.researchOnce(recent) },
-                netLog = graph.netLog,
-            )
-        }
+        val controller = graph.sharedController ?: remember { graph.newController(scope) }
         val settings by graph.settings.state.collectAsState()
         val approval by graph.installer.approval.collectAsState()
         val netEvents by graph.netLog.events.collectAsState()
@@ -274,6 +285,12 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         }
 
         LaunchedEffect(settings.memoryEnabled) { graph.memory.setEnabled(settings.memoryEnabled) }
+        // The floating Rick comes back with the app when the user left it on.
+        LaunchedEffect(settings.bubble) {
+            val f = graph.bridge.floating ?: return@LaunchedEffect
+            if (settings.bubble && f.allowed() && !f.running.value) f.start()
+        }
+        LaunchedEffect(settings.face) { io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.face = settings.face }
         // The voice chosen in Settings (man / woman, Rick's own or the phone's).
         LaunchedEffect(settings.voiceId) { graph.bridge.speechOutput?.choose(settings.voiceId) }
         LaunchedEffect(Unit) { graph.bridge.downloader.refresh() }
@@ -401,7 +418,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                     )
                 }
                 val hour = remember { NowProvider.System.now().hour }
-                WakeSequence(checks, WakePhrase.greeting(hour), onGreet = { controller.speakTest(it) }) { waking = false }
+                WakeSequence(checks, WakePhrase.greeting(hour), onGreet = { g -> if (graph.webReady()) controller.offerNews(g) else controller.speakTest(g) }) { waking = false }
             }
             notice?.let { n ->
                 Text(

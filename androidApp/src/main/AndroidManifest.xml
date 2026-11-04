@@ -26,6 +26,12 @@
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <!-- Tablets without a SIM can still install Rick; calls then open nothing. -->
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <!-- The floating Rick over other apps (Settings → Ekranda Rick); off until the user turns it on. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Defined by both Kale and Kapı (same signing key) so install order does not matter. -->
     <permission
@@ -83,5 +89,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".android.BubbleService"
+            android:exported="false"
+            android:foregroundServiceType="microphone|specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Floating assistant face over other apps, started and stopped by the user" />
+        </service>
     </application>
 </manifest>
