@@ -487,7 +487,8 @@ def main():
         time.sleep(4)
         adb("shell", "input", "text", PIN)
         adb("shell", "input", "keyevent", "66")
-        wait_for(text_has("✋ ateş"), "gesture legend once tracking is installed", timeout=300)
+        # Once tracking is in place the legend shows (the effects one, or the air-control one with the camera).
+        wait_for(lambda n: text_has("✋ ateş")(n) or text_has("👋 salla = çık")(n), "gesture legend once tracking is installed", timeout=300)
         shot("12-kale-kamera")
         tap(wait_for(text_is("BU NE?"), "what-is-this button"))
         answer = wait_for(lambda n: "Görmek için gerçek bir model gerekiyor" in label(n) or "görüntüsü alınamadı" in label(n), "vision answer", timeout=60)
