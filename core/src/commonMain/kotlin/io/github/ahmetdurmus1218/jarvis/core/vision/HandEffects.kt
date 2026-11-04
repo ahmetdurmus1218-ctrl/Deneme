@@ -78,6 +78,8 @@ data class EffectSettings(
     val fixedPlanet: PlanetKind? = null,
     /** Holding 👍 orders a Turkish coffee (as in the original), instead of starting to listen. */
     val thumbCoffee: Boolean = false,
+    /** Air control: the index finger is a cursor; pinch / hold to click, pinch-drag to scroll, swipe for the next card. */
+    val air: Boolean = true,
 )
 
 /**
@@ -156,6 +158,11 @@ class HandEffects(seed: Int = 7, var settings: EffectSettings = EffectSettings()
     private val tracks = ArrayList<Track>()
 
     /** "Rick, Mars yap": the planet in hand (or the newest one) scatters and re-forms; else the next pinch brings it. */
+    /** Turns the planets by hand (pinch and turn the wrist, in hand control). */
+    fun rotatePlanets(degrees: Float) {
+        planets.forEach { it.spin += degrees; it.tilt = (it.tilt + degrees * 0.15f).coerceIn(-40f, 40f) }
+    }
+
     fun requestPlanet(kind: PlanetKind) {
         val p = planets.firstOrNull { it.heldBy != null } ?: planets.lastOrNull()
         if (p == null) {

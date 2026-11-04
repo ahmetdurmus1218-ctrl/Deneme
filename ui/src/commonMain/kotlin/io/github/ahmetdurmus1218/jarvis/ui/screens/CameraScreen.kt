@@ -17,7 +17,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import io.github.ahmetdurmus1218.jarvis.ui.components.airTarget
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -82,6 +88,17 @@ const val QUESTION_READ = "Buradaki yazıyı oku."
 const val QUESTION_FORTUNE = "Bu bir Türk kahvesi fincanı. Telvede gerçekten gördüğün şekillerden esprili, kısa bir kahve falı yorumla; bunun bilim olmadığını bir kez söyle."
 const val THUMB_COFFEE = "Rick, bana bol köpüklü bir Türk kahvesi yap"
 const val GESTURE_LEGEND = "✋ ateş · 🤏 gezegen · ✊→✋ patlat · ☝️ iz · ☝️☝️ şimşek · basılı tut: 👍 dinle ✌️ bu ne? ✊ sus"
+const val AIR_LEGEND = "☝️ işaret et · 🤏 dokundur ya da ☝️ beklet = tıkla · 🤏↕ kaydır · 🤏⟲ döndür · ✋⇆ savur = sonraki"
+
+/** Commands one click away in the air (the microphone gives every other command). */
+private val AIR_COMMANDS = listOf(
+    "📰 Haberler" to "Günün haberleri",
+    "🕐 Saat" to "Saat kaç",
+    "📋 Brifing" to "Brifing ver",
+    "🎵 Müzik" to "Müzik çal",
+    "🔦 Fener" to "Feneri aç",
+    "🔊 Ses +" to "Sesi aç",
+)
 
 /**
  * Hand control: the live camera (or a camera-less demo) with effects that follow the hands — fire,
@@ -118,6 +135,25 @@ fun CameraScreen(
     val installed by installer.installedVersion.collectAsState()
     val tracking = remember(installed) { camera?.trackingReady() == true }
     val text = rememberTextMeasurer()
+    // Air control: the hand as a cursor over everything below that is registered as a target.
+    val targets = remember { io.github.ahmetdurmus1218.jarvis.ui.components.AirTargets() }
+    val air = remember { io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer() }
+    var airState by remember { mutableStateOf<io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.State?>(null) }
+    var airFlash by remember { mutableStateOf(0L) }
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    var card by remember { mutableStateOf(0) }
+    val answerScroll = rememberScrollState()
+    val lastTurn = turns.lastOrNull()
+    LaunchedEffect(lastTurn?.id) { card = 0; answerScroll.scrollTo(0) }
+
+    fun showCard(i: Int) {
+        val scenes = turns.lastOrNull()?.scenes.orEmpty()
+        if (i !in scenes.indices || i == card) return
+        card = i
+        scope.launch { answerScroll.scrollTo(0) }
+        controller.stopSpeaking()
+        controller.speakTest(scenes[i].sahne.ses)
+    }
     // "Hareketi azalt" also calms the hand effects: no screen shake, no fire.
     engine.settings = if (settings.reduceMotion) settings.effects.copy(fire = false) else settings.effects
 
@@ -174,6 +210,30 @@ fun CameraScreen(
                     faceLabels = emptyList()
                 }
             }
+            // The hand as a cursor (camera only: the demo hands must not click anything).
+            if (!demo && settings.effects.air) {
+                val h0 = f?.hands?.firstOrNull()
+                val mapped = if (f != null && h0 != null && f.width > 0 && f.height > 0) {
+                    val m = ImageMapper(f.width.toFloat(), f.height.toFloat(), androidx.compose.ui.geometry.Size(canvasW, canvasH), crop = true)
+                    Hand(h0.points.map { io.github.ahmetdurmus1218.jarvis.core.vision.Point(m.x(it.x * f.width), m.y(it.y * f.height), it.z) })
+                } else null
+                val events = air.update(now, mapped, canvasW, canvasH) { x, y -> targets.at(origin.x + x, origin.y + y) != null }
+                airState = air.state
+                for (e in events) when (e) {
+                    is io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.Event.Click ->
+                        targets.at(origin.x + e.x, origin.y + e.y)?.let { act -> airFlash = now; act() }
+                    is io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.Event.Scroll -> scope.launch { answerScroll.scrollBy(-e.dy) }
+                    is io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.Event.Rotate -> engine.rotatePlanets(e.degrees)
+                    is io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.Event.Swipe -> when (e.direction) {
+                        io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.Direction.LEFT -> showCard(card + 1)
+                        io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.Direction.RIGHT -> showCard(card - 1)
+                        io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.Direction.UP -> scope.launch { answerScroll.animateScrollBy(canvasH * 0.25f) }
+                        io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.Direction.DOWN -> scope.launch { answerScroll.animateScrollBy(-canvasH * 0.25f) }
+                    }
+                }
+            } else {
+                airState = null
+            }
             when (fired) {
                 Gesture.THUMBS_UP -> if (settings.effects.thumbCoffee) controller.send(THUMB_COFFEE) else controller.startListening()
                 Gesture.VICTORY -> ask(QUESTION_WHAT)
@@ -188,7 +248,7 @@ fun CameraScreen(
 
     val clock by rememberInfiniteTransition().animateFloat(0f, 600f, infiniteRepeatable(tween(600_000, easing = LinearEasing)))
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(Modifier.fillMaxSize().background(Color.Black).onGloballyPositioned { origin = it.positionInRoot() }) {
         if (!demo && camera != null) {
             camera.Preview(Modifier.fillMaxSize(), front) { f -> frame = f }
         } else {
@@ -220,6 +280,7 @@ fun CameraScreen(
             val ih = if (demo) minOf(size.width, size.height) else (frame?.height ?: 1).toFloat()
             hands.forEach { h -> drawHand(h, m, iw, ih, clock, mode) }
             drawEffects(engine, m, clock)
+            airState?.let { a -> drawAirCursor(a, targets.at(origin.x + a.x, origin.y + a.y) != null, tick - airFlash < 300) }
         }
 
         // Top bar
@@ -227,7 +288,7 @@ fun CameraScreen(
             Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent))).padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = onClose) { Text("← GERİ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace) }
+            TextButton(onClick = onClose, modifier = Modifier.airTarget(targets, onClose)) { Text("← GERİ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace) }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("R.I.C.K · EL KONTROLÜ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, fontSize = 13.sp)
                 val g = frame?.hands?.firstOrNull()?.let(GestureClassifier::classify) ?: Gesture.NONE
@@ -237,10 +298,10 @@ fun CameraScreen(
                     color = JarvisColors.TextDim, fontFamily = FontFamily.Monospace, fontSize = 10.sp,
                 )
             }
-            TextButton(onClick = { panel = !panel }) { Text("⚙", color = JarvisColors.Cyan, fontSize = 20.sp) }
+            TextButton(onClick = { panel = !panel }, modifier = Modifier.airTarget(targets) { panel = !panel }) { Text("⚙", color = JarvisColors.Cyan, fontSize = 20.sp) }
             if (camera != null) {
-                TextButton(onClick = { demo = !demo }) { Text(if (demo) "KAMERA" else "DEMO", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontSize = 11.sp) }
-                if (!demo) TextButton(onClick = { front = !front }) { Text("⟲", color = JarvisColors.Cyan, fontSize = 20.sp) }
+                TextButton(onClick = { demo = !demo }, modifier = Modifier.airTarget(targets) { demo = !demo }) { Text(if (demo) "KAMERA" else "DEMO", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontSize = 11.sp) }
+                if (!demo) TextButton(onClick = { front = !front }, modifier = Modifier.airTarget(targets) { front = !front }) { Text("⟲", color = JarvisColors.Cyan, fontSize = 20.sp) }
             }
         }
 
@@ -262,26 +323,59 @@ fun CameraScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             val last = turns.lastOrNull()
-            val answer = partial.ifBlank { last?.scenes?.joinToString(" ") { it.sahne.ses }.orEmpty() }
+            val scenes = last?.scenes.orEmpty()
             if (mode == CoreMode.THINKING) {
                 Text("Bakıyorum…", color = JarvisColors.Violet, fontFamily = FontFamily.Monospace)
-            } else if (answer.isNotBlank()) {
-                Text(answer, color = JarvisColors.Text, fontSize = 17.sp, textAlign = TextAlign.Center)
+            } else if (partial.isNotBlank()) {
+                Text(partial, color = JarvisColors.Text, fontSize = 17.sp, textAlign = TextAlign.Center)
+            } else if (scenes.isNotEmpty()) {
+                // The answer card by card: swipe, or click ‹ ›; pinch-drag scrolls a long one.
+                val i = card.coerceIn(0, scenes.lastIndex)
+                Box(Modifier.fillMaxWidth().heightIn(max = 230.dp).verticalScroll(answerScroll)) {
+                    io.github.ahmetdurmus1218.jarvis.ui.components.SceneCard(scenes[i])
+                }
+                if (scenes.size > 1) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        AirChip("‹ önceki", targets, enabled = i > 0) { showCard(i - 1) }
+                        Text("${i + 1} / ${scenes.size}", color = JarvisColors.TextDim, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                        AirChip("sonraki ›", targets, enabled = i < scenes.lastIndex) { showCard(i + 1) }
+                    }
+                }
+            }
+            // Rick asked something ("… okuyayım mı?"): answer in the air.
+            if (last?.offer != null && last.offerAnswer == null && last.offer !is io.github.ahmetdurmus1218.jarvis.core.assistant.Offer.AskWhat) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    val yes = { controller.answerOffer(last.id, true) }
+                    val no = { controller.answerOffer(last.id, false) }
+                    Button(onClick = yes, modifier = Modifier.airTarget(targets, yes)) { Text("Evet") }
+                    OutlinedButton(onClick = no, modifier = Modifier.airTarget(targets, no)) { Text("Hayır", color = JarvisColors.Cyan) }
+                }
+            }
+            if (!demo && settings.effects.air) {
+                // Every command: the microphone; the common ones: one click away.
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    AirChip(if (mode == CoreMode.LISTENING) "■ Dinliyorum" else "🎤 Konuş", targets, accent = true) { controller.toggleListening() }
+                    AirChip("🤫 Sus", targets) { controller.stopSpeaking() }
+                    AIR_COMMANDS.take(2).forEach { (label, said) -> AirChip(label, targets) { controller.send(said) } }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    AIR_COMMANDS.drop(2).forEach { (label, said) -> AirChip(label, targets) { controller.send(said) } }
+                }
             }
             if (!demo && camera != null && !tracking) {
                 TrackingOffer(installer, trackingItems)
             } else {
                 Text(
-                    GESTURE_LEGEND,
+                    if (!demo && settings.effects.air) AIR_LEGEND else GESTURE_LEGEND,
                     color = JarvisColors.TextDim, fontSize = 12.sp, textAlign = TextAlign.Center,
                     modifier = Modifier.border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 4.dp),
                 )
             }
             if (camera != null && !demo) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(onClick = { ask(QUESTION_WHAT) }, enabled = mode != CoreMode.THINKING) { Text("BU NE?") }
-                    OutlinedButton(onClick = { ask(QUESTION_READ) }, enabled = mode != CoreMode.THINKING) { Text("OKU", color = JarvisColors.Cyan) }
-                    OutlinedButton(onClick = { ask(QUESTION_FORTUNE) }, enabled = mode != CoreMode.THINKING) { Text("☕ FAL", color = JarvisColors.Amber) }
+                    Button(onClick = { ask(QUESTION_WHAT) }, enabled = mode != CoreMode.THINKING, modifier = Modifier.airTarget(targets) { ask(QUESTION_WHAT) }) { Text("BU NE?") }
+                    OutlinedButton(onClick = { ask(QUESTION_READ) }, enabled = mode != CoreMode.THINKING, modifier = Modifier.airTarget(targets) { ask(QUESTION_READ) }) { Text("OKU", color = JarvisColors.Cyan) }
+                    OutlinedButton(onClick = { ask(QUESTION_FORTUNE) }, enabled = mode != CoreMode.THINKING, modifier = Modifier.airTarget(targets) { ask(QUESTION_FORTUNE) }) { Text("☕ FAL", color = JarvisColors.Amber) }
                 }
             }
         }
@@ -330,6 +424,7 @@ private fun EffectsPanel(e: EffectSettings, name: String, onChange: (EffectSetti
         row("👍 ✌️ ✊ Rick kontrolleri", e.controls) { onChange(e.copy(controls = it)) }
         row("👍 basılı: Türk kahvesi yap (kapalıysa: dinle)", e.thumbCoffee) { onChange(e.copy(thumbCoffee = it)) }
         row("Yüz kilidi", e.faceLock) { onChange(e.copy(faceLock = it)) }
+        row("☝️ Hava kontrolü (işaret et, 🤏 tıkla, kaydır, döndür)", e.air) { onChange(e.copy(air = it)) }
         Text("Gezegen", color = JarvisColors.TextDim, fontSize = 12.sp)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Chip(e.fixedPlanet == null, "Sıradaki") { onChange(e.copy(fixedPlanet = null)) }
@@ -384,3 +479,33 @@ private fun TrackingOffer(installer: ModelInstaller, items: List<LockedItem>) {
     }
 }
 
+
+/** A small button that also answers a click in the air. */
+@Composable
+private fun AirChip(label: String, targets: io.github.ahmetdurmus1218.jarvis.ui.components.AirTargets, enabled: Boolean = true, accent: Boolean = false, onClick: () -> Unit) {
+    val act = { if (enabled) onClick() }
+    Text(
+        label, fontSize = 12.sp,
+        color = if (!enabled) JarvisColors.TextDim else if (accent) JarvisColors.Background else JarvisColors.Cyan,
+        modifier = Modifier
+            .background(if (accent && enabled) JarvisColors.Cyan else Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
+            .border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(50))
+            .clickable(enabled = enabled, onClick = onClick)
+            .airTarget(targets, act)
+            .padding(horizontal = 10.dp, vertical = 7.dp),
+    )
+}
+
+/** The air cursor: a ring on the fingertip, filling while it waits to click; brighter over something clickable. */
+private fun DrawScope.drawAirCursor(a: io.github.ahmetdurmus1218.jarvis.core.vision.AirPointer.State, overTarget: Boolean, flash: Boolean) {
+    val c = Offset(a.x, a.y)
+    val r = 22.dp.toPx()
+    val color = if (overTarget) JarvisColors.Amber else JarvisColors.Cyan
+    if (flash) drawCircle(color.copy(alpha = 0.45f), r * 1.8f, c)
+    drawCircle(color.copy(alpha = 0.9f), r, c, style = androidx.compose.ui.graphics.drawscope.Stroke(3.dp.toPx()))
+    if (a.dwell > 0f) {
+        drawArc(color, -90f, 360f * a.dwell, false, topLeft = Offset(c.x - r * 1.3f, c.y - r * 1.3f), size = androidx.compose.ui.geometry.Size(r * 2.6f, r * 2.6f),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(4.dp.toPx(), cap = StrokeCap.Round))
+    }
+    drawCircle(color, if (a.pinching) r * 0.55f else r * 0.18f, c)
+}

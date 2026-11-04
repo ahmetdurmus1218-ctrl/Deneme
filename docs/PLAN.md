@@ -136,7 +136,8 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] Ekranda Rick (Android): her uygulamanın üstünde yüz; dokun konuş, basılı tut aç, sürükle taşı; uyuyunca iki alkışla uyanır, günaydın der, haberleri sorar.
 - [x] PC'de her zaman üstte küçük yüz penceresi.
 - [x] Günün haberleri: BBC Türkçe RSS, Kapı / rick-kapi üzerinden, her okumada onay, Ağ kaydı; uyanınca teklif.
-- [x] Testler: haber ayrıştırma ve tetikleyiciler, denetleyicide haber akışı, Kapı ve PC'de canlı BBC sertifika testi, emülatörde haber (PIN) ve ekranda Rick (pencere, dokunma, basılı tutma).
+- [x] Hava kontrolü: ☝️ imleç, 🤏 ya da bekleterek tıkla, 🤏↕ kaydır, 🤏⟲ döndür, ✋⇆ savurarak kart değiştir; kamerada Evet/Hayır ve komut düğmeleri (D43).
+- [x] Testler: hava imleci (tıklama, bekletme, kaydırma, döndürme, savurma), havada tıklama kaydı, yüzün her hâlinin ekran görüntüsü; haber ayrıştırma ve tetikleyiciler, denetleyicide haber akışı, Kapı ve PC'de canlı BBC sertifika testi, emülatörde haber (PIN) ve ekranda Rick (pencere, dokunma, basılı tutma).
 
 ## Kaldığım yer
 Oturum 2 (2026-11-03): v0.3–v0.5 ve halilozat özellikleri yayımlandı (v0.5.0). Ardından kullanıcının telefon

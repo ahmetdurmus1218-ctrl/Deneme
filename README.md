@@ -100,6 +100,10 @@ süre konuşmazsanız uyur, **iki alkışla** uyanır ve günün haberlerini oku
 BBC Türkçe başlıklarını okur (Kapı gerekir, her seferinde onay ister). Başka uygulamaların içinde işlem yapmaz:
 WhatsApp'tan mesaj göndermez, bankaya girmez.
 
+Kamerada (📷 → el kontrolü) **elinizle havada** kontrol edebilirsiniz: ☝️ işaret parmağınız imleçtir; başparmakla
+dokundurmak (🤏) ya da parmağı bir düğmede bekletmek tıklar; 🤏 ile çekmek kaydırır, bileği çevirmek döndürür; açık
+eli sola/sağa savurmak sonraki/önceki karta geçer. Rick'in "…ayım mı?" sorularına Evet/Hayır havada tıklanır.
+
 Başka uygulamalara da iş verir: "YouTube'dan Tarkan Şımarık aç", "Spotify'dan Duman çal", "Sezen Aksu
 Gidiyorum şarkısını çal", "Google'da kedi bakımı ara". Arama o uygulamaya (yüklü değilse tarayıcıya) verilir;
 internete çıkan o uygulamadır, Rick değil, ve Ağ sekmesine yazılır. "İnternette Çanakkale Savaşı ara" ya da bir

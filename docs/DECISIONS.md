@@ -399,3 +399,18 @@ alkışla uyanıp günün haberlerini söyleyen bir asistan istedi; WhatsApp'tan
 - **PC:** aynı yüz ana pencerede; "Ekranda Rick" her zaman üstte, kenarsız küçük bir pencere (tıkla: konuş,
   çift tıkla: Rick).
 
+## D43 — Hava kontrolü: elle havada tıklama, kaydırma, döndürme
+Kullanıcı kamera onu gösterirken elleriyle havada tıklamak, kaydırmak, döndürmek ve her komutu vermek istedi.
+- **İmleç:** işaret parmağının ucu (kamera görüntüsüyle aynı eşlemeyle, yani ekranda gördüğü parmağın
+  üstünde), titremeye karşı yumuşatılır. Çimdikte imleç başparmakla işaret parmağının buluştuğu yerdir.
+- **Tıklama:** kısa çimdik (dokundurup ayırmak) ya da ☝️ parmağı bir düğmenin üstünde 0,9 sn tutmak (halka
+  dolar). Düğmeler `airTarget` ile kendini kaydeder; havadaki tıklama imlecin altındaki en küçük hedefi
+  çalıştırır, dokunmayla aynı iş olur.
+- **Kaydırma:** çimdikleyip yukarı / aşağı çekmek (içerik eli izler); **döndürme:** çimdikteyken bileği
+  çevirmek (gezegen döner); **savurma:** açık eli hızla sola / sağa (sonraki / önceki kart, Rick okur),
+  yukarı / aşağı (sayfa kayar).
+- **Komutlar:** "🎤 Konuş" (her komut sesle), "🤫 Sus" ve sık kullanılanlar (Haberler, Saat, Brifing, Müzik,
+  Fener, Ses +) tek tıkla; Rick bir şey önerdiğinde Evet / Hayır havada tıklanır. Cevap kart kart gösterilir.
+- Mantık `core` içinde (`AirPointer`), testli; kamera görüntüsü telefonda işlenir, kaydedilmez. Kamerasız
+  demo eller hiçbir şeye tıklamaz. Efekt panelinden kapatılabilir.
+
