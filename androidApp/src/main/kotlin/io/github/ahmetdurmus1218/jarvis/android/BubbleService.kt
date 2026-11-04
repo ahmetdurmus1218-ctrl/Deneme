@@ -220,6 +220,7 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
     }
 
     private fun tapped() {
+        Log.i(TAG, "tap")
         val controller = app.graph.sharedController ?: return
         if (sleeping.value) { wake(byClaps = false); return }
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -231,6 +232,7 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
     }
 
     private fun openRick() {
+        Log.i(TAG, "open Rick")
         startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
     }
 

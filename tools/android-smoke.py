@@ -584,16 +584,26 @@ def main():
         adb("shell", "input", "keyevent", "3")  # home: Rick stays on top of the launcher
         time.sleep(2)
         shot("19-ekranda-rick")
-        # The face starts at the right edge, a third down (see BubbleService.show): tap it to talk.
-        size = re.findall(r"(\d+)x(\d+)", adb("shell", "wm", "size"))[-1]
+        # Where the face really is: its window frame from the window manager.
+        block = windows[windows.find("RickBubble"):][:4000]
+        m = (re.search(r"(?:mFrame|frame)=\[(\d+),(\d+)\]\[(\d+),(\d+)\]", block)
+             or re.search(r"(?:mFrame|frame)=Rect\((\d+), (\d+) - (\d+), (\d+)\)", block)
+             or re.search(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", block))
+        print("floating Rick window record:", block[:700].replace("\n", " | "))
+        if m is None:
+            raise SystemExit("floating Rick window frame not found:\n" + block[:1500])
+        x1, y1, x2, y2 = map(int, m.groups())
         dens = int(re.findall(r"(\d+)", adb("shell", "wm", "density"))[-1]) / 160
-        w, h = int(size[0]), int(size[1])
-        fx, fy = int(w - 120 * dens + 48 * dens), int(h * 0.35 + 48 * dens)
+        fx, fy = (x1 + x2) // 2, y1 + int(48 * dens)
+        print(f"floating face window {x1},{y1}-{x2},{y2}; tapping {fx},{fy}")
+        adb("logcat", "-c", check=False)
         adb("shell", "input", "tap", str(fx), str(fy))
         time.sleep(3)
         shot("19b-ekranda-rick-dinliyor")
         if "BubbleService" not in adb("shell", "dumpsys", "activity", "services", KALE, check=False):
             raise SystemExit("floating Rick stopped after a tap")
+        if "RickBubble: tap" not in adb("logcat", "-d", "-s", "RickBubble:*", check=False):
+            raise SystemExit("the tap did not reach the floating face")
         adb("shell", "input", "tap", str(fx), str(fy))  # stop listening
         time.sleep(1)
         # Hold: Rick's window comes back.
