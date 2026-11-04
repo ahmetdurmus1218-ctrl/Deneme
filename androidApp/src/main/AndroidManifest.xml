@@ -24,6 +24,8 @@
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <!-- "Ahmet'i ara" places the call (asked once at the first call); refused → the dialer opens instead. -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
+    <!-- Tablets without a SIM can still install Rick; calls then open nothing. -->
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
     <!-- Defined by both Kale and Kapı (same signing key) so install order does not matter. -->
     <permission
