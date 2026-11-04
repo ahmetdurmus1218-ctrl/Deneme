@@ -227,16 +227,24 @@ class ModelInstaller(
 
     private suspend fun downloadOne(item: LockedItem, method: ApprovalMethod): Boolean {
         setStatus(item.id, ItemStatus.Downloading(0, item.size))
-        // Mobile networks drop connections (Wi-Fi ↔ LTE switch). The gate resumes with Range,
-        // so a failed attempt is retried a few times before giving up.
+        // Mobile networks drop connections (Wi-Fi ↔ LTE switch, the screen going off). The gate resumes
+        // with Range, so a dropped transfer continues where it stopped — as many times as needed while
+        // it keeps moving (a 3.7 GB Wikipedia drops more than a few times); it gives up only after
+        // MAX_ATTEMPTS tries in a row without a single new byte.
         var outcome: DownloadOutcome = DownloadOutcome.Failed("başlamadı")
-        for (attempt in 1..MAX_ATTEMPTS) {
+        var stalls = 0
+        var lastBytes = -1L
+        var tries = 0
+        while (true) {
+            tries++
             outcome = bridge.downloader.download(item) { p -> setStatus(item.id, ItemStatus.Downloading(p.bytes, p.total)) }
             if (outcome is DownloadOutcome.Done || bridge.downloader.state.value is DownloadState.Unavailable) break
-            if (attempt < MAX_ATTEMPTS) {
-                setStatus(item.id, ItemStatus.Failed("Bağlantı koptu, yeniden deneniyor ($attempt/$MAX_ATTEMPTS)…"))
-                delay(RETRY_DELAY_MS * attempt)
-            }
+            val got = (outcome as DownloadOutcome.Failed).bytes
+            if (got > lastBytes) { lastBytes = got; stalls = 0 } else stalls++
+            if (stalls >= MAX_ATTEMPTS || tries >= MAX_TRIES) break
+            val pct = if (item.size > 0) (got * 100 / item.size).coerceIn(0, 99) else 0
+            setStatus(item.id, ItemStatus.Failed("Bağlantı koptu; %$pct'ten devam ediyor…"))
+            delay(RETRY_DELAY_MS * (stalls + 1))
         }
         return when (outcome) {
             is DownloadOutcome.Failed -> {
@@ -264,6 +272,8 @@ class ModelInstaller(
 
     companion object {
         const val MAX_ATTEMPTS = 4
+        /** Upper bound on resumes for one file, however much it moves. */
+        const val MAX_TRIES = 200
         const val RETRY_DELAY_MS = 3_000L
     }
 

@@ -504,3 +504,23 @@ Kullanıcı kamera onu gösterirken elleriyle havada tıklamak, kaydırmak, dön
   içeriği oynat" isteğini (MEDIA_PLAY_FROM_SEARCH) kabul ediyorsa doğrudan o kullanılıyor. Kabul etmiyorsa arama
   sayfası açılıyor ve Rick bunu açıkça söylüyor. Ekranı okuyup sonucu kendisi seçmek, "ekranı okumaz" sözünü
   bozacağı için yapılmadı.
+
+## D47 — Büyük Wikipedia indirmesinin yarıda kalması (v1.4.2)
+
+- Kullanıcı: "Wikipedia bir türlü inmiyor". Türkçe Wikipedia ZIM'i 3,7 GB.
+- Önce yönlendirmeden şüphelenildi. CI'da ölçüldü: `mirror.download.kiwix.org` dosyayı doğrudan veriyor (200,
+  yönlendirme yok). `download.kiwix.org` ise `lb.download.kiwix.org`'a yönlendiriyor; bu da izin listesinde
+  (`*.download.kiwix.org`). Sertifika sabitlemesi de gerçek zincirle zaten test ediliyor. Sorun bunlar değil.
+- Gerçek nedenler:
+  1. Kapı indirirken işlemciyi ve Wi-Fi'yi uyanık tutmuyordu. Ekran kapanınca bağlantı 60 sn okuma sınırına
+     takılıp kopuyordu.
+  2. Rick kopan indirmeyi en çok 4 kez (3, 6, 9 sn arayla) deniyor, sonra vazgeçiyordu. 3,7 GB'ta bu kadar kopma
+     olağan.
+  3. Uzun indirme sırasında Rick'in kendi süreci arka planda dondurulabiliyor ya da kapatılabiliyordu; Kapı'nın
+     "bitti" mesajı ona ulaşmayabiliyordu.
+- Çözüm:
+  - Kapı aktarım boyunca kısmi uyanıklık kilidi (en çok 6 saat) ve Wi-Fi kilidi tutar (`WAKE_LOCK`).
+  - Rick, indirme ilerledikçe kaldığı yerden (Range) sınırsız sayılabilecek kadar (200 kez) devam eder. Arka
+    arkaya 4 denemede tek bayt bile ilerlemezse durur.
+  - Rick indirme sürerken ön plan bildirimi gösteren küçük bir servis (`DownloadKeeper`, dataSync) çalıştırır.
+    İndirmeyi o yapmaz; Rick'te hâlâ INTERNET izni yok.

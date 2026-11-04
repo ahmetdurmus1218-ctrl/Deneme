@@ -61,6 +61,8 @@ class ModelInstallerTest {
         val committed = mutableListOf<String>()
         val deletedTemp = mutableListOf<String>()
         var downloads = 0
+        /** Each dropped attempt got further than the one before (a long download on a mobile network). */
+        var moving = false
         override val platform = Platform.ANDROID
         override val appVersion = "test"
         override fun deviceInfo() = DeviceInfo("test", 12.0, 1L shl 40)
@@ -76,7 +78,7 @@ class ModelInstallerTest {
             override fun refresh() {}
             override suspend fun download(item: LockedItem, onProgress: (DownloadProgress) -> Unit): DownloadOutcome {
                 downloads++
-                if (downloads <= failFirst) return DownloadOutcome.Failed("Software caused connection abort", 3)
+                if (downloads <= failFirst) return DownloadOutcome.Failed("Software caused connection abort", if (moving) downloads * 1_000L else 3)
                 onProgress(DownloadProgress(item.size, item.size))
                 return DownloadOutcome.Done("/tmp/${item.fileName}.part", item.size, returnSha, item.host)
             }
@@ -242,13 +244,26 @@ class ModelInstallerTest {
     }
 
     @Test
-    fun givesUpAfterTheLastAttempt() = runTest {
+    fun keepsResumingAsLongAsTheTransferMoves() = runTest {
+        // A big file over a mobile network: ten drops, each further along, then it completes.
+        val bridge = FakeBridge(good, failFirst = 10).apply { moving = true }
+        val (inst, _) = installer(bridge)
+        val job = launch { inst.approval.first { it != null }; inst.answerApproval(true) }
+        assertTrue(inst.install(listOf(item), "test"))
+        job.join()
+        assertEquals(11, bridge.downloads)
+        assertIs<ItemStatus.Done>(inst.status.value["m"])
+    }
+
+    @Test
+    fun givesUpWhenNothingMovesAnyMore() = runTest {
         val bridge = FakeBridge(good, failFirst = 100)
         val (inst, _) = installer(bridge)
         val job = launch { inst.approval.first { it != null }; inst.answerApproval(true) }
         assertFalse(inst.install(listOf(item), "test"))
         job.join()
-        assertEquals(ModelInstaller.MAX_ATTEMPTS, bridge.downloads)
+        // The first drop counts as progress (it got bytes); then MAX_ATTEMPTS tries without a new byte.
+        assertEquals(ModelInstaller.MAX_ATTEMPTS + 1, bridge.downloads)
         assertIs<ItemStatus.Failed>(inst.status.value["m"])
     }
 

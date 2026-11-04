@@ -32,6 +32,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Defined by both Kale and Kapı (same signing key) so install order does not matter. -->
@@ -104,6 +105,11 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Floating assistant face over other apps, started and stopped by the user" />
         </service>
+        <!-- Keeps Rick alive during a long approved download (the transfer itself runs in Rick Kapı). -->
+        <service
+            android:name=".android.DownloadKeeper"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
         <!-- Hands drive the chosen apps (never banks / messengers); it does not read the screen. -->
         <service
             android:name=".android.RickAccessibility"

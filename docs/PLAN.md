@@ -147,6 +147,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] `v1.4.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.4.0 (CI, Windows ve emülatör yeşil; emülatörde erişilebilirlik servisi bağlandı).
 - [x] v1.4.1: bilinçli 🤏 tıklama (üstünde durmak tıklamaz), kamera ekranında fener ve kısayol düğmeleri kaldırıldı, küçük ✨ efekt düğmesi, alkış uyanıkken de, YouTube'da doğrudan oynatma (D46).
 - [x] `v1.4.1` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.4.1 (CI, Windows ve emülatör yeşil).
+- [x] v1.4.2: büyük Wikipedia indirmesi ekran kapanınca kopmuyor (Kapı uyanıklık kilidi), ilerledikçe kaldığı yerden sürekli devam ediyor, Rick indirme boyunca ön planda kalıyor (D47).
 - [ ] Kullanıcının yapması gereken: kendi imza anahtarını GitHub secret olarak eklemek (README → İmzalama).
 - [ ] Sıradaki (v1.5): PC'de web kamerasıyla el hareketleri; gerçek telefonda el kontrolü geri bildirimi.
 

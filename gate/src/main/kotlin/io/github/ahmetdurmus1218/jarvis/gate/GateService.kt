@@ -55,8 +55,20 @@ class GateService : Service() {
      * a transfer runs the gate is a foreground service with a visible notification. Allowed because
      * the (visible) Rick app is bound to it; if Android refuses, the download still runs.
      */
+    private var wake: android.os.PowerManager.WakeLock? = null
+    private var wifi: android.net.wifi.WifiManager.WifiLock? = null
+
     private fun enterForeground() {
         if (running.getAndIncrement() > 0) return
+        // A multi-gigabyte file takes a long time: without these the CPU and Wi-Fi sleep when the
+        // screen goes off and the connection times out. Held only while a transfer runs.
+        runCatching {
+            wake = getSystemService(android.os.PowerManager::class.java)
+                .newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "RickKapi:download").apply { setReferenceCounted(false); acquire(6 * 60 * 60_000L) }
+            @Suppress("DEPRECATION")
+            wifi = applicationContext.getSystemService(android.net.wifi.WifiManager::class.java)
+                ?.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF, "RickKapi:download")?.apply { setReferenceCounted(false); acquire() }
+        }
         try {
             val nm = getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(NotificationChannel(CHANNEL, "İndirmeler", NotificationManager.IMPORTANCE_LOW))
@@ -75,6 +87,10 @@ class GateService : Service() {
 
     private fun leaveForeground() {
         if (running.decrementAndGet() > 0) return
+        runCatching { wake?.takeIf { it.isHeld }?.release() }
+        runCatching { wifi?.takeIf { it.isHeld }?.release() }
+        wake = null
+        wifi = null
         runCatching {
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
