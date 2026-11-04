@@ -21,6 +21,14 @@ jobs:
           if [ -f models.lock.json ]; then python3 tools/check-lock-schema.py models.lock.json; else echo "models.lock.json not generated yet"; fi
       - name: No network code in :core
         run: bash tools/check-core-no-network.sh
+      - name: Kiwix download path (diagnostic, where the ZIM link leads)
+        continue-on-error: true
+        run: |
+          f=zim/wikipedia/wikipedia_tr_all_nopic_2026-09.zim
+          for h in mirror.download.kiwix.org download.kiwix.org master.download.kiwix.org; do
+            echo "=== https://$h/$f"
+            for i in 1 2 3; do curl -sS -I --max-time 20 "https://$h/$f" 2>&1 | grep -iE "^HTTP|^location|^content-length|curl" || true; echo "--"; done
+          done
 
   build:
     name: Build, test, lint (Android + JVM)
