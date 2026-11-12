@@ -104,6 +104,20 @@ def dismiss_youtube_update(root):
     return False
 
 
+def cpu(label_):
+    """How busy the phone and Rick are right now (two samples; the second one is the current load)."""
+    top = adb("shell", "top", "-b", "-n", "2", "-d", "2", "-m", "6", check=False)
+    block = top.split("Tasks:")[-1].splitlines()
+    print(f"cpu [{label_}]:", flush=True)
+    for line in block[1:12]:
+        print("   ", line.rstrip()[:150])
+    pid = adb("shell", "pidof", KALE, check=False).strip().split(" ")[0]
+    if pid:
+        threads = adb("shell", "top", "-H", "-b", "-n", "2", "-d", "2", "-m", "6", "-p", pid, check=False).split("Threads:")[-1].splitlines()
+        for line in threads[4:11]:
+            print("    thread", line.rstrip()[:150])
+
+
 def type_into(field_pred, text):
     """Types text into a field and waits until all of it arrived (adb input can drop the tail on a busy emulator)."""
     for attempt in range(3):
@@ -306,6 +320,8 @@ def main():
     print("answer:", label(answer))
     shot("02-kale-saat")
 
+    cpu("Rick open, microphone not allowed yet: no standby")
+
     step("device command without the model: battery")
     type_into(lambda n: n.get("class") == "android.widget.EditText", "pil yuzde kac")
     tap(wait_for(text_is("Gönder"), "send button"))
@@ -316,6 +332,8 @@ def main():
     step("microphone: tap → permission → visible feedback (never silent)")
     mic_feedback()
     shot("02b-kale-mikrofon")
+    time.sleep(6)
+    cpu("idle with hands-free standby listening (claps only, no recognizer installed)")
     check_no_crash()
 
     step("gate detected")
@@ -536,6 +554,8 @@ def main():
 
         step("the day's news: 'Gunun haberleri' → PIN → Kapı → feeds.bbci.co.uk (pinned) → headlines read aloud → Ağ log")
         tap(wait_for(tab("Sohbet"), "chat tab"))
+        time.sleep(6)
+        cpu("idle with hands-free standby listening (recognizer installed)")
         type_into(lambda n: n.get("class") == "android.widget.EditText", "Gunun haberleri")
         tap(wait_for(text_is("Gönder"), "send button"))
         time.sleep(4)
