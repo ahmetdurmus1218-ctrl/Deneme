@@ -470,10 +470,13 @@ def main():
         tap(wait_for(tab("Sohbet"), "chat tab"))
         tap(wait_for(text_is("📷"), "camera button"))
         tap(wait_for(text_is("Kamera · el kontrolü"), "camera menu item"))
-        for _ in range(5):
+        # The permission question may come late or miss a tap while it slides in: keep answering it
+        # until the camera screen itself is in front.
+        for _ in range(25):
             allow = find(lambda n: label(n) in ("While using the app", "Only this time", "Allow"))
             if allow is not None:
                 tap(allow)
+            elif find(text_is("R.I.C.K · EL KONTROLÜ")) is not None:
                 break
             time.sleep(1)
         wait_for(text_is("R.I.C.K · EL KONTROLÜ"), "camera screen")
