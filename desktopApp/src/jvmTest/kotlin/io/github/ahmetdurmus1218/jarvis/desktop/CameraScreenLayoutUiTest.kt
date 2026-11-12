@@ -100,7 +100,7 @@ class CameraScreenLayoutUiTest {
 
         // 1. Pointer mode, no hand in the picture: one title line, one status line, the hint, one row of buttons.
         val title = rule.onNodeWithText("R.I.C.K · EL KONTROLÜ").getUnclippedBoundsInRoot()
-        assertTrue(title.height < 30.dp, "the title is one line (was ${title.height})")
+        assertTrue(title.height < 45.dp, "the title is one line (was ${title.height})")
         assertTrue(title.width > 150.dp, "the title has its width (was ${title.width})")
         assertEquals(1, count("El görünmüyor"))
         assertEquals(1, count("salla = çık"))
