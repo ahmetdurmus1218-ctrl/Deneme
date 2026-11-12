@@ -33,9 +33,17 @@ class AndroidMicStream(private val granted: () -> Boolean, private val ensurePer
             val f = FloatArray(buf.size)
             try {
                 rec.startRecording()
+                var idle = 0
                 while (running) {
                     val n = rec.read(buf, 0, buf.size)
-                    if (n <= 0) continue
+                    if (n <= 0) {
+                        // Nothing delivered (another app has the microphone, or an error): never spin a
+                        // processor core on it, and give up after a few seconds.
+                        if (++idle > 300) break
+                        Thread.sleep(10)
+                        continue
+                    }
+                    idle = 0
                     for (i in 0 until n) f[i] = buf[i] / 32768f
                     onSamples(f, n)
                 }

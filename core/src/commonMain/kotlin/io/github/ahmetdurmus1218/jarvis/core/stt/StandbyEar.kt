@@ -13,7 +13,10 @@ import kotlin.math.sqrt
  *
  * - Silence costs nothing: no recognizer runs until somebody spoke and went quiet again.
  * - Half a second before the first loud moment is kept, so the first word is not clipped.
- * - A sound that never stops (a television) slowly becomes the background and is no longer cut out.
+ * - A sound that never stops (a television) slowly becomes the background and is no longer cut out;
+ *   a stretch without any pause up to the limit is dropped, not handed over (nobody calls for that long).
+ * - The first moment after the microphone opens is ignored: many microphones click or settle there,
+ *   and that must not count as somebody speaking.
  * - Two claps (or the user's rhythm) are reported at once through [claps].
  */
 class StandbyEar(
@@ -23,6 +26,7 @@ class StandbyEar(
     private val maxSpeechMs: Int = 12_000,
     private val prerollMs: Int = 500,
     private val minSpeechRms: Float = 0.012f,
+    private val settleMs: Int = 400,
 ) {
     sealed interface Event {
         /** The wake rhythm was clapped. */
@@ -45,15 +49,37 @@ class StandbyEar(
     private var speaking = false
     private var speechMs = 0
     private var silenceMs = 0
+    private var skip = 0
+    private var muted = false
+    private var startThreshold = 0f
+    private var quietMs = 0
+
+    /** Call when the microphone was just opened: what it delivers first (a click, settling) is ignored. */
+    fun opened() {
+        forget()
+        muted = false
+        skip = RATE / 1000 * settleMs
+    }
 
     /** Feeds microphone samples; returns an event when there is one (at most one per call). */
     fun feed(samples: FloatArray, count: Int = samples.size): Event? {
-        if (claps?.feed(samples, count) == true) {
+        var i = 0
+        if (skip > 0) {
+            val drop = min(skip, count)
+            skip -= drop
+            if (drop == count) return null
+            i = drop
+        }
+        if (i == 0) {
+            if (claps?.feed(samples, count) == true) {
+                forget()
+                return Event.Claps
+            }
+        } else if (claps?.feed(samples.copyOfRange(i, count)) == true) {
             forget()
             return Event.Claps
         }
         var result: Event? = null
-        var i = 0
         while (i < count) {
             val n = min(CHUNK - filled, count - i)
             samples.copyInto(chunk, filled, i, i + n)
@@ -83,27 +109,47 @@ class StandbyEar(
             noise = if (rms < noise) rms else noise + (rms - noise) * 0.05f
         }
         append()
+        if (muted) {
+            // After a sound without end: nothing counts until it has really been quiet for a moment.
+            quietMs = if (loud) 0 else quietMs + CHUNK_MS
+            if (quietMs >= endSilenceMs) muted = false
+            loudRun = 0
+            trim(RATE / 1000 * prerollMs)
+            return null
+        }
         if (!speaking) {
             if (loudRun >= 2) {
                 speaking = true
                 speechMs = CHUNK_MS * 2
                 silenceMs = 0
+                // The pause that ends this utterance is measured against the room as it was when the
+                // utterance began: a sound that merely goes on (and slowly becomes the floor) never "pauses".
+                startThreshold = max(minSpeechRms, noise * 3f)
             } else {
                 // Nothing said yet: remember only the last moment.
-                val keep = RATE / 1000 * prerollMs + CHUNK * loudRun
-                if (size > keep) {
-                    buf.copyInto(buf, 0, size - keep, size)
-                    size = keep
-                }
+                trim(RATE / 1000 * prerollMs + CHUNK * loudRun)
             }
             return null
         }
         speechMs += CHUNK_MS
-        silenceMs = if (loud) 0 else silenceMs + CHUNK_MS
+        silenceMs = if (rms > startThreshold) 0 else silenceMs + CHUNK_MS
         if (silenceMs < endSilenceMs && speechMs < maxSpeechMs) return null
-        val out = buf.copyOf(size)
+        // No pause up to the limit: music, a television, an engine. Not a call; nothing is handed over.
+        val endless = silenceMs < endSilenceMs
+        val out = if (endless) null else buf.copyOf(size)
         forget()
-        return Event.Utterance(out)
+        if (endless) {
+            muted = true
+            quietMs = 0
+        }
+        return out?.let { Event.Utterance(it) }
+    }
+
+    private fun trim(keep: Int) {
+        if (size > keep) {
+            buf.copyInto(buf, 0, size - keep, size)
+            size = keep
+        }
     }
 
     private fun append() {

@@ -555,6 +555,8 @@ def main():
             time.sleep(1)
         print("news screen texts:", seen)
         print(adb("logcat", "-d", "-s", "RickGate:*", "RickNews:*", check=False)[-3000:])
+        # What hands-free standby cost so far (how often the recognizer ran on sound that was not a call).
+        print("standby decodes:", [l.split("JarvisMic: ", 1)[-1] for l in adb("logcat", "-d", "-s", "JarvisMic:*", check=False).splitlines() if "standby:" in l][-40:])
         headlines = [t for t in seen if t.startswith("BBC Türkçe · https://")]
         if len(headlines) < 3 or not any(t.startswith("Web: ") for t in seen):
             raise SystemExit("headlines not shown; texts: " + " | ".join(seen))

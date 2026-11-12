@@ -67,23 +67,36 @@ class StandbyEarTest {
     }
 
     @Test
-    fun aTelevisionThatNeverStopsBecomesTheBackground() {
+    fun aTelevisionThatNeverStopsIsNeverHandedOver() {
         val ear = StandbyEar()
-        // Two minutes of steady loud sound: cut out at most a few times at the start, then left alone.
-        val first = feed(ear, room(1_000), speech(120_000, amp = 0.08f))
-        assertTrue(first.size <= 6, "${first.size} utterances from a steady sound")
-        val later = feed(ear, speech(60_000, amp = 0.08f))
-        assertTrue(later.isEmpty(), "still cutting out the television: ${later.size}")
+        // Three minutes of steady loud sound without a pause: nothing is cut out, at the start or later.
+        assertTrue(feed(ear, room(1_000), speech(120_000, amp = 0.08f)).isEmpty())
+        assertTrue(feed(ear, speech(60_000, amp = 0.08f)).isEmpty())
         // A person clearly louder than it is still heard.
         val person = feed(ear, speech(1_500, amp = 0.6f), speech(1_500, amp = 0.08f))
         assertEquals(1, person.size)
     }
 
     @Test
-    fun aSoundThatNeverPausesIsCutAtTheLimit() {
-        val events = feed(StandbyEar(maxSpeechMs = 5_000), room(500), speech(7_000))
-        val u = assertIs<StandbyEar.Event.Utterance>(events.first())
-        assertTrue(u.samples.size * 1000 / sr <= 5_700)
+    fun aSoundWithoutAnyPauseUpToTheLimitIsDropped() {
+        val ear = StandbyEar(maxSpeechMs = 5_000)
+        assertTrue(feed(ear, room(500), speech(7_000)).isEmpty())
+        // … and a sentence after it is heard as usual.
+        assertEquals(1, feed(ear, room(2_000), speech(1_200), room(1_500)).size)
+    }
+
+    @Test
+    fun theClickWhenTheMicrophoneOpensIsNotSpeech() {
+        val ear = StandbyEar(claps = ClapDetector())
+        // Every time the microphone opens it delivers a loud 250 ms burst first: never an utterance, never a clap.
+        repeat(5) {
+            ear.opened()
+            val events = feed(ear, FloatArray(sr * 250 / 1000) { (rnd.nextFloat() - 0.5f) * 0.9f }, room(3_000))
+            assertTrue(events.isEmpty(), "opening click taken for $events")
+        }
+        // A real sentence after opening is still heard, from its first word.
+        ear.opened()
+        assertEquals(1, feed(ear, room(600), speech(1_000), room(1_500)).size)
     }
 
     @Test

@@ -666,6 +666,9 @@ class JarvisControllerTest {
         advanceTimeBy(3_000)
         assertTrue(mic.open)
         mic.hear(quiet(500), voice(1_000), quiet(1_500))
+        // The more talk in a row that is not for Rick, the longer standby waits before it listens again.
+        advanceTimeBy(3_000)
+        assertTrue(!mic.open, "a noisy room does not keep the recognizer busy")
         advanceTimeBy(3_000)
         assertEquals(2, stt.decoded)
         assertTrue(c.turns.value.isEmpty())

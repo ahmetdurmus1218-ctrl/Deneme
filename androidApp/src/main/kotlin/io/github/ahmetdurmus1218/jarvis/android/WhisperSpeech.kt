@@ -107,7 +107,11 @@ class WhisperSpeechInput(
     override suspend fun transcribe(samples: FloatArray): String? {
         val paths = installedFiles() ?: return null
         return try {
-            withContext(Dispatchers.Default) { transcribe(paths, samples) }
+            val t0 = android.os.SystemClock.elapsedRealtime()
+            val text = withContext(Dispatchers.Default) { transcribe(paths, samples) }
+            // How much work standby costs (never what was said: that stays out of the log).
+            Log.i(TAG, "standby: ${samples.size / 16} ms of sound decoded in ${android.os.SystemClock.elapsedRealtime() - t0} ms")
+            text
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {

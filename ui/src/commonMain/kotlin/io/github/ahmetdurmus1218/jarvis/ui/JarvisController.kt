@@ -113,6 +113,8 @@ class JarvisController(
     private var standbyJob: Job? = null
     private var standbyWatch: Job? = null
     private var decoding = false
+    /** Utterances in a row that were not meant for Rick (the next standby then waits longer). */
+    private var standbyMisses = 0
     private var micRefused = false
     private var listenAfterSpeech = false
     private val ear = io.github.ahmetdurmus1218.jarvis.core.stt.StandbyEar()
@@ -286,8 +288,10 @@ class JarvisController(
         if (standbyJob != null) return
         val mic = bridge.micStream ?: return
         standbyJob = scope.launch {
-            // Lets Rick's own voice ring out, and a follow-up question open the microphone first.
-            delay(STANDBY_DELAY_MS)
+            // Lets Rick's own voice ring out, and a follow-up question open the microphone first. After
+            // talk that was not meant for Rick the pause grows: a noisy room must not keep the recognizer
+            // (and the processor) busy all the time.
+            delay(STANDBY_DELAY_MS + STANDBY_BACKOFF_MS[minOf(standbyMisses, STANDBY_BACKOFF_MS.lastIndex)])
             if (!standbyWanted()) { standbyJob = null; return@launch }
             val s = settings.state.value
             val names = namesWanted(s)
@@ -296,7 +300,7 @@ class JarvisController(
             } else {
                 null
             }
-            ear.forget()
+            ear.opened()
             val me = coroutineContext[Job]
             val ok = mic.start { samples, n ->
                 val ev = ear.feed(samples, n) ?: return@start
@@ -344,9 +348,13 @@ class JarvisController(
                 if (_mode.value != CoreMode.IDLE || !settings.state.value.handsFree) return
                 when (val heard = io.github.ahmetdurmus1218.jarvis.core.stt.WakeCall.parse(text.orEmpty())) {
                     // Not said to Rick: dropped here, never shown or kept.
-                    io.github.ahmetdurmus1218.jarvis.core.stt.WakeCall.Heard.NotForMe -> refreshStandby()
+                    io.github.ahmetdurmus1218.jarvis.core.stt.WakeCall.Heard.NotForMe -> {
+                        standbyMisses++
+                        refreshStandby()
+                    }
                     io.github.ahmetdurmus1218.jarvis.core.stt.WakeCall.Heard.NameOnly -> answerCall()
                     is io.github.ahmetdurmus1218.jarvis.core.stt.WakeCall.Heard.Request -> {
+                        standbyMisses = 0
                         continueAfter = nextId
                         send(heard.text)
                     }
@@ -464,6 +472,7 @@ class JarvisController(
 
     private fun noteActivity() {
         lastActivity = idleChecks * IDLE_CHECK_MS
+        standbyMisses = 0
     }
 
     /**
@@ -990,6 +999,8 @@ class JarvisController(
 
         /** Hands-free: how long after Rick falls idle the standby microphone opens, and how often that is re-checked. */
         const val STANDBY_DELAY_MS = 500L
+        /** Extra pause before standby listens again, by how many utterances in a row were not for Rick. */
+        val STANDBY_BACKOFF_MS = longArrayOf(0L, 1_500L, 4_000L, 8_000L)
         const val STANDBY_CHECK_MS = 2_000L
         /** What Rick says when only its name was called. */
         const val CALL_ANSWER = "Efendim?"
