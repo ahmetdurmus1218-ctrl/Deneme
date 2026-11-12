@@ -584,6 +584,11 @@ def main():
             seen += new
             # What each look at the screen saw (to tell a slow emulator from a screen that does not move).
             print(f"  news look {k} at {time.time() - t0:.0f}s: {len(now)} texts, new: {[t[:40] for t in new]}", flush=True)
+            if k in (1, 5, 9):
+                # Is the keyboard up (it squeezes the answer area)? And a picture of what is on the screen.
+                ime = [l.strip() for l in adb("shell", "dumpsys", "input_method", check=False).splitlines() if "mInputShown" in l or "mImeWindowVis" in l]
+                print(f"    keyboard: {ime[:2]}", flush=True)
+                shot(f"18c-haber-bakis-{k}")
             adb("shell", "input", "swipe", "540", "800", "540", "1800", "250")
             time.sleep(1)
         print(f"  screen reads in this step: {DUMP_STATS['dumps'] - before['dumps']}, retries {DUMP_STATS['retries'] - before['retries']}, {DUMP_STATS['seconds'] - before['seconds']:.0f}s in all")

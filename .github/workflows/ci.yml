@@ -127,6 +127,26 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: python3 tools/android-smoke.py apks --download
+      - name: Emulator screenshots as text (base64, small; for reviewing from the log)
+        if: always()
+        continue-on-error: true
+        run: |
+          pip install --quiet pillow
+          python3 - <<'PY'
+          import base64, glob, io
+          from PIL import Image
+          for p in sorted(glob.glob("smoke-shots/*.png")):
+              name = p.split("/")[-1][:-4]
+              if not name.startswith(("18", "11-", "02b")):
+                  continue
+              im = Image.open(p).convert("RGB")
+              im.thumbnail((450, 1000))
+              b = io.BytesIO()
+              im.save(b, "JPEG", quality=55)
+              print("=== IMG", name)
+              print(base64.b64encode(b.getvalue()).decode())
+              print("=== END", name)
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         continue-on-error: true
