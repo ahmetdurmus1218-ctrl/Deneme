@@ -153,9 +153,8 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [ ] Sıradaki (v1.5): PC'de web kamerasıyla el hareketleri; gerçek telefonda el kontrolü geri bildirimi.
 
 ## Kaldığım yer
-Oturum 2 (2026-11-03): v0.3–v0.5 ve halilozat özellikleri yayımlandı (v0.5.0). Ardından kullanıcının telefon
-denemesine göre v1.0: ad Rick, sesli cevap, küçük ekran, indirmeden önce cihazda arama, modelsiz cihaz
-komutları, deneme modunun kaldırılması. v1.0.0 yayımlandı. Sıradaki: gerçek cihaz geri bildirimi (Gemma 4 /
-Qwen hızı, alkış eşiği, Piper sesi, yeni cihaz komutları). Ayrıca araştırılan: kullanıcı verisiyle LoRA
-eğitimi henüz llama.cpp'ye girmedi; önerilen yerel öğrenme (düzeltmelerden öğrenme, boşta araştırma defteri)
-kullanıcı onaylarsa yapılacak.
+Oturum 3 (2026-11-12): v1.0 → v1.4.2 yayımlandı (kıvılcım simgesi ve 5 görünüm, tam ekran el kontrolü, erişilebilirlik
+ile diğer uygulamalarda el kontrolü ve güvenlik kuralları, bilinçli tıklama, alkış, YouTube'da oynatma, Wikipedia
+indirmesinin sağlamlaştırılması). Kullanıcı kaynak kodu dışarıdan incelettirdi; önerilen "Rick 2.0" (görev motoru,
+bağlantılı hafıza, bilgisayar ajanı, proaktif zekâ…) henüz onaylanmadı, kod yazılmadı. Sıradaki: gerçek cihaz geri
+bildirimi (🤏 tıklama, alkış, YouTube oynatma, Wikipedia indirmesi) ve kullanıcının Rick 2.0 kararı.

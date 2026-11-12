@@ -8,11 +8,14 @@ anahtarı ya da reklam yoktur.
 > indirdiğiniz modeller, hafıza ve ayarlar yerinde kalır; bilgisayarda `%LOCALAPPDATA%\Jarvis` klasörü
 > ilk açılışta kendiliğinden `%LOCALAPPDATA%\Rick` olur. "Hey Jarvis" demeye devam ederseniz de anlar.
 
-> **Durum:** v1.0.0. Bütün aşamalar tamam: gerçek yapay zekâ (telefonda Gemma 4, PC'de Qwen 3.5 9B), Rick'in kendi
+> **Durum:** v1.4.2. Bütün aşamalar tamam: gerçek yapay zekâ (telefonda Gemma 4, PC'de Qwen 3.5 9B), Rick'in kendi
 > ses tanıması (Whisper) ve kendi Türkçe sesi (Piper), internetsiz Wikipedia ve belgeleriniz, şifreli hafıza, kamera
-> ile el kontrolü ve efektler, ev simülasyonu, kitaplık, alkışla uyanma, Mark 2 ekran, bilgisayarda güvenlik duvarı.
-> Dil modeli kurulmadan da hazır komutlar (saat, alarm, hesap, fener, ses, müzik, arama/mesaj hazırlama…) ve kaynaklı
-> Wikipedia cevapları çalışır; serbest sohbet için sohbet ekranındaki **"🧠 Rick'in beynini kur"** düğmesine basın. Ayrıntılar: [`docs/PLAN.md`](docs/PLAN.md).
+> ile el kontrolü (tam ekran; izin verdiğiniz YouTube, Spotify, tarayıcı gibi uygulamalarda arka planda da — banka,
+> mesajlaşma ve ödeme uygulamalarında asla), 5 farklı canlı simge görünümü, ev simülasyonu, kitaplık, alkışla
+> uyanma, bilgisayarda güvenlik duvarı. Dil modeli kurulmadan da hazır komutlar (saat, alarm, hesap, fener, ses,
+> müzik, arama/mesaj hazırlama…) ve kaynaklı Wikipedia cevapları çalışır; serbest sohbet için sohbet ekranındaki
+> **"🧠 Rick'in beynini kur"** düğmesine basın. Ayarlar'daki **"Tam çevrimdışı mod"** açıkken Rick hiçbir koşulda
+> internete çıkmaz. Ayrıntılar: [`docs/PLAN.md`](docs/PLAN.md).
 
 ---
 
