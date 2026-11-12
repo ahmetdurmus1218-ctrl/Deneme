@@ -158,3 +158,6 @@ ile diğer uygulamalarda el kontrolü ve güvenlik kuralları, bilinçli tıklam
 indirmesinin sağlamlaştırılması). Kullanıcı kaynak kodu dışarıdan incelettirdi; önerilen "Rick 2.0" (görev motoru,
 bağlantılı hafıza, bilgisayar ajanı, proaktif zekâ…) henüz onaylanmadı, kod yazılmadı. Sıradaki: gerçek cihaz geri
 bildirimi (🤏 tıklama, alkış, YouTube oynatma, Wikipedia indirmesi) ve kullanıcının Rick 2.0 kararı.
+Etkileşim incelemesi ve teşhis yazıldı: `docs/RICK2-INCELEME.md` (kod değişmedi). Önerilen sıra: v1.5.0 eller
+serbest ses ("Rick" diye seslenme, cevaptan sonra yeniden dinleme, araya girme), v1.5.1 el takibi güvenilirliği.
+Kullanıcı onayı bekleniyor.
