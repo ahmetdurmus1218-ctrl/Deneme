@@ -102,6 +102,21 @@ class JarvisController(
     private val speechQueue = Channel<String>(Channel.UNLIMITED)
     private var queued = 0
 
+    // Hands-free standby state. Declared before init: the coroutines started there may run at once
+    // (an immediate dispatcher) and must find all of this initialized.
+    private val _standby = MutableStateFlow(false)
+    /** True while the microphone waits for Rick's name or for claps (the listening sign on the screen). */
+    val standby: StateFlow<Boolean> = _standby.asStateFlow()
+    private var appVisible = false
+    private var appAwake = true
+    private var floating = false
+    private var standbyJob: Job? = null
+    private var standbyWatch: Job? = null
+    private var decoding = false
+    private var micRefused = false
+    private var listenAfterSpeech = false
+    private val ear = io.github.ahmetdurmus1218.jarvis.core.stt.StandbyEar()
+
     /** Last time the user did something; idle reading starts only after a quiet while. */
     private var lastActivity = 0L
     private var idleChecks = 0
@@ -192,25 +207,12 @@ class JarvisController(
 
     // ---- hands-free standby ----
 
-    private val _standby = MutableStateFlow(false)
-    /** True while the microphone waits for Rick's name or for claps (the "Rick deyin" sign on the screen). */
-    val standby: StateFlow<Boolean> = _standby.asStateFlow()
-
     /** Whether standby also understands the name (Rick's own recognizer is installed), not only claps. */
     val standbyHearsName: Boolean get() = namesWanted(settings.state.value)
 
     /** Hands-free is on but the microphone was never allowed yet: the screen asks for one tap on the microphone. */
     val standbyNeedsMicrophone: Boolean
         get() = settings.state.value.handsFree && bridge.micStream?.permitted == false && bridge.speechInput != null
-
-    private var appVisible = false
-    private var appAwake = true
-    private var floating = false
-    private var standbyJob: Job? = null
-    private var decoding = false
-    private var micRefused = false
-    private var listenAfterSpeech = false
-    private val ear = io.github.ahmetdurmus1218.jarvis.core.stt.StandbyEar()
 
     /** Two claps heard in standby: whoever shows Rick may take them (the floating Rick wakes up) by returning true. */
     var onClaps: (() -> Boolean)? = null
@@ -222,8 +224,6 @@ class JarvisController(
         watchStandby()
         refreshStandby()
     }
-
-    private var standbyWatch: Job? = null
 
     /**
      * While Rick is shown somewhere, looks every couple of seconds whether standby should be running:

@@ -620,6 +620,19 @@ class JarvisControllerTest {
     // ---- hands-free standby ----
 
     @Test
+    fun aControllerStartsOnADispatcherThatRunsCoroutinesAtOnce() = runTest {
+        // Compose's own scope runs a launched coroutine immediately: everything init touches must exist by then.
+        val scope = CoroutineScope(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler) + Job())
+        val mic = FakeMic()
+        val (c, _, _) = setup(scope = scope, stt = OwnStt(ArrayDeque()), mic = mic)
+        c.setAppVisible(true)
+        advanceTimeBy(1_000)
+        assertTrue(mic.open)
+        c.setAppVisible(false)
+        scope.cancel()
+    }
+
+    @Test
     fun sayingTheNameAsksWithoutTouchingAnything() = runTest {
         val scope = controllerScope()
         val mic = FakeMic()
