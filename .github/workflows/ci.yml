@@ -59,14 +59,16 @@ jobs:
             [ -f "$p" ] || continue
             echo "=== IMG $f"; base64 -w0 "$p"; echo; echo "=== END $f"
           done
+      # Artifacts are a convenience only: a full artifact storage quota must never fail the build.
       - name: Upload desktop UI screenshots
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: ui-screens
           path: desktopApp/build/ui-screens/
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 1
       - name: Android lint
         run: ./gradlew --no-daemon :androidApp:lintRelease :gate:lintRelease
       - name: Build APKs
@@ -78,22 +80,24 @@ jobs:
           ls -la androidApp/build/outputs/apk/release/ gate/build/outputs/apk/release/
       - name: Upload test reports
         if: failure()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: reports
           path: |
             **/build/reports/
             **/build/test-results/
-          retention-days: 7
-      - name: Upload APKs
-        uses: actions/upload-artifact@v4
+          retention-days: 1
+      # The emulator job gets the APKs through the cache (no artifact storage needed).
+      - name: Collect the APKs for the emulator job
+        run: |
+          mkdir -p apks
+          cp --parents androidApp/build/outputs/apk/release/*.apk androidApp/build/outputs/apk/androidTest/release/*.apk gate/build/outputs/apk/release/*.apk apks/
+          find apks -name '*.apk' | sort
+      - uses: actions/cache/save@v4
         with:
-          name: apks
-          path: |
-            androidApp/build/outputs/apk/release/*.apk
-            androidApp/build/outputs/apk/androidTest/release/*.apk
-            gate/build/outputs/apk/release/*.apk
-          retention-days: 7
+          path: apks
+          key: apks-${{ github.run_id }}-${{ github.run_attempt }}
 
   android-smoke:
     name: Android emulator end-to-end
@@ -102,10 +106,12 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v4
+      - uses: actions/cache/restore@v4
         with:
-          name: apks
           path: apks
+          key: apks-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: apks-${{ github.run_id }}-
+          fail-on-cache-miss: true
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -123,11 +129,12 @@ jobs:
           script: python3 tools/android-smoke.py apks --download
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true
         with:
           name: smoke-shots
           path: smoke-shots/
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 1
 
   windows:
     name: Windows MSI
@@ -187,7 +194,8 @@ jobs:
         run: |
           for f in desktopApp/build/compose/logs/*/*.txt; do echo "=== $f"; tail -n 80 "$f"; done || true
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: msi
           path: desktopApp/build/compose/binaries/main/msi/*.msi
-          retention-days: 7
+          retention-days: 1

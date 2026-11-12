@@ -71,10 +71,12 @@ jobs:
           mkdir -p dist
           cp androidApp/build/outputs/apk/release/androidApp-arm64-v8a-release.apk dist/rick.apk
           cp gate/build/outputs/apk/release/gate-release.apk dist/rick-kapi.apk
-      - uses: actions/upload-artifact@v4
+      # Handed to the publish job through the cache: releases must not depend on the artifact storage quota.
+      - uses: actions/cache/save@v4
         with:
-          name: android
-          path: dist/
+          path: dist
+          key: release-android-${{ github.run_id }}-${{ github.run_attempt }}
+          enableCrossOsArchive: true
 
   windows:
     needs: meta
@@ -101,20 +103,37 @@ jobs:
         shell: bash
         run: |
           for f in desktopApp/build/compose/logs/*/*.txt; do echo "=== $f"; tail -n 80 "$f"; done || true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/cache/save@v4
         with:
-          name: windows
-          path: dist/
+          path: dist
+          key: release-windows-${{ github.run_id }}-${{ github.run_attempt }}
+          enableCrossOsArchive: true
 
   publish:
     needs: [meta, android, windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v4
+      - uses: actions/cache/restore@v4
         with:
           path: dist
-          merge-multiple: true
+          key: release-android-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: release-android-${{ github.run_id }}-
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+      - name: Keep the Android files while the Windows ones are restored
+        run: mv dist dist-android
+      - uses: actions/cache/restore@v4
+        with:
+          path: dist
+          key: release-windows-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: release-windows-${{ github.run_id }}-
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+      - name: All release files in one folder
+        run: |
+          cp dist-android/* dist/
+          ls -la dist
       - name: Checksums and release notes
         env:
           SIGNING: ${{ needs.android.outputs.signing }}
