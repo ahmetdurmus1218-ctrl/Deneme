@@ -23,7 +23,7 @@ import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
-/** The chat screen's on/off button for continuous listening, on a narrow phone. */
+/** The on/off button for continuous listening in the chat screen's top bar, on a narrow phone. */
 class HandsFreeButtonUiTest {
     @get:Rule
     val rule = createComposeRule()
@@ -58,15 +58,15 @@ class HandsFreeButtonUiTest {
                 JarvisApp(graph) { "12 Kas 2026 18:30" }
             }
         }
-        waitForText("Sürekli dinleme AÇIK")
-        waitForText("deyin ya da")
+        // The top bar's button (short labels on a phone): on, one tap off, one tap on again.
+        waitForText("🎙 AÇIK")
         shot("31-surekli-dinleme-acik")
-        rule.onNodeWithText("Sürekli dinleme AÇIK", substring = true).performClick()
-        waitForText("Sürekli dinleme KAPALI")
+        rule.onNodeWithText("🎙 AÇIK").performClick()
+        waitForText("🎙 KAPALI")
         assertTrue(!graph.settings.state.value.handsFree)
         shot("32-surekli-dinleme-kapali")
-        rule.onNodeWithText("Sürekli dinleme KAPALI", substring = true).performClick()
-        waitForText("Sürekli dinleme AÇIK")
+        rule.onNodeWithText("🎙 KAPALI").performClick()
+        waitForText("🎙 AÇIK")
         assertTrue(graph.settings.state.value.handsFree)
     }
 }

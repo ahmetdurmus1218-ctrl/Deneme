@@ -130,6 +130,7 @@ fun ChatScreen(
     val accent by animateColorAsState(mode.accent(), tween(600))
     val focus = LocalFocusManager.current
 
+    val standbyOn by controller.standby.collectAsState()
     Column(Modifier.fillMaxSize().hudBackground(accent)) {
         StatusBar(
             mode = mode,
@@ -138,6 +139,10 @@ fun ChatScreen(
             showHistory = showHistory,
             onConversationMode = { on -> controller.settings.update { it.copy(conversationMode = on) } },
             onHistory = { showHistory = !showHistory },
+            // Continuous listening has its own on/off button, always in sight (null: no microphone here).
+            handsFree = if (micAvailable) settings.handsFree else null,
+            listening = standbyOn && mode == CoreMode.IDLE,
+            onHandsFree = { controller.setHandsFree(!settings.handsFree) },
         )
         Box(Modifier.weight(1f).fillMaxWidth()) {
             if (showHistory) {
@@ -156,7 +161,6 @@ fun ChatScreen(
             }
         }
         val caption = partial.ifBlank { if (mode == CoreMode.SPEAKING) "" else subtitle }
-        val standby by controller.standby.collectAsState()
         if (caption.isNotBlank()) {
             Text(
                 caption,
@@ -165,20 +169,21 @@ fun ChatScreen(
                 fontSize = 15.sp,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp),
             )
-        }
-        // Continuous listening has its own on/off button, always in sight: green while the microphone
-        // really is open, and one tap away from closing it (or opening it again).
-        if (micAvailable) {
-            HandsFreeSwitch(
-                on = settings.handsFree,
-                listening = standby && mode == CoreMode.IDLE,
-                hint = when {
-                    !settings.handsFree -> "açmak için dokunun"
-                    controller.standbyNeedsMicrophone -> "önce mikrofona bir kez dokunun"
-                    controller.standbyHearsName -> "“${AssistantName.SHORT}, …” deyin ya da 👏👏"
-                    else -> "iki kez alkışlayın 👏👏"
-                },
-            ) { controller.setHandsFree(!settings.handsFree) }
+        } else if (micAvailable && settings.handsFree && mode == CoreMode.IDLE) {
+            // One quiet line while Rick waits: what to say, or what is still missing.
+            val hint = when {
+                controller.standbyNeedsMicrophone -> "Sürekli dinleme için mikrofona bir kez dokunup izin verin"
+                !standbyOn -> ""
+                controller.standbyHearsName -> "“${AssistantName.SHORT}, …” deyin ya da iki kez alkışlayın"
+                else -> "İki kez alkışlayın (adıyla seslenmek için ses tanımayı kurun)"
+            }
+            if (hint.isNotBlank()) {
+                Text(
+                    hint, textAlign = TextAlign.Center, color = JarvisColors.TextDim, fontSize = 11.sp, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 2.dp),
+                )
+            }
         }
         if (voiceModel != null && voiceMissing != null && mode != CoreMode.LISTENING) {
             SpeechModelBar(voiceModel) { ok ->
@@ -331,6 +336,9 @@ private fun StatusBar(
     showHistory: Boolean,
     onConversationMode: (Boolean) -> Unit,
     onHistory: () -> Unit,
+    handsFree: Boolean?,
+    listening: Boolean,
+    onHandsFree: () -> Unit,
 ) {
     val tick = rememberInfiniteTransition().animateFloat(0f, 60f, infiniteRepeatable(tween(60_000, easing = LinearEasing)))
     // Recomposes only when the minute changes, not on every animation frame.
@@ -344,10 +352,23 @@ private fun StatusBar(
                 Text(AssistantName.DOTTED, color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, letterSpacing = 3.sp, fontSize = 15.sp, maxLines = 1, softWrap = false)
                 Text(if (compact) "● OFFLINE" else "● ÇEVRİMDIŞI", color = JarvisColors.Green, fontFamily = FontFamily.Monospace, fontSize = 10.sp, letterSpacing = 1.sp, maxLines = 1)
             }
-            val talk = if (compact) "SOHBET" else "SOHBET MODU"
-            HudChip(if (conversationMode) "$talk ✓" else talk, conversationMode) { onConversationMode(!conversationMode) }
-            Spacer(Modifier.width(6.dp))
-            HudChip(if (showHistory) "GERİ" else if (compact) "GEÇMİŞ" else "GEÇMİŞ $historyCount", showHistory, onHistory)
+            if (handsFree != null) {
+                // Green with a dot while the microphone really is open; one tap closes it, another opens it.
+                val label = when {
+                    !handsFree -> if (compact) "🎙 KAPALI" else "🎙 DİNLEME KAPALI"
+                    listening -> if (compact) "● DİNLİYOR" else "● SÜREKLİ DİNLİYOR"
+                    else -> if (compact) "🎙 AÇIK" else "🎙 DİNLEME AÇIK"
+                }
+                HudChip(label, handsFree, color = if (listening) JarvisColors.Green else JarvisColors.Cyan, onClick = onHandsFree)
+                Spacer(Modifier.width(6.dp))
+            }
+            // The conversation-mode chip only where there is room (it is in Settings everywhere).
+            if (!compact || handsFree == null) {
+                val talk = if (compact) "SOHBET" else "SOHBET MODU"
+                HudChip(if (conversationMode) "$talk ✓" else talk, conversationMode) { onConversationMode(!conversationMode) }
+                Spacer(Modifier.width(6.dp))
+            }
+            HudChip(if (showHistory) "GERİ" else if (compact) "GEÇMİŞ" else "GEÇMİŞ $historyCount", showHistory, onClick = onHistory)
             if (!compact) {
                 Spacer(Modifier.width(10.dp))
                 Text(clock, color = JarvisColors.Text, fontFamily = FontFamily.Monospace, fontSize = 16.sp, maxLines = 1)
@@ -356,38 +377,12 @@ private fun StatusBar(
     }
 }
 
-/** The on/off button of continuous (hands-free) listening, with what to do next to it. */
 @Composable
-private fun HandsFreeSwitch(on: Boolean, listening: Boolean, hint: String, onToggle: () -> Unit) {
-    val c = when {
-        listening -> JarvisColors.Green
-        on -> JarvisColors.Cyan
-        else -> JarvisColors.TextDim
-    }
-    Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), contentAlignment = Alignment.Center) {
-        Column(
-            Modifier
-                .background(if (on) c.copy(alpha = 0.12f) else Color.Transparent, RoundedCornerShape(18.dp))
-                .border(1.dp, c.copy(alpha = 0.7f), RoundedCornerShape(18.dp))
-                .clickable(onClick = onToggle)
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                (if (listening) "● " else "🎙 ") + "Sürekli dinleme " + if (on) "AÇIK" else "KAPALI",
-                color = c, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
-            )
-            Text(hint, color = JarvisColors.TextDim, fontSize = 11.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-        }
-    }
-}
-
-@Composable
-private fun HudChip(text: String, active: Boolean, onClick: () -> Unit) {
-    val c = if (active) JarvisColors.Amber else JarvisColors.CyanDim
+private fun HudChip(text: String, active: Boolean, color: Color = JarvisColors.Amber, onClick: () -> Unit) {
+    val c = if (active) color else JarvisColors.CyanDim
     Text(
         text,
-        color = if (active) JarvisColors.Amber else JarvisColors.TextDim,
+        color = if (active) color else JarvisColors.TextDim,
         fontFamily = FontFamily.Monospace,
         fontSize = 10.sp,
         letterSpacing = 1.sp,
