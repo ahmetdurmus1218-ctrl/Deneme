@@ -92,6 +92,18 @@ def dismiss_system_anr(root):
     return False
 
 
+def dismiss_youtube_update(root):
+    """After the hand-off step YouTube may later put its own "Update your app" page over Rick (not our app)."""
+    texts = screen_texts(root)
+    if "Update your app" in texts:
+        print("YouTube's update page came to the front: closing YouTube, back to Rick")
+        adb("shell", "am", "force-stop", "com.google.android.youtube", check=False)
+        adb("shell", "am", "start", "-W", "-n", f"{KALE}/.android.MainActivity", check=False)
+        time.sleep(2)
+        return True
+    return False
+
+
 def type_into(field_pred, text):
     """Types text into a field and waits until all of it arrived (adb input can drop the tail on a busy emulator)."""
     for attempt in range(3):
@@ -115,7 +127,7 @@ def wait_for(pred, what, timeout=40):
     root = None
     while time.time() < end:
         root = dump()
-        if dismiss_system_anr(root):
+        if dismiss_system_anr(root) or dismiss_youtube_update(root):
             continue
         n = find(pred, root)
         if n is not None:
