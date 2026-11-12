@@ -64,12 +64,12 @@ class AppUiTest {
         override fun append(name: String, line: String) { m[name] = m[name].orEmpty() + line + "\n" }
     }
 
-    internal class UiTestBridge : PlatformBridge {
+    internal class UiTestBridge(private val mic: SpeechInput? = null) : PlatformBridge {
         override val platform = Platform.DESKTOP
         override val appVersion = "ui-test"
         override fun deviceInfo() = DeviceInfo("Test PC · Windows 11", 16.0, 500_000_000_000L, listOf("Önerilen model: Qwen 3.5 9B"))
         override val files: AppFiles = MemFiles()
-        override val speechInput: SpeechInput? = null
+        override val speechInput: SpeechInput? get() = mic
         override val speechOutput: SpeechOutput? = null
         override val approver = object : Approver {
             override suspend fun confirm(title: String, subtitle: String) = ApprovalResult.Approved(ApprovalMethod.DIALOG)

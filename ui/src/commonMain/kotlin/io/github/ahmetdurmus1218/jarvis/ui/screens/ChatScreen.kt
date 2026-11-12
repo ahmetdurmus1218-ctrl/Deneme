@@ -165,27 +165,20 @@ fun ChatScreen(
                 fontSize = 15.sp,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp),
             )
-        } else if (standby && mode == CoreMode.IDLE) {
-            // Hands-free: the microphone is open, and the screen always says so. A tap switches it off.
-            Text(
-                if (controller.standbyHearsName) "● Dinliyorum · “${AssistantName.SHORT}, …” deyin ya da iki kez alkışlayın" else "● Dinliyorum · iki kez alkışlayın",
-                textAlign = TextAlign.Center,
-                color = JarvisColors.Green.copy(alpha = 0.85f),
-                fontSize = 12.sp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        controller.settings.update { it.copy(handsFree = false) }
-                        controller.showNotice("Eller serbest dinleme kapandı. Ayarlar → Eller serbest ile yeniden açabilirsiniz.")
-                    }
-                    .padding(horizontal = 18.dp, vertical = 6.dp),
-            )
-        } else if (mode == CoreMode.IDLE && micAvailable && controller.standbyNeedsMicrophone) {
-            Text(
-                "Eller serbest dinleme için mikrofona bir kez dokunup izin verin",
-                textAlign = TextAlign.Center, color = JarvisColors.TextDim, fontSize = 12.sp,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp),
-            )
+        }
+        // Continuous listening has its own on/off button, always in sight: green while the microphone
+        // really is open, and one tap away from closing it (or opening it again).
+        if (micAvailable) {
+            HandsFreeSwitch(
+                on = settings.handsFree,
+                listening = standby && mode == CoreMode.IDLE,
+                hint = when {
+                    !settings.handsFree -> "açmak için dokunun"
+                    controller.standbyNeedsMicrophone -> "önce mikrofona bir kez dokunup izin verin"
+                    controller.standbyHearsName -> "“${AssistantName.SHORT}, …” deyin ya da iki kez alkışlayın"
+                    else -> "iki kez alkışlayın"
+                },
+            ) { controller.setHandsFree(!settings.handsFree) }
         }
         if (voiceModel != null && voiceMissing != null && mode != CoreMode.LISTENING) {
             SpeechModelBar(voiceModel) { ok ->
@@ -359,6 +352,33 @@ private fun StatusBar(
                 Spacer(Modifier.width(10.dp))
                 Text(clock, color = JarvisColors.Text, fontFamily = FontFamily.Monospace, fontSize = 16.sp, maxLines = 1)
             }
+        }
+    }
+}
+
+/** The on/off button of continuous (hands-free) listening, with what to do next to it. */
+@Composable
+private fun HandsFreeSwitch(on: Boolean, listening: Boolean, hint: String, onToggle: () -> Unit) {
+    val c = when {
+        listening -> JarvisColors.Green
+        on -> JarvisColors.Cyan
+        else -> JarvisColors.TextDim
+    }
+    Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), contentAlignment = Alignment.Center) {
+        Row(
+            Modifier
+                .background(if (on) c.copy(alpha = 0.12f) else Color.Transparent, RoundedCornerShape(50))
+                .border(1.dp, c.copy(alpha = 0.7f), RoundedCornerShape(50))
+                .clickable(onClick = onToggle)
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                (if (listening) "● " else "🎙 ") + "Sürekli dinleme " + if (on) "AÇIK" else "KAPALI",
+                color = c, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
+            )
+            Text(hint, color = JarvisColors.TextDim, fontSize = 11.sp, maxLines = 2, modifier = Modifier.weight(1f, fill = false))
         }
     }
 }

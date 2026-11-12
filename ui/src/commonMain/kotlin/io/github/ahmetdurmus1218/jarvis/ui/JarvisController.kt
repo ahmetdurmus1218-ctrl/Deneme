@@ -250,6 +250,13 @@ class JarvisController(
         refreshStandby()
     }
 
+    /** The on/off button of continuous listening: takes effect at once. */
+    fun setHandsFree(on: Boolean) {
+        settings.update { it.copy(handsFree = on) }
+        if (on) micRefused = false
+        refreshStandby()
+    }
+
     /** The floating Rick is running over other apps. */
     fun setFloating(on: Boolean) {
         floating = on

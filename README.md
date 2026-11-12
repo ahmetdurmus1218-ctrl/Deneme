@@ -46,7 +46,7 @@ GitHub'da bu sayfanın sağındaki **Releases** bölümüne girin, en üstteki s
    - İsterseniz **"Sonra kur"** deyip modelleri daha sonra sohbet ya da Modeller ekranından kurabilirsiniz.
 
 **Kullanım:** Rick ekrandayken **"Rick, saat kaç"** deyin ya da iki kez alkışlayın; mikrofona basmanız gerekmez
-(ekranda "● Dinliyorum" yazar; yazıya dokunursanız kapanır, Ayarlar → Eller serbest ile açılır). İsterseniz alttaki
+(sohbet ekranındaki **"Sürekli dinleme AÇIK / KAPALI"** düğmesiyle kapatıp açabilirsiniz). İsterseniz alttaki
 mikrofon tuşuna **basılı tutup** konuşun ya da yazın. Adı geçmeyen konuşmalar atılır; ses cihazdan çıkmaz.
 Örnekler: "Saat kaç?", "Yarın sabah 7'de alarm kur", "5 dakikalık zamanlayıcı", "Kamerayı aç",
 "12 artı 30 kaç eder", "5 km kaç mil", "Sus".
