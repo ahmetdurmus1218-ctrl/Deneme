@@ -174,9 +174,9 @@ fun ChatScreen(
                 listening = standby && mode == CoreMode.IDLE,
                 hint = when {
                     !settings.handsFree -> "açmak için dokunun"
-                    controller.standbyNeedsMicrophone -> "önce mikrofona bir kez dokunup izin verin"
-                    controller.standbyHearsName -> "“${AssistantName.SHORT}, …” deyin ya da iki kez alkışlayın"
-                    else -> "iki kez alkışlayın"
+                    controller.standbyNeedsMicrophone -> "önce mikrofona bir kez dokunun"
+                    controller.standbyHearsName -> "“${AssistantName.SHORT}, …” deyin ya da 👏👏"
+                    else -> "iki kez alkışlayın 👏👏"
                 },
             ) { controller.setHandsFree(!settings.handsFree) }
         }
@@ -365,20 +365,19 @@ private fun HandsFreeSwitch(on: Boolean, listening: Boolean, hint: String, onTog
         else -> JarvisColors.TextDim
     }
     Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), contentAlignment = Alignment.Center) {
-        Row(
+        Column(
             Modifier
-                .background(if (on) c.copy(alpha = 0.12f) else Color.Transparent, RoundedCornerShape(50))
-                .border(1.dp, c.copy(alpha = 0.7f), RoundedCornerShape(50))
+                .background(if (on) c.copy(alpha = 0.12f) else Color.Transparent, RoundedCornerShape(18.dp))
+                .border(1.dp, c.copy(alpha = 0.7f), RoundedCornerShape(18.dp))
                 .clickable(onClick = onToggle)
-                .padding(horizontal = 12.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 (if (listening) "● " else "🎙 ") + "Sürekli dinleme " + if (on) "AÇIK" else "KAPALI",
-                color = c, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
+                color = c, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
             )
-            Text(hint, color = JarvisColors.TextDim, fontSize = 11.sp, maxLines = 2, modifier = Modifier.weight(1f, fill = false))
+            Text(hint, color = JarvisColors.TextDim, fontSize = 11.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
     }
 }

@@ -59,7 +59,7 @@ class HandsFreeButtonUiTest {
             }
         }
         waitForText("Sürekli dinleme AÇIK")
-        waitForText("deyin ya da iki kez alkışlayın")
+        waitForText("deyin ya da")
         shot("31-surekli-dinleme-acik")
         rule.onNodeWithText("Sürekli dinleme AÇIK", substring = true).performClick()
         waitForText("Sürekli dinleme KAPALI")
