@@ -127,6 +127,9 @@ class CameraScreenLayoutUiTest {
         rule.onNodeWithText("⚙").performClick()
         rule.mainClock.advanceTimeBy(300)
         assertEquals(1, count("EFEKTLER"))
+        // Every top button is on the screen (the camera switch used to be pushed off the right edge).
+        val flip = rule.onNodeWithText("⟲").getUnclippedBoundsInRoot()
+        assertTrue(flip.right <= 335.dp, "the camera switch fits (right edge at ${flip.right})")
         assertEquals(0, count("BU NE?"))
         assertEquals(0, count("basılı tut"))
         shot("29-el-efekt-ayarlari-dar")

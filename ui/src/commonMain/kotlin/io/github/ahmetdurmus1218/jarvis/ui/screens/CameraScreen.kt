@@ -316,14 +316,15 @@ fun CameraScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = onClose, modifier = Modifier.airTarget(targets, onClose)) { Text("← GERİ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false) }
+                    // Compact buttons: all of them fit on one line even at 335 dp with a large font.
+                    TopButton("← GERİ", targets, onClick = onClose)
                     androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
                     // Effects (fire, planets…) are a separate, small switch: off, the hand only points and clicks.
                     if (!demo) ModeTab(if (control) "✨" else "✨ açık", !control, targets) { panel = false; setControl(!control) }
-                    if (!control || demo) TextButton(onClick = { panel = !panel }, modifier = Modifier.airTarget(targets) { panel = !panel }) { Text("⚙", color = JarvisColors.Cyan, fontSize = 20.sp) }
+                    if (!control || demo) TopButton("⚙", targets, big = true) { panel = !panel }
                     if (camera != null) {
-                        TextButton(onClick = { panel = false; demo = !demo }, modifier = Modifier.airTarget(targets) { panel = false; demo = !demo }) { Text(if (demo) "KAMERA" else "DEMO", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontSize = 11.sp, maxLines = 1, softWrap = false) }
-                        if (!demo) TextButton(onClick = { front = !front }, modifier = Modifier.airTarget(targets) { front = !front }) { Text("⟲", color = JarvisColors.Cyan, fontSize = 20.sp) }
+                        TopButton(if (demo) "KAMERA" else "DEMO", targets, small = true) { panel = false; demo = !demo }
+                        if (!demo) TopButton("⟲", targets, big = true) { front = !front }
                     }
                 }
                 Text("R.I.C.K · EL KONTROLÜ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, fontSize = 13.sp, maxLines = 1, softWrap = false)
@@ -333,7 +334,7 @@ fun CameraScreen(
                     demo -> "DEMO · $demoTitle"
                     camera == null -> ""
                     !tracking -> "El takibi henüz kurulu değil"
-                    seen.isEmpty() -> "El görünmüyor · elinizi kameraya gösterin"
+                    seen.isEmpty() -> "El görünmüyor · elinizi gösterin"
                     else -> "● El görüldü" + (if (g != Gesture.NONE) " · ${g.label}" else "") + (if (fps > 0) " · $fps kare/sn" else "")
                 }
                 if (status.isNotBlank()) {
@@ -543,6 +544,20 @@ private fun AirChip(label: String, targets: io.github.ahmetdurmus1218.jarvis.ui.
     )
 }
 
+/** A top-bar button without a text button's wide margins, also clickable in the air. */
+@Composable
+private fun TopButton(label: String, targets: io.github.ahmetdurmus1218.jarvis.ui.components.AirTargets, big: Boolean = false, small: Boolean = false, onClick: () -> Unit) {
+    Text(
+        label, color = JarvisColors.Cyan, maxLines = 1, softWrap = false,
+        fontFamily = if (big) null else FontFamily.Monospace,
+        fontSize = if (big) 20.sp else if (small) 11.sp else 14.sp,
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .airTarget(targets, onClick)
+            .padding(horizontal = if (big) 7.dp else 8.dp, vertical = 8.dp),
+    )
+}
+
 /** The small ✨ effects switch in the top bar. */
 @Composable
 private fun ModeTab(label: String, selected: Boolean, targets: io.github.ahmetdurmus1218.jarvis.ui.components.AirTargets, onClick: () -> Unit) {
@@ -553,7 +568,7 @@ private fun ModeTab(label: String, selected: Boolean, targets: io.github.ahmetdu
             .background(if (selected) JarvisColors.Cyan else Color.Transparent, RoundedCornerShape(50))
             .clickable(onClick = onClick)
             .airTarget(targets, onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 9.dp, vertical = 6.dp),
     )
 }
 
