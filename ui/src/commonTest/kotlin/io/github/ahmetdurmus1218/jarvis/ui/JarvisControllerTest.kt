@@ -619,6 +619,9 @@ class JarvisControllerTest {
     }
     // ---- hands-free standby ----
 
+    /** Long enough for standby to open the microphone after Rick fell idle. */
+    private val OPENS = JarvisController.STANDBY_DELAY_MS + 700
+
     @Test
     fun aControllerStartsOnADispatcherThatRunsCoroutinesAtOnce() = runTest {
         // Compose's own scope runs a launched coroutine immediately: everything init touches must exist by then.
@@ -626,7 +629,7 @@ class JarvisControllerTest {
         val mic = FakeMic()
         val (c, _, _) = setup(scope = scope, stt = OwnStt(ArrayDeque()), mic = mic)
         c.setAppVisible(true)
-        advanceTimeBy(1_000)
+        advanceTimeBy(OPENS)
         assertTrue(mic.open)
         c.setAppVisible(false)
         scope.cancel()
@@ -639,11 +642,11 @@ class JarvisControllerTest {
         val stt = OwnStt(ArrayDeque(listOf("Rick, saat kaç")))
         val (c, _, tts) = setup(scope = scope, stt = stt, mic = mic)
         c.setAppVisible(true)
-        advanceTimeBy(1_000)
+        advanceTimeBy(OPENS)
         assertTrue(mic.open, "standby opens the microphone by itself")
         assertTrue(c.standby.value)
         mic.hear(quiet(1_000), voice(1_200), quiet(1_500))
-        advanceTimeBy(1_000)
+        advanceTimeBy(OPENS)
         assertEquals(listOf("Saat kaç"), c.turns.value.map { it.user })
         assertEquals(1, tts.spoken.size)
         assertEquals(0, stt.starts, "no follow-up microphone: the next request needs the name again")
@@ -661,15 +664,15 @@ class JarvisControllerTest {
         val stt = OwnStt(ArrayDeque(listOf("bugün hava çok güzel", "İzlediğiniz için teşekkürler")))
         val (c, _, tts) = setup(scope = scope, stt = stt, mic = mic)
         c.setAppVisible(true)
-        advanceTimeBy(1_000)
+        advanceTimeBy(OPENS)
         mic.hear(quiet(500), voice(1_000), quiet(1_500))
-        advanceTimeBy(3_000)
+        advanceTimeBy(OPENS + JarvisController.STANDBY_BACKOFF_MS[1])
         assertTrue(mic.open)
         mic.hear(quiet(500), voice(1_000), quiet(1_500))
         // The more talk in a row that is not for Rick, the longer standby waits before it listens again.
-        advanceTimeBy(3_000)
+        advanceTimeBy(OPENS + JarvisController.STANDBY_BACKOFF_MS[1])
         assertTrue(!mic.open, "a noisy room does not keep the recognizer busy")
-        advanceTimeBy(3_000)
+        advanceTimeBy(JarvisController.STANDBY_BACKOFF_MS[2])
         assertEquals(2, stt.decoded)
         assertTrue(c.turns.value.isEmpty())
         assertTrue(tts.spoken.isEmpty())
@@ -686,7 +689,7 @@ class JarvisControllerTest {
         val stt = OwnStt(ArrayDeque(listOf("Rick")), "saat kaç")
         val (c, _, tts) = setup(scope = scope, stt = stt, mic = mic)
         c.setAppVisible(true)
-        advanceTimeBy(1_000)
+        advanceTimeBy(OPENS)
         mic.hear(quiet(500), voice(500), quiet(1_500))
         advanceTimeBy(2_000)
         assertEquals(JarvisController.CALL_ANSWER, tts.spoken.first())
@@ -703,7 +706,7 @@ class JarvisControllerTest {
         val stt = OwnStt(ArrayDeque(listOf("Hey Rick")))
         val (c, _, _) = setup(scope = scope, stt = stt, mic = mic)
         c.setAppVisible(true)
-        advanceTimeBy(1_000)
+        advanceTimeBy(OPENS)
         mic.hear(quiet(500), voice(500), quiet(1_500))
         advanceTimeBy(2_000)
         assertEquals(1, stt.starts)
@@ -720,9 +723,9 @@ class JarvisControllerTest {
         val stt = OwnStt(ArrayDeque(), "saat kaç")
         val (c, _, _) = setup(scope = scope, stt = stt, mic = mic)
         c.setAppVisible(true)
-        advanceTimeBy(1_000)
+        advanceTimeBy(OPENS)
         mic.hear(quiet(1_500), clap(), quiet(350), clap(), quiet(300))
-        advanceTimeBy(1_000)
+        advanceTimeBy(OPENS)
         assertEquals(1, stt.starts)
         assertEquals(0, stt.decoded, "claps are not sent to the recognizer")
         assertEquals(listOf("saat kaç"), c.turns.value.map { it.user })
@@ -740,7 +743,7 @@ class JarvisControllerTest {
         advanceTimeBy(5_000)
         assertEquals(0, mic.starts)
         c.setAppVisible(true)
-        advanceTimeBy(1_000)
+        advanceTimeBy(OPENS)
         assertTrue(mic.open)
         // A screen that needs the microphone itself (sleep, clap calibration) gets it at once.
         MicUse.take()
@@ -748,7 +751,7 @@ class JarvisControllerTest {
         advanceTimeBy(5_000)
         assertTrue(!mic.open)
         MicUse.release()
-        advanceTimeBy(1_000)
+        advanceTimeBy(OPENS)
         assertTrue(mic.open)
         // The microphone button closes standby before the recognizer opens its own microphone.
         c.startListening()
@@ -759,7 +762,7 @@ class JarvisControllerTest {
         c.setAppAwake(false)
         assertTrue(!mic.open)
         c.setAppAwake(true)
-        advanceTimeBy(1_000)
+        advanceTimeBy(OPENS)
         assertTrue(mic.open)
         c.setAppVisible(false)
         assertTrue(!mic.open)
@@ -782,10 +785,10 @@ class JarvisControllerTest {
         var woke = 0
         c.onClaps = { woke++; true }
         c.setFloating(true)
-        advanceTimeBy(1_000)
+        advanceTimeBy(OPENS)
         assertTrue(mic.open)
         mic.hear(quiet(1_500), clap(), quiet(350), clap(), quiet(300))
-        advanceTimeBy(500)
+        advanceTimeBy(OPENS)
         assertEquals(1, woke)
         assertEquals(0, stt.starts, "the floating Rick woke up itself")
         c.setFloating(false)

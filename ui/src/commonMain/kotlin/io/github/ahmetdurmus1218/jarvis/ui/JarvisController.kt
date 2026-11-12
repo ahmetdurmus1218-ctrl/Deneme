@@ -997,8 +997,11 @@ class JarvisController(
         /** Pause between Rick finishing and listening again, so its own voice is not recorded. */
         const val CONTINUE_DELAY_MS = 350L
 
-        /** Hands-free: how long after Rick falls idle the standby microphone opens, and how often that is re-checked. */
-        const val STANDBY_DELAY_MS = 500L
+        /**
+         * Hands-free: how long after Rick falls idle the standby microphone opens (long enough that it
+         * never opens and closes in the short pauses of an answer), and how often that is re-checked.
+         */
+        const val STANDBY_DELAY_MS = 1_500L
         /** Extra pause before standby listens again, by how many utterances in a row were not for Rick. */
         val STANDBY_BACKOFF_MS = longArrayOf(0L, 1_500L, 4_000L, 8_000L)
         const val STANDBY_CHECK_MS = 2_000L

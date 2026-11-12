@@ -40,11 +40,18 @@ def find_apk(root, name):
     raise SystemExit(f"{name} not found under {root}")
 
 
+DUMP_STATS = {"dumps": 0, "retries": 0, "seconds": 0.0}
+
+
 def dump():
-    for _ in range(8):
+    t0 = time.time()
+    for attempt in range(8):
         out = adb("exec-out", "uiautomator", "dump", "/dev/tty", check=False)
         i, j = out.find("<?xml"), out.rfind("</hierarchy>")
         if i >= 0 and j > i:
+            DUMP_STATS["dumps"] += 1
+            DUMP_STATS["retries"] += attempt
+            DUMP_STATS["seconds"] += time.time() - t0
             return ET.fromstring(out[i:j + len("</hierarchy>")])
         time.sleep(1.5)
     raise SystemExit("uiautomator dump failed")
@@ -569,10 +576,17 @@ def main():
             time.sleep(2)
         shot("18b-haberler")
         seen = []
-        for _ in range(10):
-            seen += [t for t in screen_texts() if t not in seen]
+        t0 = time.time()
+        before = dict(DUMP_STATS)
+        for k in range(10):
+            now = screen_texts()
+            new = [t for t in now if t not in seen]
+            seen += new
+            # What each look at the screen saw (to tell a slow emulator from a screen that does not move).
+            print(f"  news look {k} at {time.time() - t0:.0f}s: {len(now)} texts, new: {[t[:40] for t in new]}", flush=True)
             adb("shell", "input", "swipe", "540", "800", "540", "1800", "250")
             time.sleep(1)
+        print(f"  screen reads in this step: {DUMP_STATS['dumps'] - before['dumps']}, retries {DUMP_STATS['retries'] - before['retries']}, {DUMP_STATS['seconds'] - before['seconds']:.0f}s in all")
         print("news screen texts:", seen)
         print(adb("logcat", "-d", "-s", "RickGate:*", "RickNews:*", check=False)[-3000:])
         # What hands-free standby cost so far (how often the recognizer ran on sound that was not a call).

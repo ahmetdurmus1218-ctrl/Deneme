@@ -546,12 +546,15 @@ Kullanıcı kamera onu gösterirken elleriyle havada tıklamak, kaydırmak, dön
   ve gerçek cihazda denenmeden eklenmeyecek.
 - El kontrolü ekranı: düğmeler tek satır, başlık ve durum ayrı satırlarda ve tek satıra sabit; efekt paneli
   ekranın geri kalanını tek başına kaplar; ipucu yalnızca el görünmezken; alt düğmeler tek satır.
-- Emülatörde görülen sorun: sürekli dinleme açıkken Rick'in geri kalanı yaklaşık üç kat yavaşladı (haber
-  cevabı 12 sn yerine 38 sn). Mikrofonun her açılışta verdiği ses konuşma sayılıp tanıyıcı boşuna çalışıyordu.
-  Önlemler: mikrofon açıldıktan sonraki ilk 0,4 sn yok sayılır; hiç duraksamadan sınıra (12 sn) varan ses
-  tanıyıcıya verilmez ve gerçek bir sessizliğe kadar yenisi başlatılmaz; adı geçmeyen her konuşmadan sonra
-  bekleme uzar (0,5 → 2 → 4,5 → 8,5 sn), kullanıcı bir şey yapınca sıfırlanır; mikrofon veri vermezse okuma
-  döngüsü işlemciyi döndürmez. Tanıyıcının çalışma süresi günlüğe yazılır (söylenen şey asla).
+- Emülatör testi 1.5.0 ile yavaşladı ve "günün haberleri" adımında takıldı. İlk tahmin (mikrofonun açılış sesi
+  konuşma sayılıp tanıyıcıyı boşuna çalıştırıyor) ölçümle **doğrulanmadı**: beklerken mikrofon iş parçacığı
+  işlemcinin %0–0,5'ini kullanıyor, tanıyıcı bekleme sırasında hiç çalışmadı; emülatörü asıl meşgul eden Google
+  servisleriydi. Yine de şu önlemler kaldı, çünkü gerçek telefonda gürültülü odada işe yarar: mikrofon açıldıktan
+  sonraki ilk 0,4 sn yok sayılır; hiç duraksamadan sınıra (12 sn) varan ses tanıyıcıya verilmez ve gerçek bir
+  sessizliğe kadar yenisi başlamaz; adı geçmeyen her konuşmadan sonra bekleme uzar, kullanıcı bir şey yapınca
+  sıfırlanır; mikrofon veri vermezse okuma döngüsü işlemciyi döndürmez; tanıyıcının çalışma süresi günlüğe
+  yazılır (söylenen şey asla). Bekleme, Rick sustuktan 1,5 sn sonra başlar: cevabın kısa duraklarında mikrofon
+  açılıp kapanmaz.
 - Sınırlar (gerçek cihazda ölçülecek): Whisper'ın "Rick" adını ne kadar doğru yazdığı, gürültülü odada pil
   tüketimi, bir parçanın çözülmesi sırasında (birkaç saniye) mikrofonun kapalı olması.
 
