@@ -230,7 +230,8 @@ fun SettingsScreen(bridge: PlatformBridge, settings: SettingsStore, registry: Mo
             }
         }
         Toggle("Sesli yanıt", s.voiceEnabled) { v -> settings.update { it.copy(voiceEnabled = v) } }
-        Toggle("Sohbet modu (cevaptan sonra yeniden dinler)", s.conversationMode) { v -> settings.update { it.copy(conversationMode = v) } }
+        Toggle("Eller serbest: “Rick, saat kaç” deyince ya da iki alkışla dinler (mikrofon yalnızca cihazda dinler, kayıt tutulmaz)", s.handsFree) { v -> settings.update { it.copy(handsFree = v) } }
+        Toggle("Sohbet modu (cevaptan sonra adını söylemeden yeniden dinler)", s.conversationMode) { v -> settings.update { it.copy(conversationMode = v) } }
         Text("Konuşma hızı: ${(s.speechRate * 100).toInt()}%")
         Slider(value = s.speechRate, onValueChange = { v -> settings.update { it.copy(speechRate = v) } }, valueRange = 0.6f..1.6f)
         Toggle("Kütüphanede yoksa internette bakmayı teklif et (her aramada onayınız istenir)", s.webOffer) { v -> settings.update { it.copy(webOffer = v) } }

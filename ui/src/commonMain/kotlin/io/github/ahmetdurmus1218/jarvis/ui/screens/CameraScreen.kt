@@ -196,6 +196,7 @@ fun CameraScreen(
         var start = -1L
         var frames = 0
         var fpsAt = -1L
+        var counted: Any? = null
         while (isActive) {
             // UI tests refuse endless animations while their clock runs by itself (they step it by hand
             // to see effects); on a device this never throws.
@@ -259,7 +260,8 @@ fun CameraScreen(
                 Gesture.FIST -> controller.stopSpeaking()
                 else -> {}
             }
-            frames++
+            // Camera frames that were really analysed (not screen refreshes): what hand tracking runs at.
+            if (demo) frames++ else if (f != null && f !== counted) { counted = f; frames++ }
             if (now - fpsAt >= 1_000) { fps = frames; frames = 0; fpsAt = now }
             tick = now
         }
@@ -306,41 +308,57 @@ fun CameraScreen(
             }
         }
 
-        // Top bar
-        Row(
-            Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent))).padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = onClose, modifier = Modifier.airTarget(targets, onClose)) { Text("← GERİ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace) }
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("R.I.C.K · EL KONTROLÜ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, fontSize = 13.sp)
-                val g = frame?.hands?.firstOrNull()?.let(GestureClassifier::classify) ?: Gesture.NONE
-                Text(
-                    if (demo) "DEMO · $demoTitle · $fps FPS"
-                    else "${frame?.hands?.size ?: 0} el · ${frame?.faces?.size ?: 0} yüz · $fps FPS" + if (g != Gesture.NONE) " · ${g.label}" else "",
-                    color = JarvisColors.TextDim, fontFamily = FontFamily.Monospace, fontSize = 10.sp,
-                )
+        // Top: buttons on one line, the title and one plain status line below. Nothing here may wrap
+        // letter by letter, however narrow the phone or large the font.
+        Column(Modifier.fillMaxSize()) {
+            Column(
+                Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.75f), Color.Transparent))).padding(horizontal = 6.dp, vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = onClose, modifier = Modifier.airTarget(targets, onClose)) { Text("← GERİ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, maxLines = 1, softWrap = false) }
+                    androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+                    // Effects (fire, planets…) are a separate, small switch: off, the hand only points and clicks.
+                    if (!demo) ModeTab(if (control) "✨" else "✨ açık", !control, targets) { panel = false; setControl(!control) }
+                    if (!control || demo) TextButton(onClick = { panel = !panel }, modifier = Modifier.airTarget(targets) { panel = !panel }) { Text("⚙", color = JarvisColors.Cyan, fontSize = 20.sp) }
+                    if (camera != null) {
+                        TextButton(onClick = { panel = false; demo = !demo }, modifier = Modifier.airTarget(targets) { panel = false; demo = !demo }) { Text(if (demo) "KAMERA" else "DEMO", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontSize = 11.sp, maxLines = 1, softWrap = false) }
+                        if (!demo) TextButton(onClick = { front = !front }, modifier = Modifier.airTarget(targets) { front = !front }) { Text("⟲", color = JarvisColors.Cyan, fontSize = 20.sp) }
+                    }
+                }
+                Text("R.I.C.K · EL KONTROLÜ", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, fontSize = 13.sp, maxLines = 1, softWrap = false)
+                val seen = frame?.hands.orEmpty()
+                val g = seen.firstOrNull()?.let(GestureClassifier::classify) ?: Gesture.NONE
+                val status = when {
+                    demo -> "DEMO · $demoTitle"
+                    camera == null -> ""
+                    !tracking -> "El takibi henüz kurulu değil"
+                    seen.isEmpty() -> "El görünmüyor · elinizi kameraya gösterin"
+                    else -> "● El görüldü" + (if (g != Gesture.NONE) " · ${g.label}" else "") + (if (fps > 0) " · $fps kare/sn" else "")
+                }
+                if (status.isNotBlank()) {
+                    Text(
+                        status, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        color = if (!demo && seen.isNotEmpty()) JarvisColors.Green else JarvisColors.TextDim, fontSize = 11.sp,
+                    )
+                }
             }
-            // Effects (fire, planets…) are a separate, small switch: off, the hand only points and clicks.
-            if (!demo) ModeTab(if (control) "✨" else "✨ açık", !control, targets) { setControl(!control) }
-            if (!control || demo) TextButton(onClick = { panel = !panel }, modifier = Modifier.airTarget(targets) { panel = !panel }) { Text("⚙", color = JarvisColors.Cyan, fontSize = 20.sp) }
-            if (camera != null) {
-                TextButton(onClick = { demo = !demo }, modifier = Modifier.airTarget(targets) { demo = !demo }) { Text(if (demo) "KAMERA" else "DEMO", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, fontSize = 11.sp) }
-                if (!demo) TextButton(onClick = { front = !front }, modifier = Modifier.airTarget(targets) { front = !front }) { Text("⟲", color = JarvisColors.Cyan, fontSize = 20.sp) }
+            if (panel) {
+                // The settings cover the rest of the screen by themselves: nothing shows through or on top.
+                Box(Modifier.weight(1f).fillMaxWidth().background(Color.Black.copy(alpha = 0.6f)).clickable { panel = false }.padding(8.dp)) {
+                    EffectsPanel(
+                        settings.effects, settings.userName,
+                        onChange = { e -> settingsStore.update { it.copy(effects = e) } },
+                        onName = { n -> settingsStore.update { it.copy(userName = n.take(24)) } },
+                        onClose = { panel = false },
+                        modifier = Modifier.align(Alignment.TopEnd),
+                    )
+                }
             }
         }
 
-        if (panel) {
-            EffectsPanel(
-                settings.effects, settings.userName,
-                onChange = { e -> settingsStore.update { it.copy(effects = e) } },
-                onName = { n -> settingsStore.update { it.copy(userName = n.take(24)) } },
-                modifier = Modifier.align(Alignment.TopEnd).padding(top = 64.dp, end = 8.dp),
-            )
-        }
-
-        // Bottom: answer, legend, buttons
-        Column(
+        // Bottom: answer, one hint, one row of buttons
+        if (!panel) Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f))))
                 .padding(14.dp),
@@ -376,27 +394,30 @@ fun CameraScreen(
                     OutlinedButton(onClick = no, modifier = Modifier.airTarget(targets, no)) { Text("Hayır", color = JarvisColors.Cyan) }
                 }
             }
-            if (!demo && control) {
-                // Every command goes by voice; only talk and quiet are buttons (nothing that acts on the phone).
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    AirChip(if (mode == CoreMode.LISTENING) "■ Dinliyorum" else "🎤 Konuş", targets, accent = true) { controller.toggleListening() }
-                    AirChip("🤫 Sus", targets) { controller.stopSpeaking() }
-                }
-            }
             if (!demo && camera != null && !tracking) {
                 TrackingOffer(installer, trackingItems)
-            } else {
+            } else if (demo || frame?.hands.isNullOrEmpty()) {
+                // How it works, only while no hand is in the picture: with a hand up, the screen stays clear.
                 Text(
                     if (!demo && control) AIR_LEGEND else GESTURE_LEGEND,
                     color = JarvisColors.TextDim, fontSize = 12.sp, textAlign = TextAlign.Center,
                     modifier = Modifier.border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 4.dp),
                 )
             }
-            if (camera != null && !demo) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(onClick = { ask(QUESTION_WHAT) }, enabled = mode != CoreMode.THINKING, modifier = Modifier.airTarget(targets) { ask(QUESTION_WHAT) }) { Text("BU NE?") }
-                    OutlinedButton(onClick = { ask(QUESTION_READ) }, enabled = mode != CoreMode.THINKING, modifier = Modifier.airTarget(targets) { ask(QUESTION_READ) }) { Text("OKU", color = JarvisColors.Cyan) }
-                    if (!control) OutlinedButton(onClick = { ask(QUESTION_FORTUNE) }, enabled = mode != CoreMode.THINKING, modifier = Modifier.airTarget(targets) { ask(QUESTION_FORTUNE) }) { Text("☕ FAL", color = JarvisColors.Amber) }
+            if (!demo) {
+                // One row: talk (or quiet while Rick speaks) and what the camera can be asked.
+                val idle = mode != CoreMode.THINKING
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    when (mode) {
+                        CoreMode.SPEAKING -> AirChip("🤫 Sus", targets, accent = true) { controller.stopSpeaking() }
+                        CoreMode.LISTENING -> AirChip("■ Dinliyorum", targets, accent = true) { controller.toggleListening() }
+                        else -> AirChip("🎤 Konuş", targets, accent = true) { controller.toggleListening() }
+                    }
+                    if (camera != null) {
+                        AirChip("BU NE?", targets, enabled = idle) { ask(QUESTION_WHAT) }
+                        AirChip("OKU", targets, enabled = idle) { ask(QUESTION_READ) }
+                        if (!control) AirChip("☕ FAL", targets, enabled = idle) { ask(QUESTION_FORTUNE) }
+                    }
                 }
             }
         }
@@ -421,14 +442,20 @@ private fun DemoBackdrop(modifier: Modifier, t: Float) {
 }
 
 @Composable
-private fun EffectsPanel(e: EffectSettings, name: String, onChange: (EffectSettings) -> Unit, onName: (String) -> Unit, modifier: Modifier) {
+private fun EffectsPanel(e: EffectSettings, name: String, onChange: (EffectSettings) -> Unit, onName: (String) -> Unit, onClose: () -> Unit, modifier: Modifier) {
     Column(
-        modifier.widthIn(max = 320.dp).background(JarvisColors.Surface.copy(alpha = 0.94f), RoundedCornerShape(14.dp))
-            .border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(14.dp)).padding(12.dp)
+        modifier.widthIn(max = 340.dp).background(JarvisColors.Surface, RoundedCornerShape(14.dp))
+            .border(1.dp, JarvisColors.GlassBorder, RoundedCornerShape(14.dp))
+            // Taps inside the panel are the panel's (the dimmed area around it closes it).
+            .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {}
+            .padding(12.dp)
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text("EFEKTLER", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("EFEKTLER", color = JarvisColors.Cyan, fontFamily = FontFamily.Monospace, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
+            TextButton(onClick = onClose) { Text("Kapat ✕", color = JarvisColors.Cyan, fontSize = 13.sp) }
+        }
         @Composable
         fun row(label: String, on: Boolean, set: (Boolean) -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {

@@ -107,7 +107,10 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
         WhisperSpeechInput(models, io.github.ahmetdurmus1218.jarvis.core.models.ModelRegistry.bundled, micPermission),
         AndroidSpeechInput(app, ensureMicPermission = micPermission, launch = { block -> activity?.launchOnUi(block) ?: mainScope.launch { block() } }),
     )
-    override val micStream = AndroidMicStream(micPermission)
+    override val micStream = AndroidMicStream(
+        granted = { ContextCompat.checkSelfPermission(app, android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED },
+        ensurePermission = micPermission,
+    )
 
     /** A photo from the phone's gallery (coffee cup, bookshelf), scaled down and re-encoded as JPEG. */
     override suspend fun pickImageJpeg(): ByteArray? {

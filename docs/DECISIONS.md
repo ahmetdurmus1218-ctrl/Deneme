@@ -524,3 +524,28 @@ Kullanıcı kamera onu gösterirken elleriyle havada tıklamak, kaydırmak, dön
     arkaya 4 denemede tek bayt bile ilerlemezse durur.
   - Rick indirme sürerken ön plan bildirimi gösteren küçük bir servis (`DownloadKeeper`, dataSync) çalıştırır.
     İndirmeyi o yapmaz; Rick'te hâlâ INTERNET izni yok.
+
+## D48 — Eller serbest dinleme ve el kontrolü ekranı (v1.5.0)
+
+- Kullanıcı: mikrofona basmak zorunda kalmak istemiyor ("Rick" deyince dinlesin), alkış algılanmıyor, el kontrolü
+  ekranı karışık. Gönderdiği ekran görüntülerinde başlık harf harf alt alta dökülmüş, efekt paneli diğer
+  yazıların altında kalmıştı (335 dp genişlik, büyük yazı).
+- Teşhis (`docs/RICK2-INCELEME.md`): sistem bas-konuş olarak yazılmıştı; alkış yalnızca uyku ekranında ve yüzen
+  Rick'te dinleniyordu. Ekrandaki "61 FPS" kamera değil, ekran yenileme sayısıydı; el takibinin hızını göstermiyordu.
+- Karar: ayrı bir uyanma-sözü modeli indirilmedi. Eldeki parçalarla:
+  - `StandbyEar` (core): sürekli mikrofon akışından yalnızca ses yüksekliğine bakarak konuşma parçası keser.
+    Sessizlikte hiçbir tanıyıcı çalışmaz. Bitmeyen ses (televizyon) yavaşça arka plan sayılır.
+  - Parça Whisper'a verilir; `WakeCall` içinde Rick'in adı yoksa parça atılır (gösterilmez, saklanmaz).
+  - Alkış aynı akıştan `ClapDetector` ile yakalanır; tanıyıcıya gitmez.
+- Cevaptan sonra adsız dinleme varsayılan değil: odadaki konuşma ya da televizyon Rick'i sonsuz döngüye sokardı.
+  Yalnızca Rick'in sorduğu soruda (teklif) ve "Sohbet modu" açıkken adsız dinler.
+- Mikrofon tek akış: uyku ekranı ve alkış kalibrasyonu `MicUse.take()` ile alır, bekleme anında çekilir. Yüzen
+  Rick artık kendi alkış dinleyicisini açmıyor, ortak denetleyiciyi kullanıyor (aynı mikrofonu iki yer açmıyor).
+- Bekleme yalnızca Rick ekrandayken ya da kullanıcı yüzen Rick'i açtıysa çalışır. İzin kendiliğinden istenmez.
+- Sesle söz kesme bu sürümde yok: Rick'in kendi sesi mikrofona geri girer; yankı engelleme telefona göre değişir
+  ve gerçek cihazda denenmeden eklenmeyecek.
+- El kontrolü ekranı: düğmeler tek satır, başlık ve durum ayrı satırlarda ve tek satıra sabit; efekt paneli
+  ekranın geri kalanını tek başına kaplar; ipucu yalnızca el görünmezken; alt düğmeler tek satır.
+- Sınırlar (gerçek cihazda ölçülecek): Whisper'ın "Rick" adını ne kadar doğru yazdığı, gürültülü odada pil
+  tüketimi, bir parçanın çözülmesi sırasında (birkaç saniye) mikrofonun kapalı olması.
+

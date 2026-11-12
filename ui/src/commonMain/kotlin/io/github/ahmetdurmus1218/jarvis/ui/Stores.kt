@@ -65,6 +65,12 @@ data class Settings(
     val bubble: Boolean = false,
     /** While the floating Rick sleeps, two claps wake it (microphone stays on, on the device only). */
     val bubbleClapWake: Boolean = true,
+    /**
+     * Hands-free: while Rick is on screen (or floating) and idle, the microphone listens on the device
+     * and Rick answers when its name is said ("Rick, saat kaç") or after two claps; after an answer it
+     * listens once more by itself. Nothing is recorded or kept; talk without the name is dropped.
+     */
+    val handsFree: Boolean = true,
     /** Learning from corrections / likes and reading while idle (all on the device). */
     val selfLearning: Boolean = true,
 )

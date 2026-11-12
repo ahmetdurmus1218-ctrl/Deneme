@@ -47,7 +47,6 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import io.github.ahmetdurmus1218.jarvis.core.stt.ClapDetector
 import io.github.ahmetdurmus1218.jarvis.core.stt.WakePhrase
 import io.github.ahmetdurmus1218.jarvis.core.time.NowProvider
 import io.github.ahmetdurmus1218.jarvis.ui.CoreMode
@@ -56,7 +55,6 @@ import io.github.ahmetdurmus1218.jarvis.ui.components.RickFace
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -92,7 +90,6 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
     /** Where the hand is (-1…1 across the screen), so the face looks at it; and the last hand command. */
     private val handAt = MutableStateFlow<androidx.compose.ui.geometry.Offset?>(null)
     private val handNote = MutableStateFlow<String?>(null)
-    private var clapJob: Job? = null
     /** Full-screen, untouchable layer that shows the hand's cursor over the app being driven. */
     private var cursorView: ComposeView? = null
     private val cursor = MutableStateFlow<androidx.compose.ui.geometry.Offset?>(null)
@@ -240,7 +237,6 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
             openRick()
             return
         }
-        stopClaps()
         controller.toggleListening()
     }
 
@@ -389,8 +385,13 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
     /** Falls asleep after the quiet time in Settings (at least two minutes) without talking. */
     private fun watchIdle() {
         val controller = app.graph.sharedController ?: return
-        // Two claps work whenever Rick is idle, awake or asleep (the microphone is free then).
-        scope.launch { controller.mode.collect { m -> if (m == CoreMode.IDLE) listenForClaps() else stopClaps() } }
+        // The shared conversation keeps the microphone while idle: Rick's name and two claps work over
+        // other apps too. Asleep, the claps wake the floating Rick; awake, they open the microphone.
+        controller.onClaps = {
+            Log.i(TAG, "claps")
+            if (sleeping.value) { wake(byClaps = true); true } else { say("👏 Dinliyorum"); false }
+        }
+        controller.setFloating(true)
         scope.launch {
             var quietSince = System.currentTimeMillis()
             while (true) {
@@ -404,42 +405,10 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
         }
     }
 
-    /** Asleep: two claps (or the user's rhythm) wake Rick. Only loudness jumps are looked at. */
-    private fun listenForClaps() {
-        val s = app.graph.settings.state.value
-        if (!s.bubbleClapWake) return
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) return
-        val mic = app.bridge.micStream ?: return
-        stopClaps()
-        clapJob = scope.launch {
-            val detector = ClapDetector(threshold = s.clapThreshold).apply { rhythm = s.clapRhythm }
-            val ok = mic.start { samples, n -> if (detector.feed(samples, n)) scope.launch { clapped() } }
-            if (!ok) Log.w(TAG, "microphone not available for claps")
-        }
-    }
-
-    /** Two claps: asleep, Rick wakes up; awake, it listens. */
-    private fun clapped() {
-        Log.i(TAG, "claps")
-        if (sleeping.value) { wake(byClaps = true); return }
-        val controller = app.graph.sharedController ?: return
-        if (controller.mode.value != CoreMode.IDLE) return
-        stopClaps()
-        say("👏 Dinliyorum")
-        controller.startListening()
-    }
-
-    private fun stopClaps() {
-        clapJob?.cancel()
-        clapJob = null
-        runCatching { app.bridge.micStream?.stop() }
-    }
-
     private fun wake(byClaps: Boolean) {
         if (!sleeping.value) return
         sleeping.value = false
         cameraResting.value = false
-        stopClaps()
         val controller = app.graph.sharedController ?: return
         val greeting = WakePhrase.greeting(NowProvider.System.now().hour)
         if (app.graph.webReady()) controller.offerNews(greeting, listen = true) else controller.greet(greeting + " Dinliyorum.", listen = true)
@@ -450,7 +419,7 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
         running.value = false
         stopCamera?.invoke()
         stopCamera = null
-        stopClaps()
+        app.graph.sharedController?.let { it.setFloating(false); it.onClaps = null }
         scope.cancel()
         view?.let { runCatching { wm.removeView(it) } }
         view = null

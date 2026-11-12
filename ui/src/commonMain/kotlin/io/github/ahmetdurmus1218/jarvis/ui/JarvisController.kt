@@ -144,6 +144,10 @@ class JarvisController(
                 }
             }
         }
+        // Hands-free: the moment Rick stops being idle the standby microphone closes; it comes back by itself.
+        scope.launch { _mode.collect { refreshStandby() } }
+        val unwatch = MicUse.watch { refreshStandby() }
+        scope.coroutineContext[Job]?.invokeOnCompletion { unwatch() }
         scope.launch {
             bridge.reminders.collect { text ->
                 _partial.value = "⏰ $text"
@@ -174,9 +178,185 @@ class JarvisController(
                     queued = 0
                     _subtitle.value = ""
                     if (_mode.value == CoreMode.SPEAKING) _mode.value = CoreMode.IDLE
-                    maybeContinueConversation()
+                    if (listenAfterSpeech) {
+                        listenAfterSpeech = false
+                        delay(CONTINUE_DELAY_MS)
+                        if (_mode.value == CoreMode.IDLE) startListening(quiet = true)
+                    } else {
+                        maybeContinueConversation()
+                    }
                 }
             }
+        }
+    }
+
+    // ---- hands-free standby ----
+
+    private val _standby = MutableStateFlow(false)
+    /** True while the microphone waits for Rick's name or for claps (the "Rick deyin" sign on the screen). */
+    val standby: StateFlow<Boolean> = _standby.asStateFlow()
+
+    /** Whether standby also understands the name (Rick's own recognizer is installed), not only claps. */
+    val standbyHearsName: Boolean get() = namesWanted(settings.state.value)
+
+    /** Hands-free is on but the microphone was never allowed yet: the screen asks for one tap on the microphone. */
+    val standbyNeedsMicrophone: Boolean
+        get() = settings.state.value.handsFree && bridge.micStream?.permitted == false && bridge.speechInput != null
+
+    private var appVisible = false
+    private var appAwake = true
+    private var floating = false
+    private var standbyJob: Job? = null
+    private var decoding = false
+    private var micRefused = false
+    private var listenAfterSpeech = false
+    private val ear = io.github.ahmetdurmus1218.jarvis.core.stt.StandbyEar()
+
+    /** Two claps heard in standby: whoever shows Rick may take them (the floating Rick wakes up) by returning true. */
+    var onClaps: (() -> Boolean)? = null
+
+    /** The window is on the screen (false: in the background, where only the floating Rick may listen). */
+    fun setAppVisible(visible: Boolean) {
+        appVisible = visible
+        if (visible) micRefused = false
+        watchStandby()
+        refreshStandby()
+    }
+
+    private var standbyWatch: Job? = null
+
+    /**
+     * While Rick is shown somewhere, looks every couple of seconds whether standby should be running:
+     * an answer that ended, a setting that changed or a recognizer that was just installed bring it back.
+     */
+    private fun watchStandby() {
+        val shown = appVisible || floating
+        if (!shown) {
+            standbyWatch?.cancel()
+            standbyWatch = null
+        } else if (standbyWatch == null) {
+            standbyWatch = scope.launch {
+                while (true) {
+                    delay(STANDBY_CHECK_MS)
+                    refreshStandby()
+                }
+            }
+        }
+    }
+
+    /** The window is in normal use (false: asleep, waking up or in the setup wizard). */
+    fun setAppAwake(awake: Boolean) {
+        appAwake = awake
+        refreshStandby()
+    }
+
+    /** The floating Rick is running over other apps. */
+    fun setFloating(on: Boolean) {
+        floating = on
+        if (on) micRefused = false
+        watchStandby()
+        refreshStandby()
+    }
+
+    private fun namesWanted(s: Settings) = s.handsFree && bridge.speechInput?.canTranscribe == true
+    private fun clapsWanted(s: Settings) = if (appVisible) s.handsFree else s.bubbleClapWake
+
+    private fun standbyWanted(): Boolean {
+        val present = if (appVisible) appAwake else floating
+        if (!present || _mode.value != CoreMode.IDLE || decoding || micRefused || MicUse.taken) return false
+        if (askJob?.isActive == true || queued > 0 || bridge.micStream?.permitted != true) return false
+        val s = settings.state.value
+        return namesWanted(s) || clapsWanted(s)
+    }
+
+    private fun refreshStandby() {
+        val want = standbyWanted()
+        if (!want) {
+            stopStandby()
+            if (!decoding) _standby.value = false
+            return
+        }
+        if (standbyJob != null) return
+        val mic = bridge.micStream ?: return
+        standbyJob = scope.launch {
+            // Lets Rick's own voice ring out, and a follow-up question open the microphone first.
+            delay(STANDBY_DELAY_MS)
+            if (!standbyWanted()) { standbyJob = null; return@launch }
+            val s = settings.state.value
+            val names = namesWanted(s)
+            ear.claps = if (clapsWanted(s)) {
+                io.github.ahmetdurmus1218.jarvis.core.stt.ClapDetector(threshold = s.clapThreshold).apply { rhythm = s.clapRhythm }
+            } else {
+                null
+            }
+            ear.forget()
+            val me = coroutineContext[Job]
+            val ok = mic.start { samples, n ->
+                val ev = ear.feed(samples, n) ?: return@start
+                if (ev is io.github.ahmetdurmus1218.jarvis.core.stt.StandbyEar.Event.Claps || names) {
+                    scope.launch { if (standbyJob === me) onStandby(ev) }
+                }
+            }
+            if (!ok) {
+                // No microphone or no permission: stay quiet about it; the microphone button explains.
+                micRefused = true
+                standbyJob = null
+                _standby.value = false
+                return@launch
+            }
+            _standby.value = true
+        }
+    }
+
+    /** Closes the standby microphone (only if standby has it). */
+    private fun stopStandby() {
+        val job = standbyJob ?: return
+        standbyJob = null
+        job.cancel()
+        bridge.micStream?.stop()
+    }
+
+    private suspend fun onStandby(ev: io.github.ahmetdurmus1218.jarvis.core.stt.StandbyEar.Event) {
+        if (_mode.value != CoreMode.IDLE) return
+        when (ev) {
+            io.github.ahmetdurmus1218.jarvis.core.stt.StandbyEar.Event.Claps -> {
+                stopStandby()
+                if (onClaps?.invoke() == true) return
+                _partial.value = "👏 Dinliyorum"
+                startListening()
+            }
+            is io.github.ahmetdurmus1218.jarvis.core.stt.StandbyEar.Event.Utterance -> {
+                // The recognizer needs the processor now; the microphone opens again right after.
+                stopStandby()
+                decoding = true
+                val text = try {
+                    bridge.speechInput?.transcribe(ev.samples)
+                } finally {
+                    decoding = false
+                }
+                if (_mode.value != CoreMode.IDLE || !settings.state.value.handsFree) return
+                when (val heard = io.github.ahmetdurmus1218.jarvis.core.stt.WakeCall.parse(text.orEmpty())) {
+                    // Not said to Rick: dropped here, never shown or kept.
+                    io.github.ahmetdurmus1218.jarvis.core.stt.WakeCall.Heard.NotForMe -> refreshStandby()
+                    io.github.ahmetdurmus1218.jarvis.core.stt.WakeCall.Heard.NameOnly -> answerCall()
+                    is io.github.ahmetdurmus1218.jarvis.core.stt.WakeCall.Heard.Request -> {
+                        continueAfter = nextId
+                        send(heard.text)
+                    }
+                }
+            }
+        }
+    }
+
+    /** Only the name was said: "Efendim?", then the microphone opens for the request itself. */
+    private fun answerCall() {
+        noteActivity()
+        if (bridge.speechOutput != null && settings.state.value.voiceEnabled) {
+            listenAfterSpeech = true
+            say(CALL_ANSWER)
+        } else {
+            _partial.value = CALL_ANSWER
+            startListening(quiet = true)
         }
     }
 
@@ -189,13 +369,15 @@ class JarvisController(
 
     private fun maybeContinueConversation() {
         val id = continueAfter ?: return
-        if (!settings.state.value.conversationMode && listenOnce != id) return
+        // Hands-free: a question Rick asked ("Feneri açayım mı?") is answered without saying the name again.
+        val asked = settings.state.value.handsFree && pendingOffer()?.id == id
+        if (!settings.state.value.conversationMode && listenOnce != id && !asked) return
         val turn = _turns.value.firstOrNull { it.id == id } ?: return
         if (!turn.done || queued > 0 || _mode.value != CoreMode.IDLE) return
         continueAfter = null
         scope.launch {
             delay(CONTINUE_DELAY_MS)
-            if (_mode.value == CoreMode.IDLE && currentTurnId == id) startListening()
+            if (_mode.value == CoreMode.IDLE && currentTurnId == id) startListening(quiet = true)
         }
     }
 
@@ -638,8 +820,12 @@ class JarvisController(
 
     // ---- push-to-talk ----
 
-    fun startListening() {
+    /** @param quiet opened by Rick itself (a follow-up): when nothing is said it simply closes again. */
+    fun startListening(quiet: Boolean = false) {
         noteActivity()
+        // The standby microphone must be closed before the recognizer opens its own.
+        stopStandby()
+        listenAfterSpeech = false
         val stt = bridge.speechInput ?: return
         if (!stt.isAvailable()) {
             _partial.value = if (stt.ownModelGroup != null) {
@@ -663,7 +849,7 @@ class JarvisController(
                 send(text)
             }
             override fun onError(message: String) {
-                _partial.value = message
+                _partial.value = if (quiet && message.startsWith(NOTHING_HEARD)) "" else message
                 _level.value = 0f
                 if (_mode.value == CoreMode.LISTENING) _mode.value = CoreMode.IDLE
             }
@@ -765,6 +951,7 @@ class JarvisController(
     /** Never stuck: stops speaking, listening and any answer in progress. */
     fun stopEverything() {
         continueAfter = null
+        listenAfterSpeech = false
         if (_mode.value == CoreMode.LISTENING) stopListening()
         stopSpeaking()
         askJob?.cancel()
@@ -793,6 +980,12 @@ class JarvisController(
 
         /** Pause between Rick finishing and listening again, so its own voice is not recorded. */
         const val CONTINUE_DELAY_MS = 350L
+
+        /** Hands-free: how long after Rick falls idle the standby microphone opens, and how often that is re-checked. */
+        const val STANDBY_DELAY_MS = 500L
+        const val STANDBY_CHECK_MS = 2_000L
+        /** What Rick says when only its name was called. */
+        const val CALL_ANSWER = "Efendim?"
 
         /** Earlier exchanges given to the model with each question. */
         const val HISTORY_TURNS = 4

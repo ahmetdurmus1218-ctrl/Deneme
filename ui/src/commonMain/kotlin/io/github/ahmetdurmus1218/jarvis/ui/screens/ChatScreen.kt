@@ -156,12 +156,34 @@ fun ChatScreen(
             }
         }
         val caption = partial.ifBlank { if (mode == CoreMode.SPEAKING) "" else subtitle }
+        val standby by controller.standby.collectAsState()
         if (caption.isNotBlank()) {
             Text(
                 caption,
                 textAlign = TextAlign.Center,
                 color = JarvisColors.Text,
                 fontSize = 15.sp,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp),
+            )
+        } else if (standby && mode == CoreMode.IDLE) {
+            // Hands-free: the microphone is open, and the screen always says so. A tap switches it off.
+            Text(
+                if (controller.standbyHearsName) "● Dinliyorum · “${AssistantName.SHORT}, …” deyin ya da iki kez alkışlayın" else "● Dinliyorum · iki kez alkışlayın",
+                textAlign = TextAlign.Center,
+                color = JarvisColors.Green.copy(alpha = 0.85f),
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        controller.settings.update { it.copy(handsFree = false) }
+                        controller.showNotice("Eller serbest dinleme kapandı. Ayarlar → Eller serbest ile yeniden açabilirsiniz.")
+                    }
+                    .padding(horizontal = 18.dp, vertical = 6.dp),
+            )
+        } else if (mode == CoreMode.IDLE && micAvailable && controller.standbyNeedsMicrophone) {
+            Text(
+                "Eller serbest dinleme için mikrofona bir kez dokunup izin verin",
+                textAlign = TextAlign.Center, color = JarvisColors.TextDim, fontSize = 12.sp,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp),
             )
         }

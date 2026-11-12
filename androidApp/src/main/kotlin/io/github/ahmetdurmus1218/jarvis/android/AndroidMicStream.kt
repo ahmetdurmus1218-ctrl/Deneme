@@ -7,8 +7,10 @@ import android.media.MediaRecorder
 import io.github.ahmetdurmus1218.jarvis.ui.MicStream
 import kotlin.concurrent.thread
 
-/** The phone microphone as a 16 kHz stream for the clap wake-up; only while the app is on screen. */
-class AndroidMicStream(private val ensurePermission: suspend () -> Boolean) : MicStream {
+/** The phone microphone as a 16 kHz stream: claps, and hands-free standby while Rick is shown. */
+class AndroidMicStream(private val granted: () -> Boolean, private val ensurePermission: suspend () -> Boolean) : MicStream {
+    override val permitted: Boolean get() = granted()
+
     @Volatile private var running = false
     private var worker: Thread? = null
 

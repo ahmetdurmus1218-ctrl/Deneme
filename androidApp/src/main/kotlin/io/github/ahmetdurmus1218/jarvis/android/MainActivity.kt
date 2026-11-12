@@ -54,6 +54,7 @@ class MainActivity : FragmentActivity() {
         super.onResume()
         bridge.activity = this
         BubbleService.appInFront.value = true
+        (application as JarvisApplication).graph.sharedController?.setAppVisible(true)
         bridge.downloader.refresh()
         // Large model downloads can take a while; keep the screen on while Rick is in front.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -61,6 +62,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onPause() {
         BubbleService.appInFront.value = false
+        (application as JarvisApplication).graph.sharedController?.setAppVisible(false)
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         super.onPause()
     }

@@ -64,7 +64,58 @@ class JarvisControllerTest {
         override fun cancel() {}
     }
 
-    private class Bridge(val tts: Tts, val stt: SpeechInput? = null) : PlatformBridge {
+    /** A microphone the test speaks into: 16 kHz samples handed to whoever started it. */
+    private class FakeMic : MicStream {
+        private var sink: ((FloatArray, Int) -> Unit)? = null
+        var starts = 0
+        val open: Boolean get() = sink != null
+        override suspend fun start(onSamples: (FloatArray, Int) -> Unit): Boolean {
+            starts++
+            sink = onSamples
+            return true
+        }
+        override fun stop() { sink = null }
+
+        fun hear(vararg parts: FloatArray) {
+            for (part in parts) {
+                var p = 0
+                while (p < part.size) {
+                    val n = minOf(1_600, part.size - p)
+                    sink?.invoke(part.copyOfRange(p, p + n), n)
+                    p += n
+                }
+            }
+        }
+    }
+
+    private val rnd = kotlin.random.Random(11)
+    private fun quiet(ms: Int) = FloatArray(ms * 16) { (rnd.nextFloat() - 0.5f) * 0.01f }
+    private fun voice(ms: Int) = FloatArray(ms * 16) { i -> 0.3f * kotlin.math.sin(2 * kotlin.math.PI * 170 * i / 16_000).toFloat() }
+    private fun clap() = FloatArray(70 * 16) { i -> (rnd.nextFloat() - 0.5f) * 1.2f * kotlin.math.exp(-i / (16_000 * 0.015f)) }
+
+    /** Rick's own recognizer: standby hands it what was said ([heard]); the microphone button gets [said]. */
+    private class OwnStt(val heard: ArrayDeque<String>, vararg said: String?) : SpeechInput {
+        private val script = ArrayDeque(said.toList())
+        var starts = 0
+        var decoded = 0
+        override val engineName = "own"
+        override fun isAvailable() = true
+        override val canTranscribe = true
+        override suspend fun transcribe(samples: FloatArray): String? {
+            decoded++
+            return heard.removeFirstOrNull()
+        }
+        override fun start(listener: SpeechInput.Listener) {
+            starts++
+            val next = if (script.isEmpty()) null else script.removeFirst()
+            if (next == null) listener.onError("Bir şey duyamadım. Mikrofona dokunup konuşun.") else listener.onFinal(next)
+        }
+        override fun stop() {}
+        override fun cancel() {}
+    }
+
+    private class Bridge(val tts: Tts, val stt: SpeechInput? = null, val mic: MicStream? = null) : PlatformBridge {
+        override val micStream: MicStream? get() = mic
         val executed = mutableListOf<QuickCommand>()
         override val platform = Platform.ANDROID
         override val appVersion = "test"
@@ -103,9 +154,9 @@ class JarvisControllerTest {
      */
     private fun TestScope.controllerScope(): CoroutineScope = CoroutineScope(coroutineContext + Job())
 
-    private fun setup(engine: LlmEngine = MockLlmEngine(tokenDelayMs = 0), scope: CoroutineScope, stt: SpeechInput? = null): Triple<JarvisController, Bridge, Tts> {
+    private fun setup(engine: LlmEngine = MockLlmEngine(tokenDelayMs = 0), scope: CoroutineScope, stt: SpeechInput? = null, mic: MicStream? = null): Triple<JarvisController, Bridge, Tts> {
         val tts = Tts()
-        val bridge = Bridge(tts, stt)
+        val bridge = Bridge(tts, stt, mic)
         val memory = InMemoryMemoryStore()
         val assistant = Assistant(engine, DefaultTools.create(memory, now), memory, now)
         return Triple(JarvisController(scope, bridge, assistant, memory, SettingsStore(bridge.files)), bridge, tts)
@@ -564,6 +615,164 @@ class JarvisControllerTest {
         assertEquals(turns, c.turns.value.size)
         assertEquals(listOf<QuickCommand>(QuickCommand.Back, QuickCommand.MainScreen), commands)
         collector.cancel()
+        scope.cancel()
+    }
+    // ---- hands-free standby ----
+
+    @Test
+    fun sayingTheNameAsksWithoutTouchingAnything() = runTest {
+        val scope = controllerScope()
+        val mic = FakeMic()
+        val stt = OwnStt(ArrayDeque(listOf("Rick, saat kaç")))
+        val (c, _, tts) = setup(scope = scope, stt = stt, mic = mic)
+        c.setAppVisible(true)
+        advanceTimeBy(1_000)
+        assertTrue(mic.open, "standby opens the microphone by itself")
+        assertTrue(c.standby.value)
+        mic.hear(quiet(1_000), voice(1_200), quiet(1_500))
+        advanceTimeBy(1_000)
+        assertEquals(listOf("Saat kaç"), c.turns.value.map { it.user })
+        assertEquals(1, tts.spoken.size)
+        assertEquals(0, stt.starts, "no follow-up microphone: the next request needs the name again")
+        // Afterwards Rick waits for its name again.
+        advanceTimeBy(3_000)
+        assertTrue(mic.open)
+        c.setAppVisible(false)
+        scope.cancel()
+    }
+
+    @Test
+    fun talkWithoutTheNameIsDroppedAndStandbyGoesOn() = runTest {
+        val scope = controllerScope()
+        val mic = FakeMic()
+        val stt = OwnStt(ArrayDeque(listOf("bugün hava çok güzel", "İzlediğiniz için teşekkürler")))
+        val (c, _, tts) = setup(scope = scope, stt = stt, mic = mic)
+        c.setAppVisible(true)
+        advanceTimeBy(1_000)
+        mic.hear(quiet(500), voice(1_000), quiet(1_500))
+        advanceTimeBy(3_000)
+        assertTrue(mic.open)
+        mic.hear(quiet(500), voice(1_000), quiet(1_500))
+        advanceTimeBy(3_000)
+        assertEquals(2, stt.decoded)
+        assertTrue(c.turns.value.isEmpty())
+        assertTrue(tts.spoken.isEmpty())
+        assertEquals("", c.partialTranscript.value)
+        assertTrue(mic.open)
+        c.setAppVisible(false)
+        scope.cancel()
+    }
+
+    @Test
+    fun theNameAloneIsAnsweredAndThenTheRequestIsHeard() = runTest {
+        val scope = controllerScope()
+        val mic = FakeMic()
+        val stt = OwnStt(ArrayDeque(listOf("Rick")), "saat kaç")
+        val (c, _, tts) = setup(scope = scope, stt = stt, mic = mic)
+        c.setAppVisible(true)
+        advanceTimeBy(1_000)
+        mic.hear(quiet(500), voice(500), quiet(1_500))
+        advanceTimeBy(2_000)
+        assertEquals(JarvisController.CALL_ANSWER, tts.spoken.first())
+        assertEquals(1, stt.starts)
+        assertEquals(listOf("saat kaç"), c.turns.value.map { it.user })
+        c.setAppVisible(false)
+        scope.cancel()
+    }
+
+    @Test
+    fun aCallThatIsNotFollowedByAnythingEndsQuietly() = runTest {
+        val scope = controllerScope()
+        val mic = FakeMic()
+        val stt = OwnStt(ArrayDeque(listOf("Hey Rick")))
+        val (c, _, _) = setup(scope = scope, stt = stt, mic = mic)
+        c.setAppVisible(true)
+        advanceTimeBy(1_000)
+        mic.hear(quiet(500), voice(500), quiet(1_500))
+        advanceTimeBy(2_000)
+        assertEquals(1, stt.starts)
+        assertEquals("", c.partialTranscript.value, "no 'Bir şey duyamadım' after a microphone Rick opened itself")
+        assertEquals(CoreMode.IDLE, c.mode.value)
+        c.setAppVisible(false)
+        scope.cancel()
+    }
+
+    @Test
+    fun twoClapsOpenTheMicrophoneWhileRickIsAwake() = runTest {
+        val scope = controllerScope()
+        val mic = FakeMic()
+        val stt = OwnStt(ArrayDeque(), "saat kaç")
+        val (c, _, _) = setup(scope = scope, stt = stt, mic = mic)
+        c.setAppVisible(true)
+        advanceTimeBy(1_000)
+        mic.hear(quiet(1_500), clap(), quiet(350), clap(), quiet(300))
+        advanceTimeBy(1_000)
+        assertEquals(1, stt.starts)
+        assertEquals(0, stt.decoded, "claps are not sent to the recognizer")
+        assertEquals(listOf("saat kaç"), c.turns.value.map { it.user })
+        c.setAppVisible(false)
+        scope.cancel()
+    }
+
+    @Test
+    fun standbyStepsAsideAndNeverRunsWhenSwitchedOffOrHidden() = runTest {
+        val scope = controllerScope()
+        val mic = FakeMic()
+        val stt = OwnStt(ArrayDeque(listOf("Rick, saat kaç")))
+        val (c, _, _) = setup(scope = scope, stt = stt, mic = mic)
+        // Not on screen: nothing listens.
+        advanceTimeBy(5_000)
+        assertEquals(0, mic.starts)
+        c.setAppVisible(true)
+        advanceTimeBy(1_000)
+        assertTrue(mic.open)
+        // A screen that needs the microphone itself (sleep, clap calibration) gets it at once.
+        MicUse.take()
+        assertTrue(!mic.open)
+        advanceTimeBy(5_000)
+        assertTrue(!mic.open)
+        MicUse.release()
+        advanceTimeBy(1_000)
+        assertTrue(mic.open)
+        // The microphone button closes standby before the recognizer opens its own microphone.
+        c.startListening()
+        assertTrue(!mic.open)
+        advanceTimeBy(3_000)
+        assertTrue(mic.open)
+        // Asleep or in the background: closed.
+        c.setAppAwake(false)
+        assertTrue(!mic.open)
+        c.setAppAwake(true)
+        advanceTimeBy(1_000)
+        assertTrue(mic.open)
+        c.setAppVisible(false)
+        assertTrue(!mic.open)
+        // Switched off in Settings: never again.
+        c.settings.update { it.copy(handsFree = false) }
+        c.setAppVisible(true)
+        advanceTimeBy(5_000)
+        assertTrue(!mic.open)
+        assertTrue(!c.standby.value)
+        c.setAppVisible(false)
+        scope.cancel()
+    }
+
+    @Test
+    fun theFloatingRickListensInTheBackgroundAndMayTakeTheClaps() = runTest {
+        val scope = controllerScope()
+        val mic = FakeMic()
+        val stt = OwnStt(ArrayDeque(), "saat kaç")
+        val (c, _, _) = setup(scope = scope, stt = stt, mic = mic)
+        var woke = 0
+        c.onClaps = { woke++; true }
+        c.setFloating(true)
+        advanceTimeBy(1_000)
+        assertTrue(mic.open)
+        mic.hear(quiet(1_500), clap(), quiet(350), clap(), quiet(300))
+        advanceTimeBy(500)
+        assertEquals(1, woke)
+        assertEquals(0, stt.starts, "the floating Rick woke up itself")
+        c.setFloating(false)
         scope.cancel()
     }
 }

@@ -41,6 +41,7 @@ class WhisperSpeechInput(
     private var job: Job? = null
     @Volatile private var stopRequested = false
     private val loadLock = Mutex()
+    private val decodeLock = Mutex()
     private var transcriber: WhisperTranscriber? = null
 
     private fun item(id: String): LockedItem? = registry.lock.items.firstOrNull { it.id == id }
@@ -101,6 +102,20 @@ class WhisperSpeechInput(
 
     override suspend fun languagePack(): SpeechInput.LanguagePack = SpeechInput.LanguagePack.READY
 
+    override val canTranscribe: Boolean get() = isAvailable()
+
+    override suspend fun transcribe(samples: FloatArray): String? {
+        val paths = installedFiles() ?: return null
+        return try {
+            withContext(Dispatchers.Default) { transcribe(paths, samples) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            Log.w(TAG, "standby transcription failed", e)
+            null
+        }
+    }
+
     /** Returns 16 kHz mono samples, or null when nothing was said. */
     @SuppressLint("MissingPermission") // checked by ensureMicPermission() right before
     private suspend fun record(listener: SpeechInput.Listener): FloatArray? {
@@ -151,7 +166,8 @@ class WhisperSpeechInput(
                 WhisperTranscriber(paths).also { transcriber = it }
             }
         }
-        return t.transcribe(samples)
+        // One decode at a time: standby and the microphone button share the recognizer.
+        return decodeLock.withLock { t.transcribe(samples) }
     }
 
     companion object {
@@ -183,6 +199,8 @@ class PreferWhisperSpeechInput(
     override fun cancel() { (active ?: current).cancel() }
     override val ownModelGroup: String? get() = if (whisper.isAvailable()) null else WhisperSpeechInput.GROUP
     override fun warmUp() = current.warmUp()
+    override val canTranscribe: Boolean get() = whisper.canTranscribe
+    override suspend fun transcribe(samples: FloatArray): String? = whisper.transcribe(samples)
     override suspend fun languagePack(): SpeechInput.LanguagePack = current.languagePack()
     override suspend fun downloadLanguagePack(): Boolean = current.downloadLanguagePack()
 }

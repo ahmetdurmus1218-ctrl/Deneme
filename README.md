@@ -8,7 +8,7 @@ anahtarı ya da reklam yoktur.
 > indirdiğiniz modeller, hafıza ve ayarlar yerinde kalır; bilgisayarda `%LOCALAPPDATA%\Jarvis` klasörü
 > ilk açılışta kendiliğinden `%LOCALAPPDATA%\Rick` olur. "Hey Jarvis" demeye devam ederseniz de anlar.
 
-> **Durum:** v1.4.2. Bütün aşamalar tamam: gerçek yapay zekâ (telefonda Gemma 4, PC'de Qwen 3.5 9B), Rick'in kendi
+> **Durum:** v1.5.0. Bütün aşamalar tamam: gerçek yapay zekâ (telefonda Gemma 4, PC'de Qwen 3.5 9B), Rick'in kendi
 > ses tanıması (Whisper) ve kendi Türkçe sesi (Piper), internetsiz Wikipedia ve belgeleriniz, şifreli hafıza, kamera
 > ile el kontrolü (tam ekran; izin verdiğiniz YouTube, Spotify, tarayıcı gibi uygulamalarda arka planda da — banka,
 > mesajlaşma ve ödeme uygulamalarında asla), 5 farklı canlı simge görünümü, ev simülasyonu, kitaplık, alkışla
@@ -45,7 +45,9 @@ GitHub'da bu sayfanın sağındaki **Releases** bölümüne girin, en üstteki s
    - indirir, her dosyanın SHA-256 özetini doğrular ve "Merhaba efendim, ben Rick. Her şey hazır." der.
    - İsterseniz **"Sonra kur"** deyip modelleri daha sonra sohbet ya da Modeller ekranından kurabilirsiniz.
 
-**Kullanım:** alttaki mikrofon tuşuna **basılı tutup** konuşun, bırakınca Rick cevap verir. Ya da yazın.
+**Kullanım:** Rick ekrandayken **"Rick, saat kaç"** deyin ya da iki kez alkışlayın; mikrofona basmanız gerekmez
+(ekranda "● Dinliyorum" yazar; yazıya dokunursanız kapanır, Ayarlar → Eller serbest ile açılır). İsterseniz alttaki
+mikrofon tuşuna **basılı tutup** konuşun ya da yazın. Adı geçmeyen konuşmalar atılır; ses cihazdan çıkmaz.
 Örnekler: "Saat kaç?", "Yarın sabah 7'de alarm kur", "5 dakikalık zamanlayıcı", "Kamerayı aç",
 "12 artı 30 kaç eder", "5 km kaç mil", "Sus".
 

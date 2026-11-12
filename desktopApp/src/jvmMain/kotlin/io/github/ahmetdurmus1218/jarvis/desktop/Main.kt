@@ -29,6 +29,8 @@ fun main() {
         bridge, realEngine = { g -> llm.pick(g.registry, g.settings.state.value.llmId) },
         appScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main),
     )
+    // The window is always "on screen" on a PC: hands-free standby may run whenever Rick is idle.
+    graph.sharedController?.setAppVisible(true)
     // First start of the installed app: block Rick's programs in the Windows firewall (one UAC prompt).
     kotlin.concurrent.thread(isDaemon = true, name = "jarvis-firewall") { kotlinx.coroutines.runBlocking { runCatching { bridge.firstRunFirewall() } } }
     val fmt = SimpleDateFormat("d MMM yyyy HH:mm:ss", Locale.forLanguageTag("tr-TR"))

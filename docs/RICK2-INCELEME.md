@@ -4,6 +4,11 @@ Tarih: 2026-11-12. Bu rapor **kod okunarak** hazırlandı. Gerçek telefonda öl
 her madde kodda doğrudan görülen davranıştır, "olası" denenler gerçek cihazda doğrulanmalıdır.
 Bu aşamada kod değiştirilmedi.
 
+> **Düzeltme (aynı gün, ekran görüntüleri geldikten sonra):** Ekrandaki "FPS" sayısı kameranın değil, ekranın
+> yenileme sayısıydı; el takibinin hızını göstermiyordu (v1.5.0'da gerçek kamera karesi sayılıyor). Ekran
+> görüntüsünde "0 el" yazmasının nedeni kadrajda el olmamasıydı. Başlığın harf harf dökülmesi ve efekt panelinin
+> diğer yazıların altında kalması gerçek hatalardı; v1.5.0'da düzeltildi (bkz. `docs/DECISIONS.md` D48).
+
 ## 1. Kısa sonuç
 
 | Şikâyet | Teşhis | Kesinlik |

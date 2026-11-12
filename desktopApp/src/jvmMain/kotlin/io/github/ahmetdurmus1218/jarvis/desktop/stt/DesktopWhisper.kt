@@ -87,6 +87,7 @@ class DesktopWhisperSpeechInput(
     private var job: Job? = null
     @Volatile private var stopRequested = false
     private val loadLock = Mutex()
+    private val decodeLock = Mutex()
     private var transcriber: JvmWhisperTranscriber? = null
 
     private fun item(id: String): LockedItem? = registry.lock.items.firstOrNull { it.id == id }
@@ -208,7 +209,21 @@ class DesktopWhisperSpeechInput(
                 JvmWhisperTranscriber(paths).also { transcriber = it }
             }
         }
-        return withContext(Dispatchers.Default) { t.transcribe(samples) }
+        // One decode at a time: standby and the microphone button share the recognizer.
+        return decodeLock.withLock { withContext(Dispatchers.Default) { t.transcribe(samples) } }
+    }
+
+    override val canTranscribe: Boolean get() = isAvailable()
+
+    override suspend fun transcribe(samples: FloatArray): String? {
+        val paths = installedFiles() ?: return null
+        return try {
+            transcribe(paths, samples)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     companion object {

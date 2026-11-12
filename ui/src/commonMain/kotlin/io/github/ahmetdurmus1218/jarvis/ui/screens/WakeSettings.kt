@@ -101,6 +101,8 @@ fun WakeSettings(bridge: PlatformBridge, settings: SettingsStore) {
         val takes = mutableListOf<List<Long>>()
         val current = mutableListOf<Long>()
         status = ""
+        // Hands-free standby gives the microphone up while this runs.
+        io.github.ahmetdurmus1218.jarvis.ui.MicUse.take()
         val job = scope.launch {
             val ok = mic.start { buf, n ->
                 single.threshold = settings.state.value.clapThreshold
@@ -145,6 +147,7 @@ fun WakeSettings(bridge: PlatformBridge, settings: SettingsStore) {
         onDispose {
             job.cancel()
             mic.stop()
+            io.github.ahmetdurmus1218.jarvis.ui.MicUse.release()
         }
     }
 }

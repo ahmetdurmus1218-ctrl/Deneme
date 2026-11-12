@@ -117,11 +117,47 @@ interface FloatingRick {
     fun appChoices(): List<Pair<String, String>> = emptyList()
 }
 
+/**
+ * The one raw microphone stream is shared: a screen that needs it for itself (sleep, clap calibration)
+ * takes it here first, and hands-free standby steps aside at once and comes back afterwards.
+ */
+object MicUse {
+    private var holders = 0
+    private val watchers = ArrayList<() -> Unit>()
+    val taken: Boolean get() = holders > 0
+
+    fun take() {
+        holders++
+        if (holders == 1) watchers.toList().forEach { it() }
+    }
+
+    fun release() {
+        if (holders == 0) return
+        holders--
+        if (holders == 0) watchers.toList().forEach { it() }
+    }
+
+    /** Calls [onChange] (on the caller's thread) whenever the microphone is taken or given back; returns the undo. */
+    fun watch(onChange: () -> Unit): () -> Unit {
+        watchers += onChange
+        return { watchers -= onChange }
+    }
+}
+
 interface MicStream {
+    /**
+     * Whether the microphone may be used without asking the user first. Hands-free standby never
+     * brings up a permission question by itself: it waits until the user has used the microphone once.
+     */
+    val permitted: Boolean get() = true
+
     /** Starts delivering samples on a background thread; false if the microphone cannot be opened. */
     suspend fun start(onSamples: (FloatArray, Int) -> Unit): Boolean
     fun stop()
 }
+
+/** How every "nothing was said" message of a recognizer starts (hands-free listening stays quiet about it). */
+const val NOTHING_HEARD = "Bir şey duyamadım"
 
 interface SpeechInput {
     /** Human-readable engine name, e.g. "Android cihaz içi tanıma (tr-TR)". */
@@ -150,6 +186,15 @@ interface SpeechInput {
 
     /** Loads the recognizer in the background so the next start answers quickly (sleep → wake word). */
     fun warmUp() {}
+
+    /**
+     * Whether [transcribe] works right now (Rick's own recognizer is installed). Hands-free standby
+     * needs it: the app listens itself and only hands over what was said.
+     */
+    val canTranscribe: Boolean get() = false
+
+    /** Turns 16 kHz mono samples (-1..1) into text on the device; null when not possible. */
+    suspend fun transcribe(samples: FloatArray): String? = null
 
     interface Listener {
         fun onPartial(text: String)

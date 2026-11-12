@@ -294,6 +294,12 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
             if (controller.mode.value == CoreMode.IDLE && !cameraOpen && approval == null) sleeping = true
         }
         LaunchedEffect(sleeping) { graph.bridge.keepScreenOn(sleeping) }
+        // Hands-free standby only in normal use: not asleep (the sleep screen listens itself), waking or in the wizard.
+        val awake = !sleeping && !waking && !wizard
+        androidx.compose.runtime.DisposableEffect(awake) {
+            controller.setAppAwake(awake)
+            onDispose {}
+        }
         LaunchedEffect(controller) {
             controller.appCommands.collect { c ->
                 when (c) {

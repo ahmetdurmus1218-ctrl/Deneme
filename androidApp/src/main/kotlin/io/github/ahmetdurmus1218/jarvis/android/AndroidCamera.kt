@@ -137,7 +137,9 @@ class AndroidCamera(
         }
         Box(modifier) {
             AndroidView(factory = { previewView }, modifier = Modifier.matchParentSize())
-            cameraError?.let { msg ->
+            // Never silent: the files are there but the tracker did not start.
+            val problem = cameraError ?: if (ready && trackers == null) TRACKING_FAILED else null
+            problem?.let { msg ->
                 Box(Modifier.matchParentSize(), contentAlignment = Alignment.Center) { Text(msg) }
             }
         }
@@ -270,5 +272,6 @@ class AndroidCamera(
         const val HAND_MODEL = "vision-hand-landmarker"
         const val FACE_MODEL = "vision-face-detector"
         const val NO_CAMERA = "Bu cihazda kamera bulunamadı."
+        const val TRACKING_FAILED = "El takibi başlatılamadı. Rick'i kapatıp yeniden açın; düzelmezse Modeller ekranından el takibini silip tekrar indirin."
     }
 }

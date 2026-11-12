@@ -57,6 +57,14 @@ fun SleepScreen(bridge: PlatformBridge, settings: Settings, onWake: () -> Unit) 
 
     var status by remember { mutableStateOf("") }
 
+    // The microphone is this screen's while it shows: hands-free standby steps aside first.
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        io.github.ahmetdurmus1218.jarvis.ui.MicUse.take()
+        onDispose {
+            bridge.micStream?.stop()
+            io.github.ahmetdurmus1218.jarvis.ui.MicUse.release()
+        }
+    }
     LaunchedEffect(Unit) {
         // Load speech recognition now, so "uyan" is understood right after the claps.
         if (settings.wakeMode != WAKE_CLAP_ONLY) bridge.speechInput?.warmUp()
@@ -94,7 +102,6 @@ fun SleepScreen(bridge: PlatformBridge, settings: Settings, onWake: () -> Unit) 
             delay(300) // back to sleep, quietly
         }
     }
-    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { bridge.micStream?.stop() } }
 
     val breath by rememberInfiniteTransition().animateFloat(
         0.35f, 1f, infiniteRepeatable(tween(2_600, easing = LinearEasing), RepeatMode.Reverse),
