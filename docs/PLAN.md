@@ -153,6 +153,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] v1.5.0 (kod): eller serbest dinleme ("Rick, …", iki alkış, Rick'in sorusuna adsız cevap), el kontrolü ekranının toparlanması (D48).
 - [x] v1.5.0: CI baştan sona yeşil (Android, Windows, emülatör; koşu 43336992717). Ekran görüntüleri kullanıcıya gösterildi.
 - [x] v1.5.0: kullanıcı "Tamam APK ver" dedi → `.github/release-request` → `v1.5.0` (oturum 4).
+- [x] `v1.5.0` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.5.0 (rick.apk 81 MB, rick-kapi.apk 8,6 MB, Rick-Setup-1.5.0.msi 111 MB).
 - [x] Yeni ana ekran (kod): kullanıcı A'yı seçti ve hepsinin eklenmesini istedi → cam küre varsayılan, HUD çekirdek / dalga halkası / robot yüz seçenek; çizgi simgeler, dinleme anahtarı, ses çubukları (D49).
 - [x] Yeni ana ekran: CI baştan sona yeşil (koşu 43367118756); masaüstü ekran görüntüleri kullanıcıya gösterildi (oturum 4).
 - [x] Telefona uyum: küçük telefon, yatay ekran ve büyük yazıda ana ekran sığıyor (küre yüksekliğe göre, sekme adları tek satır), `PhoneLayoutUiTest` (D49); CI baştan sona yeşil (Android, Windows, emülatör; koşu 43379995365).
@@ -174,4 +175,5 @@ küçük resim olarak basılıyor.
 Oturum 4 (2026-11-13): yeni ana ekranın CI koşusu yeşil; ekran görüntüleri (ana ekran, dinleme anahtarı, beş görünüm)
 kullanıcıya gösterildi. Bulut oturumu için "Deneme (Rick)" ortamı açıldı (Google Maven erişimi; masaüstü testleri
 burada çalışıyor). Kullanıcı "telefonda uyumlu olmalı" dedi: telefon boyutları testi
-eklendi, küçük ekran ve büyük yazı sorunları düzeltildi. Sıradaki: görünüm geri bildirimi ve "yayımla" onayı (`v1.5.0`).
+eklendi, küçük ekran ve büyük yazı sorunları düzeltildi. `v1.5.0` yayımlandı. Sıradaki: gerçek telefonda geri bildirim
+(sürekli dinleme, görünümler); kullanıcı isterse insan yüzü görünümü (önce taslak).
