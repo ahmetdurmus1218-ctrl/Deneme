@@ -154,7 +154,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] v1.5.0: CI baştan sona yeşil (Android, Windows, emülatör; koşu 43336992717). Ekran görüntüleri kullanıcıya gösterildi.
 - [ ] v1.5.0: kullanıcı "yayımla" deyince `.github/release-request` → `v1.5.0`.
 - [x] Yeni ana ekran (kod): kullanıcı A'yı seçti ve hepsinin eklenmesini istedi → cam küre varsayılan, HUD çekirdek / dalga halkası / robot yüz seçenek; çizgi simgeler, dinleme anahtarı, ses çubukları (D49).
-- [ ] Yeni ana ekranın CI ekran görüntüleri kullanıcıya gösterilecek.
+- [x] Yeni ana ekran: CI baştan sona yeşil (koşu 43367118756); masaüstü ekran görüntüleri kullanıcıya gösterildi (oturum 4).
 - [ ] Sıradaki: sesle söz kesme (yankı engelleme, gerçek cihazda denenerek); el takibinin hızı (yüz aramasını gereksiz yerde kapatma, GPU); ana ekran tasarımı (önce resim); PC'de "İndirilenler klasörünü düzenle"; PC'de web kamerasıyla el hareketleri.
 
 ## Kaldığım yer
@@ -170,3 +170,6 @@ Yayım kullanıcının onayını bekliyor (`.github/release-request` → `v1.5.0
 beğenmedi, "ütopik" bir görünüm istedi: üç ana ekran taslağı gönderildi, seçimi bekleniyor. CI notu: GitHub
 artifact kotası dolu olduğu için iş akışları dosyaları önbellekle aktarıyor; emülatör ekran görüntüleri günlüğe
 küçük resim olarak basılıyor.
+Oturum 4 (2026-11-13): yeni ana ekranın CI koşusu yeşil; ekran görüntüleri (ana ekran, dinleme anahtarı, beş görünüm)
+kullanıcıya gösterildi. Bulut oturumu için "Deneme (Rick)" ortamı açıldı (Google Maven erişimi; masaüstü testleri
+burada çalışıyor). Sıradaki: kullanıcının görünüm geri bildirimi ve "yayımla" onayı (`v1.5.0`).
