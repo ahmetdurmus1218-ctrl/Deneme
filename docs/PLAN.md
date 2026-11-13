@@ -152,7 +152,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [ ] Kullanıcının yapması gereken: kendi imza anahtarını GitHub secret olarak eklemek (README → İmzalama).
 - [x] v1.5.0 (kod): eller serbest dinleme ("Rick, …", iki alkış, Rick'in sorusuna adsız cevap), el kontrolü ekranının toparlanması (D48).
 - [x] v1.5.0: CI baştan sona yeşil (Android, Windows, emülatör; koşu 43336992717). Ekran görüntüleri kullanıcıya gösterildi.
-- [ ] v1.5.0: kullanıcı "yayımla" deyince `.github/release-request` → `v1.5.0`.
+- [x] v1.5.0: kullanıcı "Tamam APK ver" dedi → `.github/release-request` → `v1.5.0` (oturum 4).
 - [x] Yeni ana ekran (kod): kullanıcı A'yı seçti ve hepsinin eklenmesini istedi → cam küre varsayılan, HUD çekirdek / dalga halkası / robot yüz seçenek; çizgi simgeler, dinleme anahtarı, ses çubukları (D49).
 - [x] Yeni ana ekran: CI baştan sona yeşil (koşu 43367118756); masaüstü ekran görüntüleri kullanıcıya gösterildi (oturum 4).
 - [x] Telefona uyum: küçük telefon, yatay ekran ve büyük yazıda ana ekran sığıyor (küre yüksekliğe göre, sekme adları tek satır), `PhoneLayoutUiTest` (D49); CI baştan sona yeşil (Android, Windows, emülatör; koşu 43379995365).
