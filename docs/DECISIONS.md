@@ -555,6 +555,11 @@ Kullanıcı kamera onu gösterirken elleriyle havada tıklamak, kaydırmak, dön
   sıfırlanır; mikrofon veri vermezse okuma döngüsü işlemciyi döndürmez; tanıyıcının çalışma süresi günlüğe
   yazılır (söylenen şey asla). Bekleme, Rick sustuktan 1,5 sn sonra başlar: cevabın kısa duraklarında mikrofon
   açılıp kapanmaz.
+- Haber adımının gerçek nedeni ekran görüntüsünden bulundu ve sürekli dinlemeyle ilgisi yoktu: cevabın altındaki
+  kaynak etiketleri (`SourceChips`) yan yana diziliyordu; uzun başlıklarda sonuncular bir harf genişliğinde,
+  yüzlerce satır yüksekliğinde bir sütuna dönüşüyor, kartlar ekranın çok üstünde kalıyordu. Bu hata eskiden beri
+  vardı; o günün uzun haber başlıklarıyla ortaya çıktı. Etiketler artık alt alta ve tek satır (testi var).
+  Ders: emülatör ekran görüntüleri artifact kotasına takılsa bile küçük resim olarak günlüğe basılıyor.
 - Sınırlar (gerçek cihazda ölçülecek): Whisper'ın "Rick" adını ne kadar doğru yazdığı, gürültülü odada pil
   tüketimi, bir parçanın çözülmesi sırasında (birkaç saniye) mikrofonun kapalı olması.
 

@@ -107,6 +107,8 @@ fun Badge(text: String, color: androidx.compose.ui.graphics.Color) {
         text,
         color = color,
         fontSize = 11.sp,
+        maxLines = 1,
+        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         modifier = Modifier
             .border(1.dp, color, RoundedCornerShape(50))
             .padding(horizontal = 8.dp, vertical = 2.dp),
@@ -116,7 +118,10 @@ fun Badge(text: String, color: androidx.compose.ui.graphics.Color) {
 @Composable
 fun SourceChips(sources: List<Kaynak>) {
     if (sources.isEmpty()) return
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
+    // One source per line, each cut to a single line. Side by side, long titles (news headlines)
+    // squeezed the last ones into a column one letter wide and hundreds of lines tall, which pushed
+    // the answer's cards far off the screen.
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
         sources.take(4).forEach { k ->
             val label = listOfNotNull(k.tur?.let { tur -> tur.replaceFirstChar { it.uppercase() } }, k.baslik.ifBlank { k.konum }).joinToString(": ")
             Badge(label, JarvisColors.Cyan)

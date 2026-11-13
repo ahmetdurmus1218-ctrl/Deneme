@@ -327,8 +327,6 @@ def main():
     print("answer:", label(answer))
     shot("02-kale-saat")
 
-    cpu("Rick open, microphone not allowed yet: no standby")
-
     step("device command without the model: battery")
     type_into(lambda n: n.get("class") == "android.widget.EditText", "pil yuzde kac")
     tap(wait_for(text_is("Gönder"), "send button"))
@@ -339,8 +337,6 @@ def main():
     step("microphone: tap → permission → visible feedback (never silent)")
     mic_feedback()
     shot("02b-kale-mikrofon")
-    time.sleep(6)
-    cpu("idle with hands-free standby listening (claps only, no recognizer installed)")
     check_no_crash()
 
     step("gate detected")
@@ -561,8 +557,6 @@ def main():
 
         step("the day's news: 'Gunun haberleri' → PIN → Kapı → feeds.bbci.co.uk (pinned) → headlines read aloud → Ağ log")
         tap(wait_for(tab("Sohbet"), "chat tab"))
-        time.sleep(6)
-        cpu("idle with hands-free standby listening (recognizer installed)")
         type_into(lambda n: n.get("class") == "android.widget.EditText", "Gunun haberleri")
         tap(wait_for(text_is("Gönder"), "send button"))
         time.sleep(4)
@@ -584,11 +578,6 @@ def main():
             seen += new
             # What each look at the screen saw (to tell a slow emulator from a screen that does not move).
             print(f"  news look {k} at {time.time() - t0:.0f}s: {len(now)} texts, new: {[t[:40] for t in new]}", flush=True)
-            if k in (1, 5, 9):
-                # Is the keyboard up (it squeezes the answer area)? And a picture of what is on the screen.
-                ime = [l.strip() for l in adb("shell", "dumpsys", "input_method", check=False).splitlines() if "mInputShown" in l or "mImeWindowVis" in l]
-                print(f"    keyboard: {ime[:2]}", flush=True)
-                shot(f"18c-haber-bakis-{k}")
             adb("shell", "input", "swipe", "540", "800", "540", "1800", "250")
             time.sleep(1)
         print(f"  screen reads in this step: {DUMP_STATS['dumps'] - before['dumps']}, retries {DUMP_STATS['retries'] - before['retries']}, {DUMP_STATS['seconds'] - before['seconds']:.0f}s in all")
@@ -596,6 +585,7 @@ def main():
         print(adb("logcat", "-d", "-s", "RickGate:*", "RickNews:*", check=False)[-3000:])
         # What hands-free standby cost so far (how often the recognizer ran on sound that was not a call).
         print("standby decodes:", [l.split("JarvisMic: ", 1)[-1] for l in adb("logcat", "-d", "-s", "JarvisMic:*", check=False).splitlines() if "standby:" in l][-40:])
+        shot("18c-haberler-kaydirilmis")
         headlines = [t for t in seen if t.startswith("BBC Türkçe · https://")]
         if len(headlines) < 3 or not any(t.startswith("Web: ") for t in seen):
             raise SystemExit("headlines not shown; texts: " + " | ".join(seen))
