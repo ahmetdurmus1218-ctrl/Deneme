@@ -151,7 +151,9 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] `v1.4.2` yayımlandı: https://github.com/ahmetdurmus1218-ctrl/Deneme/releases/tag/v1.4.2 (CI, Windows ve emülatör yeşil).
 - [ ] Kullanıcının yapması gereken: kendi imza anahtarını GitHub secret olarak eklemek (README → İmzalama).
 - [x] v1.5.0 (kod): eller serbest dinleme ("Rick, …", iki alkış, Rick'in sorusuna adsız cevap), el kontrolü ekranının toparlanması (D48).
-- [ ] v1.5.0: CI ekran görüntüleri kullanıcıya gösterilecek; onaydan sonra yayımlanacak.
+- [x] v1.5.0: CI baştan sona yeşil (Android, Windows, emülatör; koşu 43336992717). Ekran görüntüleri kullanıcıya gösterildi.
+- [ ] v1.5.0: kullanıcı "yayımla" deyince `.github/release-request` → `v1.5.0`.
+- [ ] Yeni ana ekran tasarımı: üç taslak gösterildi (A cam küre, B HUD çekirdek, C dalga halkası; çizgi simgeler, cam kartlar, ses çubukları). Kullanıcının seçimi bekleniyor; seçilen uygulamaya yazılacak.
 - [ ] Sıradaki: sesle söz kesme (yankı engelleme, gerçek cihazda denenerek); el takibinin hızı (yüz aramasını gereksiz yerde kapatma, GPU); ana ekran tasarımı (önce resim); PC'de "İndirilenler klasörünü düzenle"; PC'de web kamerasıyla el hareketleri.
 
 ## Kaldığım yer
@@ -162,5 +164,8 @@ bağlantılı hafıza, bilgisayar ajanı, proaktif zekâ…) henüz onaylanmadı
 bildirimi (🤏 tıklama, alkış, YouTube oynatma, Wikipedia indirmesi) ve kullanıcının Rick 2.0 kararı.
 Etkileşim incelemesi ve teşhis yazıldı: `docs/RICK2-INCELEME.md` (kod değişmedi). Önerilen sıra: v1.5.0 eller
 serbest ses ("Rick" diye seslenme, cevaptan sonra yeniden dinleme, araya girme), v1.5.1 el takibi güvenilirliği.
-Kullanıcı ekran görüntülerini gönderip "sen ayarla" dedi: v1.5.0 kodu yazıldı (D48). Yayım, CI'dan çıkan ekran
-görüntüleri kullanıcıya gösterildikten sonra (`.github/release-request` → `v1.5.0`).
+Kullanıcı ekran görüntülerini gönderip "sen ayarla" dedi: v1.5.0 kodu yazıldı (D48) ve CI'da baştan sona yeşil.
+Yayım kullanıcının onayını bekliyor (`.github/release-request` → `v1.5.0`). Kullanıcı ayrıca arayüzü ve simgeleri
+beğenmedi, "ütopik" bir görünüm istedi: üç ana ekran taslağı gönderildi, seçimi bekleniyor. CI notu: GitHub
+artifact kotası dolu olduğu için iş akışları dosyaları önbellekle aktarıyor; emülatör ekran görüntüleri günlüğe
+küçük resim olarak basılıyor.
