@@ -14,6 +14,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.performClick
@@ -194,7 +195,7 @@ class AppUiTest {
         waitForText("Hemen efendim.", substring = true)
         waitForText("TÜRK KAHVESİ · PİŞİYOR", substring = true)
         shot("08a-ev-kahve")
-        click("☰")
+        click(rule.onNodeWithContentDescription("Menü"))
         click("🏠 Ev")
         waitForText("SİMÜLASYON")
         waitForText("Hazırlanıyor…", substring = true)
@@ -204,7 +205,7 @@ class AppUiTest {
         // Library by voice, then the panel.
         ask("Rick, kitaplığıma Davranış'ı ekle")
         waitForText("Tamamdır efendim, Davranış kitaplığınıza eklendi.")
-        click("☰")
+        click(rule.onNodeWithContentDescription("Menü"))
         click("📚 Kitaplık")
         waitForText("📚 KİTAPLIK")
         waitForText("okunacak", substring = true)
@@ -214,7 +215,7 @@ class AppUiTest {
         // To-do by voice and the offline daily briefing.
         ask("Rick, not al: süt al")
         waitForText("Listeye ekledim: Süt al.")
-        click("☰")
+        click(rule.onNodeWithContentDescription("Menü"))
         click("☀ Günlük brifing")
         waitForText("Hepsi bu kadar. İyi bir gün dilerim.", substring = true)
         shot("08d-brifing")

@@ -112,7 +112,7 @@ object JarvisUi {
     var face by mutableStateOf(true)
 
     /** Which look the living Rick has (Settings → Görünüm): spark, eyes, orb, ring, particles. */
-    var look by mutableStateOf("spark")
+    var look by mutableStateOf("glass")
 
     /** The camera fills the screen behind Rick ("El ile yönet", full screen): pages turn see-through. */
     var seeThrough by mutableStateOf(false)

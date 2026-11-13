@@ -153,7 +153,8 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] v1.5.0 (kod): eller serbest dinleme ("Rick, …", iki alkış, Rick'in sorusuna adsız cevap), el kontrolü ekranının toparlanması (D48).
 - [x] v1.5.0: CI baştan sona yeşil (Android, Windows, emülatör; koşu 43336992717). Ekran görüntüleri kullanıcıya gösterildi.
 - [ ] v1.5.0: kullanıcı "yayımla" deyince `.github/release-request` → `v1.5.0`.
-- [ ] Yeni ana ekran tasarımı: üç taslak gösterildi (A cam küre, B HUD çekirdek, C dalga halkası; çizgi simgeler, cam kartlar, ses çubukları). Kullanıcının seçimi bekleniyor; seçilen uygulamaya yazılacak.
+- [x] Yeni ana ekran (kod): kullanıcı A'yı seçti ve hepsinin eklenmesini istedi → cam küre varsayılan, HUD çekirdek / dalga halkası / robot yüz seçenek; çizgi simgeler, dinleme anahtarı, ses çubukları (D49).
+- [ ] Yeni ana ekranın CI ekran görüntüleri kullanıcıya gösterilecek.
 - [ ] Sıradaki: sesle söz kesme (yankı engelleme, gerçek cihazda denenerek); el takibinin hızı (yüz aramasını gereksiz yerde kapatma, GPU); ana ekran tasarımı (önce resim); PC'de "İndirilenler klasörünü düzenle"; PC'de web kamerasıyla el hareketleri.
 
 ## Kaldığım yer

@@ -62,12 +62,12 @@ import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisColors
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisTheme
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi
 
-private enum class Tab(val label: String, val icon: String) {
-    CHAT("Sohbet", "💬"),
-    MODELS("Modeller", "📦"),
-    MEMORY("Hafıza", "🧠"),
-    NETLOG("Ağ", "🛡"),
-    SETTINGS("Ayarlar", "⚙"),
+private enum class Tab(val label: String, val icon: io.github.ahmetdurmus1218.jarvis.ui.components.RickIcon) {
+    CHAT("Sohbet", io.github.ahmetdurmus1218.jarvis.ui.components.RickIcon.CHAT),
+    MODELS("Modeller", io.github.ahmetdurmus1218.jarvis.ui.components.RickIcon.CUBE),
+    MEMORY("Hafıza", io.github.ahmetdurmus1218.jarvis.ui.components.RickIcon.MEMORY),
+    NETLOG("Ağ", io.github.ahmetdurmus1218.jarvis.ui.components.RickIcon.SHIELD),
+    SETTINGS("Ayarlar", io.github.ahmetdurmus1218.jarvis.ui.components.RickIcon.GEAR),
 }
 
 /** Long-lived objects for one app process. */
@@ -376,8 +376,17 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                 NavigationBarItem(
                                     selected = tab == t,
                                     onClick = { tab = t },
-                                    icon = { Text(t.icon, fontSize = 18.sp) },
+                                    icon = {
+                                        io.github.ahmetdurmus1218.jarvis.ui.components.RickIconView(
+                                            t.icon, if (tab == t) JarvisColors.Cyan else JarvisColors.TextDim, size = 24.dp,
+                                        )
+                                    },
                                     label = { Text(t.label) },
+                                    colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+                                        indicatorColor = JarvisColors.Cyan.copy(alpha = 0.14f),
+                                        selectedTextColor = JarvisColors.Text,
+                                        unselectedTextColor = JarvisColors.TextDim,
+                                    ),
                                 )
                             }
                         }

@@ -262,7 +262,7 @@ def scroll_find(pred, what, tries=12):
 
 def mic_feedback():
     baseline = set(screen_texts())
-    tap(wait_for(text_is("🎤"), "mic button"))
+    tap(wait_for(text_is("Mikrofon"), "mic button"))
     allow_labels = ("While using the app", "Only this time", "Allow", "Uygulamayı kullanırken", "İzin ver")
     timeline, new_texts = [], []
     end = time.time() + 20
@@ -287,8 +287,8 @@ def mic_feedback():
     if not new_texts:
         raise SystemExit("tapping the mic changed nothing on screen")
     # Leave the recognizer idle for the next steps.
-    if find(text_is("■")) is not None:
-        tap(find(text_is("■")))
+    if find(text_is("Dinlemeyi bitir")) is not None:
+        tap(find(text_is("Dinlemeyi bitir")))
         time.sleep(1)
 
 
@@ -435,7 +435,7 @@ def main():
         step("Whisper from the chat: mic → 'Turkish unsupported' → one-tap download (3 files, one approval)")
         adb("shell", "am", "start", "-W", "-n", f"{KALE}/.android.MainActivity")
         tap(wait_for(tab("Sohbet"), "chat tab"))
-        tap(wait_for(text_is("🎤"), "mic button"))
+        tap(wait_for(text_is("Mikrofon"), "mic button"))
         offer = wait_for(lambda n: label(n).startswith("Rick'in ses tanımasını indir"), "Whisper offer in the chat", timeout=30)
         shot("09-kale-whisper-teklif")
         tap(offer)
@@ -501,7 +501,7 @@ def main():
         step("camera: open → permission → tracking models through Kapı (storage.googleapis.com) → 'BU NE?'")
         adb("shell", "am", "start", "-W", "-n", f"{KALE}/.android.MainActivity")
         tap(wait_for(tab("Sohbet"), "chat tab"))
-        tap(wait_for(text_is("📷"), "camera button"))
+        tap(wait_for(text_is("Kamera"), "camera button"))
         tap(wait_for(text_is("Kamera · el kontrolü"), "camera menu item"))
         # The permission question may come late or miss a tap while it slides in: keep answering it
         # until the camera screen itself is in front.
@@ -596,7 +596,7 @@ def main():
 
         step("hand navigation: ☰ → 'El ile yönet' → full-screen camera behind Rick + cursor layer, small window, no crash, then off")
         tap(wait_for(tab("Sohbet"), "chat tab"))
-        tap(wait_for(text_is("☰"), "menu"))
+        tap(wait_for(text_is("Menü"), "menu"))
         tap(wait_for(text_has("El ile yönet"), "hand navigation menu item"))
         wait_for(text_has("El ile yönetim · kapat"), "hand navigation layer", timeout=20)
         time.sleep(3)

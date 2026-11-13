@@ -563,3 +563,20 @@ Kullanıcı kamera onu gösterirken elleriyle havada tıklamak, kaydırmak, dön
 - Sınırlar (gerçek cihazda ölçülecek): Whisper'ın "Rick" adını ne kadar doğru yazdığı, gürültülü odada pil
   tüketimi, bir parçanın çözülmesi sırasında (birkaç saniye) mikrofonun kapalı olması.
 
+## D49 — Yeni ana ekran: cam küre ve çizgi simgeler (v1.5.0)
+
+- Kullanıcı arayüzü ve simgeleri beğenmedi ("olmamış"), başka bir asistanın gösterdiği bilim kurgu görsellerine
+  benzer bir görünüm istedi. Kural gereği önce çizim gösterildi: A cam küre, B HUD çekirdek, C dalga halkası;
+  ardından robot yüz. Kullanıcı: "A olsun, hepsini ekle; robot göz ağız burun da eklenebilir."
+- Dört yeni görünüm `RickFace` içinde, mevcut `LookState` ile (aynı ruh hâli animasyonları): `glass` (varsayılan),
+  `hud`, `wave`, `robot`. Bulanıklık filtresi kullanılmıyor (ortak Compose çizimi): parıltı, üst üste yarı saydam
+  çizgiler ve radyal geçişlerle veriliyor; parçacıklar sabit tohumla üretilmiş 240 nokta.
+- Eski ayar dosyalarında `look = "spark"` kayıtlıydı; `design` alanıyla herkes bir kez yeni varsayılana (`glass`)
+  taşınır, eski görünümler seçilebilir kalır.
+- Emoji simgeler (💬 📦 🧠 🛡 ⚙ 📷 ☰ 🎤) telefondan telefona farklı ve "oyuncak" görünüyordu; `RickIcons.kt` içinde 24
+  birimlik ızgarada çizilen çizgi simgeler geldi. Düğmeler artık adlarıyla bulunur (içerik açıklaması: "Menü",
+  "Kamera", "Mikrofon", "Dinlemeyi bitir", "Geçmiş"); testler buna göre güncellendi.
+- Sürekli dinleme düğmesi ışık + yazı + topuzlu bir anahtar oldu; telefonda "GEÇMİŞ" yazısı yer açmak için simge.
+  Kürenin altında ses çubukları: konuşurken heceler, dinlerken mikrofon, beklerken hafif kıpırtı; cevap varken
+  yalnızca ses olduğunda görünür (cevaba yer kalsın).
+

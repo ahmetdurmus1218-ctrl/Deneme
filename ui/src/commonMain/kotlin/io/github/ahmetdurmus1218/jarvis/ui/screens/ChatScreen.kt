@@ -70,6 +70,10 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import io.github.ahmetdurmus1218.jarvis.ui.components.RickIcon
+import io.github.ahmetdurmus1218.jarvis.ui.components.RickIconView
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalDensity
 import io.github.ahmetdurmus1218.jarvis.core.AssistantName
@@ -157,6 +161,7 @@ fun ChatScreen(
                     onCoreTap = if (micAvailable) controller::toggleListening else null,
                     onFeedback = controller::feedback,
                     onOffer = controller::answerOffer,
+                    standby = standbyOn,
                 )
             }
         }
@@ -271,7 +276,9 @@ private fun InputBar(
             if (menu.isNotEmpty()) {
                 Box {
                     var open by remember { mutableStateOf(false) }
-                    TextButton(onClick = { open = true }) { Text("☰", fontSize = 20.sp) }
+                    TextButton(onClick = { open = true }, modifier = Modifier.semantics { contentDescription = "Menü" }) {
+                        RickIconView(RickIcon.MENU, JarvisColors.Cyan, size = 22.dp)
+                    }
                     DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
                         menu.forEach { (label, action) -> DropdownMenuItem(text = { Text(label) }, onClick = { open = false; action() }) }
                     }
@@ -313,8 +320,8 @@ private fun VisionButton(vision: VisionActions, typed: String, controller: Jarvi
         }
     }
     Box {
-        TextButton(onClick = { menu = true }) {
-            Text("📷", fontSize = 20.sp)
+        TextButton(onClick = { menu = true }, modifier = Modifier.semantics { contentDescription = "Kamera" }) {
+            RickIconView(RickIcon.CAMERA, JarvisColors.Cyan, size = 22.dp)
         }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             if (vision.desktop) {
@@ -353,13 +360,8 @@ private fun StatusBar(
                 Text(if (compact) "● OFFLINE" else "● ÇEVRİMDIŞI", color = JarvisColors.Green, fontFamily = FontFamily.Monospace, fontSize = 10.sp, letterSpacing = 1.sp, maxLines = 1)
             }
             if (handsFree != null) {
-                // Green with a dot while the microphone really is open; one tap closes it, another opens it.
-                val label = when {
-                    !handsFree -> if (compact) "🎙 KAPALI" else "🎙 DİNLEME KAPALI"
-                    listening -> if (compact) "● DİNLİYOR" else "● SÜREKLİ DİNLİYOR"
-                    else -> if (compact) "🎙 AÇIK" else "🎙 DİNLEME AÇIK"
-                }
-                HudChip(label, handsFree, color = if (listening) JarvisColors.Green else JarvisColors.Cyan, onClick = onHandsFree)
+                // Continuous listening's own switch: green while the microphone really is open; a tap turns it off or on.
+                ListenSwitch(handsFree, listening, compact, onHandsFree)
                 Spacer(Modifier.width(6.dp))
             }
             // The conversation-mode chip only where there is room (it is in Settings everywhere).
@@ -368,11 +370,98 @@ private fun StatusBar(
                 HudChip(if (conversationMode) "$talk ✓" else talk, conversationMode) { onConversationMode(!conversationMode) }
                 Spacer(Modifier.width(6.dp))
             }
-            HudChip(if (showHistory) "GERİ" else if (compact) "GEÇMİŞ" else "GEÇMİŞ $historyCount", showHistory, onClick = onHistory)
+            if (compact && handsFree != null && !showHistory) {
+                // On a phone the history is an icon, so the switch keeps its room.
+                Box(
+                    Modifier
+                        .clip(CircleShape)
+                        .border(1.dp, JarvisColors.CyanDim, CircleShape)
+                        .clickable(onClick = onHistory)
+                        .semantics { contentDescription = "Geçmiş" }
+                        .padding(7.dp),
+                ) { RickIconView(RickIcon.HISTORY, JarvisColors.TextDim, size = 16.dp) }
+            } else {
+                HudChip(if (showHistory) "GERİ" else if (compact) "GEÇMİŞ" else "GEÇMİŞ $historyCount", showHistory, onClick = onHistory)
+            }
             if (!compact) {
                 Spacer(Modifier.width(10.dp))
                 Text(clock, color = JarvisColors.Text, fontFamily = FontFamily.Monospace, fontSize = 16.sp, maxLines = 1)
             }
+        }
+    }
+}
+
+/** The on/off switch of continuous listening: a light, a word and a knob in one pill. */
+@Composable
+private fun ListenSwitch(on: Boolean, listening: Boolean, compact: Boolean, onToggle: () -> Unit) {
+    val c = when {
+        listening -> JarvisColors.Green
+        on -> JarvisColors.Cyan
+        else -> JarvisColors.TextDim
+    }
+    val label = when {
+        !on -> if (compact) "KAPALI" else "DİNLEME KAPALI"
+        listening -> "DİNLİYOR"
+        else -> if (compact) "AÇIK" else "DİNLEME AÇIK"
+    }
+    val knob by animateFloatAsState(if (on) 1f else 0f, tween(180))
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (on) c.copy(alpha = 0.10f) else Color.Transparent, RoundedCornerShape(50))
+            .border(1.dp, c.copy(alpha = 0.7f), RoundedCornerShape(50))
+            .clickable(onClick = onToggle)
+            .padding(start = 9.dp, end = 5.dp, top = 5.dp, bottom = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        androidx.compose.foundation.Canvas(Modifier.size(8.dp)) {
+            if (listening) drawCircle(c.copy(alpha = 0.3f), radius = size.minDimension * 0.9f)
+            drawCircle(c, radius = size.minDimension * 0.42f)
+        }
+        Text(label, color = if (on) JarvisColors.Text else JarvisColors.TextDim, fontFamily = FontFamily.Monospace, fontSize = 10.sp, letterSpacing = 1.sp, maxLines = 1, softWrap = false)
+        androidx.compose.foundation.Canvas(Modifier.size(26.dp, 16.dp)) {
+            drawRoundRect(c.copy(alpha = 0.35f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f))
+            val x = size.height / 2f + knob * (size.width - size.height)
+            drawCircle(if (on) Color.White else JarvisColors.TextDim, size.height * 0.38f, androidx.compose.ui.geometry.Offset(x, size.height / 2f))
+        }
+    }
+}
+
+/**
+ * The voice as a row of light bars under the core: Rick's syllables while it speaks, the microphone
+ * while it listens, a quiet shimmer while it waits for its name.
+ */
+@Composable
+private fun VoiceBars(mode: CoreMode, level: Float, standby: Boolean, accent: Color) {
+    val moving = !io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.reduceMotion && (mode != CoreMode.IDLE || standby)
+    val t = if (moving) {
+        rememberInfiniteTransition().animateFloat(0f, 600f, infiniteRepeatable(tween(600_000, easing = LinearEasing))).value
+    } else {
+        0f
+    }
+    val second = JarvisColors.Violet
+    androidx.compose.foundation.Canvas(Modifier.fillMaxWidth(0.72f).height(30.dp)) {
+        val n = 33
+        val bw = size.width / (n * 2f - 1f)
+        for (i in 0 until n) {
+            val k = (i - (n - 1) / 2f) / ((n - 1) / 2f)
+            val env = kotlin.math.exp(-(k * k) * 3.2f)
+            val act = when (mode) {
+                CoreMode.LISTENING -> 0.25f + 0.75f * level.coerceIn(0f, 1f)
+                CoreMode.SPEAKING -> io.github.ahmetdurmus1218.jarvis.ui.components.mouthWave(t + i * 0.07f)
+                CoreMode.THINKING -> 0.25f + 0.15f * kotlin.math.sin(t * 4f + i * 0.5f)
+                CoreMode.IDLE -> if (standby) 0.14f + 0.05f * kotlin.math.sin(t * 2f + i * 0.6f) else 0.08f
+            }
+            val wig = if (moving) 0.6f + 0.4f * kotlin.math.abs(kotlin.math.sin(i * 12.9898f + t * 7f)) else 0.8f
+            val h = (size.height * (0.12f + 0.88f * env * act * wig)).coerceIn(bw, size.height)
+            val top = (size.height - h) / 2f
+            drawRoundRect(
+                Brush.verticalGradient(listOf(second, accent), top, top + h),
+                androidx.compose.ui.geometry.Offset(i * 2f * bw, top),
+                androidx.compose.ui.geometry.Size(bw, h),
+                androidx.compose.ui.geometry.CornerRadius(bw / 2f),
+            )
         }
     }
 }
@@ -409,6 +498,7 @@ private fun Stage(
     onCoreTap: (() -> Unit)?,
     onFeedback: ((Long, Boolean) -> Unit)? = null,
     onOffer: ((Long, Boolean) -> Unit)? = null,
+    standby: Boolean = false,
 ) {
     val scroll = rememberScrollState()
     PageScrollOf(scroll)
@@ -440,6 +530,8 @@ private fun Stage(
             color = mode.accent(), fontFamily = FontFamily.Monospace, letterSpacing = 4.sp, fontSize = 13.sp,
         )
         Text("Model: $engineLabel", color = JarvisColors.TextDim, fontSize = 11.sp)
+        // The voice in light; once there is an answer to read it only shows while something is said or heard.
+        if (last == null || mode != CoreMode.IDLE) VoiceBars(mode, level, standby, mode.accent())
         if (last == null) {
             Greeting()
         } else {
@@ -560,8 +652,9 @@ private fun MicButton(active: Boolean, level: Float, onTap: () -> Unit, onHoldSt
         Box(
             Modifier
                 .size(48.dp)
-                .background(Brush.radialGradient(listOf(color.copy(alpha = 0.95f), color.copy(alpha = 0.55f))), CircleShape)
+                .background(Brush.linearGradient(listOf(color, androidx.compose.ui.graphics.lerp(color, JarvisColors.Violet, 0.75f))), CircleShape)
                 .border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape)
+                .semantics { contentDescription = if (active) "Dinlemeyi bitir" else "Mikrofon" }
                 .pointerInput(Unit) {
                     awaitEachGesture {
                         awaitFirstDown()
@@ -582,7 +675,7 @@ private fun MicButton(active: Boolean, level: Float, onTap: () -> Unit, onHoldSt
                 },
             contentAlignment = Alignment.Center,
         ) {
-            Text(if (active) "■" else "🎤", fontSize = 21.sp, color = JarvisColors.Background)
+            RickIconView(if (active) RickIcon.STOP else RickIcon.MIC, JarvisColors.Background, size = 24.dp, stroke = 2f)
         }
     }
 }

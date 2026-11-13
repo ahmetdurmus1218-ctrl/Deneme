@@ -59,14 +59,14 @@ class HandsFreeButtonUiTest {
             }
         }
         // The top bar's button (short labels on a phone): on, one tap off, one tap on again.
-        waitForText("🎙 AÇIK")
+        waitForText("AÇIK")
         shot("31-surekli-dinleme-acik")
-        rule.onNodeWithText("🎙 AÇIK").performClick()
-        waitForText("🎙 KAPALI")
+        rule.onNodeWithText("AÇIK").performClick()
+        waitForText("KAPALI")
         assertTrue(!graph.settings.state.value.handsFree)
         shot("32-surekli-dinleme-kapali")
-        rule.onNodeWithText("🎙 KAPALI").performClick()
-        waitForText("🎙 AÇIK")
+        rule.onNodeWithText("KAPALI").performClick()
+        waitForText("AÇIK")
         assertTrue(graph.settings.state.value.handsFree)
     }
 }

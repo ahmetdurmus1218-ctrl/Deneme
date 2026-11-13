@@ -57,8 +57,10 @@ data class Settings(
     val handNavFull: Boolean = true,
     /** Apps the hands may drive while Rick is in the background (never banks, payment, messengers: see HandApps). */
     val handApps: Set<String> = io.github.ahmetdurmus1218.jarvis.core.device.HandApps.DEFAULT,
-    /** Rick's look: spark, eyes, orb, ring, particles (Settings → Görünüm). */
-    val look: String = "spark",
+    /** Rick's look (Settings → Görünüm): glass, hud, wave, robot, spark, eyes, orb, ring, particles. */
+    val look: String = "glass",
+    /** Which design generation these settings have seen; older ones are moved to the new default look once. */
+    val design: Int = 0,
     /** The floating Rick also watches the hands: swipe for the next song, ✋ to pause, 🤏 turn for volume. */
     val bubbleHands: Boolean = false,
     /** The floating Rick over other apps (Android), started from Settings. */
@@ -81,7 +83,11 @@ class SettingsStore(private val files: AppFiles) {
     private val _state = MutableStateFlow(load())
     val state: StateFlow<Settings> = _state.asStateFlow()
 
-    private fun load(): Settings = files.read(FILE)?.let { runCatching { json.decodeFromString(Settings.serializer(), it) }.getOrNull() } ?: Settings()
+    private fun load(): Settings {
+        val saved = files.read(FILE)?.let { runCatching { json.decodeFromString(Settings.serializer(), it) }.getOrNull() } ?: Settings()
+        // 1.5: the glass sphere is the new look. Everybody starts on it once; the older looks stay selectable.
+        return if (saved.design < DESIGN) saved.copy(look = "glass", design = DESIGN) else saved
+    }
 
     fun update(transform: (Settings) -> Settings) {
         val next = transform(_state.value)
@@ -89,7 +95,10 @@ class SettingsStore(private val files: AppFiles) {
         files.write(FILE, json.encodeToString(Settings.serializer(), next))
     }
 
-    private companion object { const val FILE = "settings.json" }
+    private companion object {
+        const val FILE = "settings.json"
+        const val DESIGN = 2
+    }
 }
 
 /** Append-only network log (JSON lines). Every network event is written here (section 3.3). */
