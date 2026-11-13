@@ -371,6 +371,11 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                 Scaffold(
                     containerColor = JarvisUi.page,
                     bottomBar = {
+                        // A tab's name is never broken over two lines ("Modell / er"): the phone's large-text setting
+                        // makes the names bigger only as far as the longest one ("Modeller") still fits its tab.
+                        androidx.compose.foundation.layout.BoxWithConstraints {
+                        val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
+                        val nameScale = minOf(fontScale, maxWidth / Tab.entries.size / 64.dp)
                         NavigationBar(containerColor = JarvisColors.Surface) {
                             Tab.entries.forEach { t ->
                                 NavigationBarItem(
@@ -381,7 +386,12 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                             t.icon, if (tab == t) JarvisColors.Cyan else JarvisColors.TextDim, size = 24.dp,
                                         )
                                     },
-                                    label = { Text(t.label) },
+                                    label = {
+                                        Text(
+                                            t.label, fontSize = (12f * nameScale / fontScale).sp,
+                                            maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                        )
+                                    },
                                     colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
                                         indicatorColor = JarvisColors.Cyan.copy(alpha = 0.14f),
                                         selectedTextColor = JarvisColors.Text,
@@ -389,6 +399,7 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
                                     ),
                                 )
                             }
+                        }
                         }
                     },
                 ) { padding ->

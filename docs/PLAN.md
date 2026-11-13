@@ -155,6 +155,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [ ] v1.5.0: kullanıcı "yayımla" deyince `.github/release-request` → `v1.5.0`.
 - [x] Yeni ana ekran (kod): kullanıcı A'yı seçti ve hepsinin eklenmesini istedi → cam küre varsayılan, HUD çekirdek / dalga halkası / robot yüz seçenek; çizgi simgeler, dinleme anahtarı, ses çubukları (D49).
 - [x] Yeni ana ekran: CI baştan sona yeşil (koşu 43367118756); masaüstü ekran görüntüleri kullanıcıya gösterildi (oturum 4).
+- [x] Telefona uyum: küçük telefon, yatay ekran ve büyük yazıda ana ekran sığıyor (küre yüksekliğe göre, sekme adları tek satır), `PhoneLayoutUiTest` (D49).
 - [ ] Sıradaki: sesle söz kesme (yankı engelleme, gerçek cihazda denenerek); el takibinin hızı (yüz aramasını gereksiz yerde kapatma, GPU); ana ekran tasarımı (önce resim); PC'de "İndirilenler klasörünü düzenle"; PC'de web kamerasıyla el hareketleri.
 
 ## Kaldığım yer
@@ -172,4 +173,5 @@ artifact kotası dolu olduğu için iş akışları dosyaları önbellekle aktar
 küçük resim olarak basılıyor.
 Oturum 4 (2026-11-13): yeni ana ekranın CI koşusu yeşil; ekran görüntüleri (ana ekran, dinleme anahtarı, beş görünüm)
 kullanıcıya gösterildi. Bulut oturumu için "Deneme (Rick)" ortamı açıldı (Google Maven erişimi; masaüstü testleri
-burada çalışıyor). Sıradaki: kullanıcının görünüm geri bildirimi ve "yayımla" onayı (`v1.5.0`).
+burada çalışıyor). Kullanıcı "telefonda uyumlu olmalı" dedi: telefon boyutları testi
+eklendi, küçük ekran ve büyük yazı sorunları düzeltildi. Sıradaki: görünüm geri bildirimi ve "yayımla" onayı (`v1.5.0`).

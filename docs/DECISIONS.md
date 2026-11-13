@@ -579,4 +579,10 @@ Kullanıcı kamera onu gösterirken elleriyle havada tıklamak, kaydırmak, dön
 - Sürekli dinleme düğmesi ışık + yazı + topuzlu bir anahtar oldu; telefonda "GEÇMİŞ" yazısı yer açmak için simge.
   Kürenin altında ses çubukları: konuşurken heceler, dinlerken mikrofon, beklerken hafif kıpırtı; cevap varken
   yalnızca ses olduğunda görünür (cevaba yer kalsın).
-
+- Telefona uyum (kullanıcı: "telefon içinde uyumlu olmalı"): düzen platforma değil ekran genişliğine ve yazı
+  boyutuna göre değiştiği için telefon boyutları masaüstü testinde birebir çizilir (`PhoneLayoutUiTest`: 320×568,
+  360×640, 393×851, 412×915, yatay 740×360, büyük yazı ×1,3 ve ×1,5; her yeni görünüm). Bulunanlar: sabit 250 dp
+  küre küçük telefonda "HAZIR"ı ve model satırını alttaki şeridin altına itiyordu; büyük yazıda sekme adları
+  bölünüyordu ("Modell / er"). Küre artık kalan yüksekliğe göre küçülür (en az 64 dp); sekme adları tek satır,
+  telefonun büyük yazı ayarına en uzun ad sekmesine sığana kadar uyar. Test her denetimi (düğmeler ekranın içinde
+  ve dokunulacak boyda, adlar tek satır, durum satırları görünür) her boyutta yapar.

@@ -506,6 +506,11 @@ private fun Stage(
     LaunchedEffect(last?.id, last?.scenes?.size, last?.done) {
         if (last != null) scroll.animateScrollTo(scroll.maxValue)
     }
+    // The core fits the room left on this screen: on a small phone, a phone on its side or with large text,
+    // the state and model lines below it must stay in sight instead of being pushed under the input bar.
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+    val room = maxHeight - (104 * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp
+    val widest = maxWidth * 0.75f
     Column(
         Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -513,8 +518,9 @@ private fun Stage(
     ) {
         Spacer(Modifier.height(4.dp))
         val coreModifier = if (onCoreTap != null) Modifier.clip(CircleShape).clickable(onClick = onCoreTap) else Modifier
-        // Large while waiting; smaller once there is an answer to read.
-        val coreSize by animateDpAsState(if (last == null) 250.dp else 170.dp, tween(600))
+        // Large while waiting; smaller once there is an answer to read; never larger than the screen allows.
+        val wanted = if (last == null) minOf(250.dp, room, widest) else minOf(170.dp, room * 0.6f, widest)
+        val coreSize by animateDpAsState(wanted.coerceAtLeast(64.dp), tween(600))
         if (io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.face) {
             io.github.ahmetdurmus1218.jarvis.ui.components.RickFace(mode, level, coreModifier, size = coreSize)
         } else {
@@ -529,7 +535,7 @@ private fun Stage(
             },
             color = mode.accent(), fontFamily = FontFamily.Monospace, letterSpacing = 4.sp, fontSize = 13.sp,
         )
-        Text("Model: $engineLabel", color = JarvisColors.TextDim, fontSize = 11.sp)
+        Text("Model: $engineLabel", color = JarvisColors.TextDim, fontSize = 11.sp, textAlign = TextAlign.Center)
         // The voice in light; once there is an answer to read it only shows while something is said or heard.
         if (last == null || mode != CoreMode.IDLE) VoiceBars(mode, level, standby, mode.accent())
         if (last == null) {
@@ -564,6 +570,7 @@ private fun Stage(
             }
         }
         Spacer(Modifier.height(8.dp))
+    }
     }
 }
 
