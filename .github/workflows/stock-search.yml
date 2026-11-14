@@ -14,6 +14,10 @@ on:
         description: 'Clip links to print frames of, separated by ";" (optional)'
         required: false
         default: ''
+      dump:
+        description: 'One clip id: all its frames (best size found, 15 fps) as a base64 tar in the log'
+        required: false
+        default: ''
 permissions:
   contents: read
 jobs:
@@ -62,3 +66,19 @@ jobs:
             ffmpeg -v error -i p.mp4 -vf "fps=4,scale=320:-2,drawtext=text='%{n}':x=4:y=4:fontsize=20:fontcolor=yellow,tile=6x6" -frames:v 1 -q:v 4 "pick$n.jpg"
             echo "=== IMG pick$n"; base64 -w0 "pick$n.jpg"; echo; echo "=== END pick$n"
           done
+      - name: All frames of one clip
+        env:
+          DUMP: ${{ github.event.inputs.dump }}
+        run: |
+          [ -n "$DUMP" ] || exit 0
+          mkdir -p d && cd d
+          for q in 2160 1080 720 360; do
+            if curl -sSfL "https://assets.mixkit.co/videos/$DUMP/$DUMP-$q.mp4" -o clip.mp4; then echo "got $q"; break; fi
+          done
+          ffprobe -v error -show_entries stream=width,height,r_frame_rate,duration -of csv=p=0 clip.mp4
+          sha256sum clip.mp4
+          mkdir f && ffmpeg -v error -i clip.mp4 -vf "fps=15" -q:v 3 f/%04d.jpg
+          ls f | wc -l
+          tar czf frames.tgz f
+          ls -la frames.tgz
+          echo "=== TAR frames"; base64 -w0 frames.tgz; echo; echo "=== END frames"
