@@ -572,7 +572,7 @@ def main():
         mic_feedback()
         shot("11-kale-mikrofon-whisper")
         tap(wait_for(tab("Ayarlar"), "settings tab"))
-        wait_for(text_has("Ses tanıma: Whisper small"), "Whisper is the active recognizer")
+        scroll_find(text_has("Ses tanıma: Whisper small"), "Whisper is the active recognizer")
         check_no_crash()
 
         step("the day's news: 'Gunun haberleri' → PIN → Kapı → feeds.bbci.co.uk (pinned) → headlines read aloud → Ağ log")
