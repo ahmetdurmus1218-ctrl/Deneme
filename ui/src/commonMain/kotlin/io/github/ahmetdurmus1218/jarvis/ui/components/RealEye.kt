@@ -17,12 +17,14 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -40,6 +42,7 @@ import kotlinx.serialization.json.Json
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -134,6 +137,7 @@ fun RealEye(
     // the pupil merely lives, and not at all while asleep or with reduced motion between blinks.
     var shown by remember { mutableStateOf(EyeTick(0L, -10_000L)) }
     val speaking = mode == CoreMode.SPEAKING
+    val wave = { t: Long -> pupilWave(t, calm, sleeping, speaking) }
     LaunchedEffect(sleeping, calm, speaking) {
         var next = -1L
         var second = -1L
@@ -161,22 +165,48 @@ fun RealEye(
                 speaking -> 66L
                 else -> 125L
             }
-            if (drawn < 0 || (every != Long.MAX_VALUE && t - drawn >= every) || (!blinking && shown.blinking(drawn))) {
+            val due = drawn < 0 || (every != Long.MAX_VALUE && t - drawn >= every) || (!blinking && shown.blinking(drawn))
+            // Between blinks a redraw that would look the same (the pupil's unrest moved less than a step) is skipped.
+            if (due && (blinking || drawn < 0 || shown.blinking(drawn) || wave(t) != wave(shown.now))) {
                 shown = EyeTick(t, blinkStart)
-                drawn = t
             }
+            if (due) drawn = t
         }
     }
     // Wider than tall, so it reads as an eye, not a photo in a box; drawn in its own layer so its edges can fade
     // to transparent (whatever is behind Rick shows through, with no visible frame).
+    val cache = remember(eye) { PupilCache() }
     Canvas(modifier.size(size * 1.3f, size).eyeLayer()) {
         val tick = shown
-        val clock = tick.now / 1000f
-        val hippus = if (calm || sleeping) 0f else 0.025f * sin(clock * 0.9f) + 0.015f * sin(clock * 2.3f + 1f)
-        val flicker = if (speaking && !calm) 0.04f * mouthWave(clock) else 0f
-        val scale = (pupil * (1f + hippus + flicker)).coerceIn(0.58f, 1.9f)
+        val scale = (pupil * (1f + wave(tick.now))).coerceIn(0.58f, 1.9f)
         val lid = max(rest, if (sleeping) 0f else blinkAt(tick.now - tick.blinkStart)).coerceIn(0f, 1f)
-        drawEye(eye, scale, lid)
+        drawEye(eye, scale, lid, cache)
+    }
+}
+
+/** The pupil's own movement at [t] ms: slow unrest (hippus), a flicker with the voice; in steps of 1 %. */
+private fun pupilWave(t: Long, calm: Boolean, sleeping: Boolean, speaking: Boolean): Float {
+    if (calm || sleeping) return 0f
+    val clock = t / 1000f
+    val hippus = 0.025f * sin(clock * 0.9f) + 0.015f * sin(clock * 2.3f + 1f)
+    val flicker = if (speaking) 0.04f * mouthWave(clock) else 0f
+    return ((hippus + flicker) * 100f).roundToInt() / 100f
+}
+
+/**
+ * The eye with its pupil at a given size (photo, re-sampled iris, reflection), kept as a picture: the costly
+ * ring-by-ring pupil is drawn once per size, not on every frame. A few recent sizes are kept.
+ */
+class PupilCache {
+    private val kept = ArrayList<Triple<Int, IntSize, ImageBitmap>>()
+
+    fun get(key: Int, size: IntSize, render: () -> ImageBitmap): ImageBitmap {
+        val i = kept.indexOfFirst { it.first == key && it.second == size }
+        if (i >= 0) return kept.removeAt(i).also { kept.add(it) }.third
+        val made = render()
+        kept.add(Triple(key, size, made))
+        if (kept.size > 8) kept.removeAt(0)
+        return made
     }
 }
 
@@ -194,7 +224,7 @@ fun Modifier.eyeLayer(): Modifier = graphicsLayer(compositingStrategy = Composit
  * The eye at pupil [scale] with the lid at [lid] (0 open … 1 closed), fitted to the width of the draw area.
  * Draw it in a [eyeLayer]: the photo's edges are erased, not painted over.
  */
-fun DrawScope.drawEye(eye: EyeAssets, scale: Float, lid: Float) {
+fun DrawScope.drawEye(eye: EyeAssets, scale: Float, lid: Float, cache: PupilCache? = null) {
     val g = eye.geometry
     val w = size.width
     val k = w / g.width
@@ -207,38 +237,20 @@ fun DrawScope.drawEye(eye: EyeAssets, scale: Float, lid: Float) {
     fun img(bitmap: ImageBitmap, alpha: Float = 1f) =
         drawImage(bitmap, IntOffset.Zero, src, dstOff, dstSize, alpha = alpha, filterQuality = FilterQuality.High)
 
-    // 1. The eye, then the iris redrawn ring by ring so the pupil has the wanted size.
-    img(eye.base)
-    val c = Offset(left + g.pupilX * k, top + g.pupilY * k)
-    val pr = g.pupilR * k
-    val rw = g.warpR * k
-    val r1 = (pr * scale).coerceIn(pr * 0.4f, rw * 0.85f)
-    fun source(r: Float): Float = when {
-        r < r1 -> r * pr / r1
-        r < rw -> pr + (r - r1) * (rw - pr) / (rw - r1)
-        else -> r
-    }
-    val rings = 30
-    val edges = buildList {
-        add(0f); add(r1)
-        for (i in 1..rings) add(r1 + (rw - r1) * i / rings)
-    }
-    for (i in 0 until edges.size - 1) {
-        val ra = edges[i]
-        val rb = edges[i + 1]
-        val rm = if (ra == 0f) r1 / 2f else (ra + rb) / 2f
-        val f = source(rm) / max(rm, 1e-3f)
-        val ring = Path().apply {
-            fillType = PathFillType.EvenOdd
-            addOval(Rect(c, rb + 0.6f))
-            if (ra > 0f) addOval(Rect(c, ra))
+    // 1–2. The eye with its pupil at the wanted size and the window reflected in the cornea.
+    if (cache == null || dstSize.width <= 0 || dstSize.height <= 0) {
+        drawPupil(eye, scale, Offset(left, top), w)
+    } else {
+        val key = (scale / PUPIL_STEP).roundToInt()
+        val picture = cache.get(key, dstSize) {
+            ImageBitmap(dstSize.width, dstSize.height).also { bmp ->
+                CanvasDrawScope().draw(this, layoutDirection, Canvas(bmp), Size(dstSize.width.toFloat(), dstSize.height.toFloat())) {
+                    drawPupil(eye, key * PUPIL_STEP, Offset.Zero, dstSize.width.toFloat())
+                }
+            }
         }
-        clipPath(ring) {
-            withTransform({ scale(1f / f, 1f / f, c) }) { img(eye.base) }
-        }
+        drawImage(picture, dstOffset = dstOff)
     }
-    // 2. The window reflected in the cornea does not move with the pupil.
-    img(eye.reflection)
     // 3. The lid, between its two nearest frames. The lower frame goes first, fully, so the strip between
     //    the two lid edges is always covered (a plain cross-fade would let the eye show through the lid).
     val stops = g.lids
@@ -277,4 +289,53 @@ fun DrawScope.drawEye(eye: EyeAssets, scale: Float, lid: Float) {
         drawRect(Brush.horizontalGradient(listOf(gone, clear), ex0, ex0 + side), Offset(ex0, ey0), Size(side, eh), blendMode = BlendMode.DstOut)
         drawRect(Brush.horizontalGradient(listOf(clear, gone), ex0 + ew - side, ex0 + ew), Offset(ex0 + ew - side, ey0), Size(side, eh), blendMode = BlendMode.DstOut)
     }
+}
+
+/** Steps in which the pupil's size is drawn (finer than the eye can tell). */
+private const val PUPIL_STEP = 0.012f
+
+/** The photo of width [w] at [origin], its iris re-sampled ring by ring for a pupil at [scale], and the reflection. */
+private fun DrawScope.drawPupil(eye: EyeAssets, scale: Float, origin: Offset, w: Float) {
+    val g = eye.geometry
+    val k = w / g.width
+    val h = g.height * k
+    val left = origin.x
+    val top = origin.y
+    val dstOff = IntOffset(left.toInt(), top.toInt())
+    val dstSize = IntSize(w.toInt(), h.toInt())
+    val src = IntSize(g.width, g.height)
+    fun img(bitmap: ImageBitmap) = drawImage(bitmap, IntOffset.Zero, src, dstOff, dstSize, filterQuality = FilterQuality.High)
+
+    // 1. The eye, then the iris redrawn ring by ring so the pupil has the wanted size.
+    img(eye.base)
+    val c = Offset(left + g.pupilX * k, top + g.pupilY * k)
+    val pr = g.pupilR * k
+    val rw = g.warpR * k
+    val r1 = (pr * scale).coerceIn(pr * 0.4f, rw * 0.85f)
+    fun source(r: Float): Float = when {
+        r < r1 -> r * pr / r1
+        r < rw -> pr + (r - r1) * (rw - pr) / (rw - r1)
+        else -> r
+    }
+    val rings = 30
+    val edges = buildList {
+        add(0f); add(r1)
+        for (i in 1..rings) add(r1 + (rw - r1) * i / rings)
+    }
+    for (i in 0 until edges.size - 1) {
+        val ra = edges[i]
+        val rb = edges[i + 1]
+        val rm = if (ra == 0f) r1 / 2f else (ra + rb) / 2f
+        val f = source(rm) / max(rm, 1e-3f)
+        val ring = Path().apply {
+            fillType = PathFillType.EvenOdd
+            addOval(Rect(c, rb + 0.6f))
+            if (ra > 0f) addOval(Rect(c, ra))
+        }
+        clipPath(ring) {
+            withTransform({ scale(1f / f, 1f / f, c) }) { img(eye.base) }
+        }
+    }
+    // The window reflected in the cornea does not move with the pupil.
+    img(eye.reflection)
 }
