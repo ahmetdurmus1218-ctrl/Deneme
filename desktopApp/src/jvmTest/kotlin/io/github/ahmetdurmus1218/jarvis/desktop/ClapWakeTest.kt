@@ -170,7 +170,7 @@ class ClapWakeTest {
 
     // ---- the sleep screen ------------------------------------------------------------------------------------
 
-    /** A microphone that plays [audio] (faster than real time), then silence until stopped. */
+    /** A microphone that plays [audio] (faster than real time), then 2 s of silence, then nothing (so the UI can settle). */
     private class PlayingMic(private val audio: FloatArray) : MicStream {
         val starts = AtomicInteger()
         val played = AtomicBoolean(false)
@@ -183,16 +183,18 @@ class ClapWakeTest {
             Thread {
                 var i = 0
                 val chunk = 1_600
-                while (running) {
+                var quiet = 0
+                while (running && quiet < 20) {
                     val buf = if (first && i < audio.size) {
                         audio.copyOfRange(i, minOf(audio.size, i + chunk)).also { i += it.size }
                     } else {
-                        played.set(true)
+                        quiet++
                         FloatArray(chunk) { (Math.random().toFloat() - 0.5f) * 0.004f }
                     }
                     onSamples(buf, buf.size)
                     Thread.sleep(10) // 100 ms of sound every 10 ms
                 }
+                played.set(true)
             }.apply { isDaemon = true }.start()
             return true
         }
@@ -218,10 +220,12 @@ class ClapWakeTest {
         }
         val woke = AtomicBoolean(false)
         rule.setContent { SleepScreen(bridge, Settings(wakeMode = mode)) { woke.set(true) } }
-        rule.waitUntil(20_000) { woke.get() || mic.played.get() }
+        // Plain waiting: the screen keeps changing while sound comes in, so it is not waited on to settle.
+        val end = System.currentTimeMillis() + 25_000
+        while (!woke.get() && !mic.played.get() && System.currentTimeMillis() < end) Thread.sleep(50)
         // A moment more after the sound ended, for the recognizer's answer.
         val until = System.currentTimeMillis() + 1_500
-        while (!woke.get() && System.currentTimeMillis() < until) { rule.waitForIdle(); Thread.sleep(50) }
+        while (!woke.get() && System.currentTimeMillis() < until) Thread.sleep(50)
         mic.stop()
         return woke.get()
     }

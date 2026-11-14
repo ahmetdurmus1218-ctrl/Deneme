@@ -78,11 +78,14 @@ class EyePlayer(private val meta: VideoEyesMeta, private val random: Random = Ra
 
     fun fallAsleep() {
         queue.clear()
+        nextBlink = -1L
         meta.blink.take(closedAt + 1).forEach { queue.add(it to 160L) }
     }
 
     fun wakeUp() {
         queue.clear()
+        // Just woken: the next blink comes a few seconds later, not at once.
+        nextBlink = -1L
         if (shown == meta.closed) meta.blink.drop(closedAt).forEach { queue.add(it to 90L) }
     }
 
