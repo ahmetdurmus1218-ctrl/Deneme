@@ -58,7 +58,7 @@ class RealEyeUiTest {
                     states.chunked(3).forEach { row ->
                         Row {
                             row.forEach { (pupil, lid) ->
-                                Box(Modifier.size(390.dp, 300.dp)) { Canvas(Modifier.size(390.dp, 300.dp).eyeLayer()) { drawEye(eye, pupil, lid) } }
+                                Box(Modifier.size(330.dp, 254.dp)) { Canvas(Modifier.size(330.dp, 254.dp).eyeLayer()) { drawEye(eye, pupil, lid) } }
                             }
                         }
                     }
@@ -69,7 +69,8 @@ class RealEyeUiTest {
         val img = rule.onNodeWithTag("eyes").captureToImage().toAwtImage()
         val rgb = BufferedImage(img.width, img.height, BufferedImage.TYPE_INT_RGB)
         rgb.createGraphics().apply { drawImage(img, 0, 0, null); dispose() }
-        // No frame around the photo: its left edge and its top are exactly the background behind it.
+        // No frame around the photo: its sides and its top are exactly the background behind it
+        // (three 330 dp cells fit the 1024 px test window).
         val bg = JarvisColors.Background
         val want = intArrayOf((bg.red * 255).toInt(), (bg.green * 255).toInt(), (bg.blue * 255).toInt())
         val cell = img.width / 3
