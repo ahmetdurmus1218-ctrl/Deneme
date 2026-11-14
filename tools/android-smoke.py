@@ -140,6 +140,11 @@ def type_into(field_pred, text):
                 return
             time.sleep(0.5)
         print(f"typing attempt {attempt + 1}: field shows {find(field_pred).get('text', '') if find(field_pred) is not None else None!r}", flush=True)
+        if attempt == 0:
+            # Something keeps the phone too busy to take the keys: show what (threads of Rick, frames).
+            cpu("typing dropped keys")
+            gfx = adb("shell", "dumpsys", "gfxinfo", KALE, check=False)
+            print("\n".join("    gfx " + l.strip() for l in gfx.splitlines() if any(k in l for k in ("Total frames", "Janky", "percentile", "Slow UI", "Slow bitmap", "Slow issue", "Frame deadline")))[:1500], flush=True)
     raise SystemExit(f"could not type {text!r}")
 
 
