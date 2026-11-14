@@ -1,10 +1,6 @@
 package io.github.ahmetdurmus1218.jarvis.ui.components
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.withInfiniteAnimationFrameMillis
 import androidx.compose.foundation.Canvas
@@ -127,45 +123,69 @@ fun RealEye(
     sleeping: Boolean = false,
 ) {
     val calm = JarvisUi.reduceMotion
-    val clock by rememberInfiniteTransition().animateFloat(0f, 600f, infiniteRepeatable(tween(600_000, easing = LinearEasing)))
     // Pupil: the room's light, wider while listening (interest), a slow living unrest (hippus).
     val lux = JarvisUi.ambientLux
     val pupilTarget = pupilForLight(lux) * (if (mode == CoreMode.LISTENING) 1.12f else 1f)
     val pupil by animateFloatAsState(pupilTarget.coerceIn(0.6f, 1.85f), tween(if (pupilTarget < 1f) 450 else 1100))
     // Lid: where the mood keeps it, slowly; asleep it closes over two seconds.
     val rest by animateFloatAsState(lidForMood(mode, sleeping), tween(if (sleeping) 2200 else 500))
-    var blinkStart by remember { mutableStateOf(-10_000L) }
-    var now by remember { mutableStateOf(0L) }
-    // One frame loop drives the blinks. It is an "infinite animation", so UI tests (which stop those) can go idle.
-    LaunchedEffect(sleeping) {
+    // The eye is costly to draw (a photo, its pupil re-sampled in rings, lid layers), so it is redrawn only as
+    // often as something visibly moves: every frame during a blink, ~15 times a second while speaking, 8 while
+    // the pupil merely lives, and not at all while asleep or with reduced motion between blinks.
+    var shown by remember { mutableStateOf(EyeTick(0L, -10_000L)) }
+    val speaking = mode == CoreMode.SPEAKING
+    LaunchedEffect(sleeping, calm, speaking) {
         var next = -1L
         var second = -1L
+        var blinkStart = shown.blinkStart
+        var drawn = -1L
         while (isActive) {
+            // An "infinite animation" frame, so UI tests (which stop those) can go idle.
             val t = try { withInfiniteAnimationFrameMillis { it } } catch (e: kotlinx.coroutines.CancellationException) {
                 if (!isActive) throw e
                 return@LaunchedEffect
             }
-            now = t
-            if (sleeping) continue
-            if (next < 0) next = t + Random.nextLong(2_400, 6_200)
-            if (second in 0..t) { blinkStart = t; second = -1L }
-            if (t >= next) {
-                blinkStart = t
-                second = if (Random.nextFloat() < 0.18f) t + 380 else -1L
-                next = t + Random.nextLong(2_400, 6_200)
+            if (!sleeping) {
+                if (next < 0) next = t + Random.nextLong(2_400, 6_200)
+                if (second in 0..t) { blinkStart = t; second = -1L }
+                if (t >= next) {
+                    blinkStart = t
+                    second = if (Random.nextFloat() < 0.18f) t + 380 else -1L
+                    next = t + Random.nextLong(2_400, 6_200)
+                }
+            }
+            val blinking = t - blinkStart < BLINK_MS
+            val every = when {
+                blinking -> 0L
+                sleeping || calm -> Long.MAX_VALUE
+                speaking -> 66L
+                else -> 125L
+            }
+            if (drawn < 0 || (every != Long.MAX_VALUE && t - drawn >= every) || (!blinking && shown.blinking(drawn))) {
+                shown = EyeTick(t, blinkStart)
+                drawn = t
             }
         }
     }
-    val speakFlicker = if (mode == CoreMode.SPEAKING) 0.04f * mouthWave(clock) else 0f
     // Wider than tall, so it reads as an eye, not a photo in a box; drawn in its own layer so its edges can fade
     // to transparent (whatever is behind Rick shows through, with no visible frame).
     Canvas(modifier.size(size * 1.3f, size).eyeLayer()) {
-        val hippus = if (calm) 0f else 0.025f * sin(clock * 0.9f) + 0.015f * sin(clock * 2.3f + 1f)
-        val scale = (pupil * (1f + hippus + speakFlicker)).coerceIn(0.58f, 1.9f)
-        val lid = max(rest, if (sleeping) 0f else blinkAt(now - blinkStart)).coerceIn(0f, 1f)
+        val tick = shown
+        val clock = tick.now / 1000f
+        val hippus = if (calm || sleeping) 0f else 0.025f * sin(clock * 0.9f) + 0.015f * sin(clock * 2.3f + 1f)
+        val flicker = if (speaking && !calm) 0.04f * mouthWave(clock) else 0f
+        val scale = (pupil * (1f + hippus + flicker)).coerceIn(0.58f, 1.9f)
+        val lid = max(rest, if (sleeping) 0f else blinkAt(tick.now - tick.blinkStart)).coerceIn(0f, 1f)
         drawEye(eye, scale, lid)
     }
 }
+
+/** What the eye was last drawn for: the frame time and when the current blink began. */
+private class EyeTick(val now: Long, val blinkStart: Long) {
+    fun blinking(at: Long) = at - blinkStart < BLINK_MS
+}
+
+private const val BLINK_MS = 300L
 
 /** The layer the eye must be drawn in: its edges are faded by erasing, which needs a layer of its own. */
 fun Modifier.eyeLayer(): Modifier = graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
