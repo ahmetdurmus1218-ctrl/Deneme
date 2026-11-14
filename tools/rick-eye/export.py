@@ -13,7 +13,7 @@ def save_rgba(rgb,alpha,name,q=88):
 ref=E.pupil_frame(1.0)
 save_rgb(E.clean,"eye_base.jpg")
 r=E.refl; save_rgba(E.clean,r,"eye_reflect.webp",q=92)
-B=[0.0,0.07,0.15,0.24,0.34,0.45,0.56,0.67,0.78,0.88,0.95,1.0]
+B=[0.0,0.05,0.10,0.17,0.24,0.30,0.36,0.42,0.48,0.54,0.60,0.66,0.72,0.78,0.83,0.88,0.92,0.955,0.98,1.0]
 zero=np.zeros_like(ref); one=np.ones_like(ref)
 for i,b in enumerate(B):
     o0=Bk.frame(1.0,b,base=zero,ref=ref); o1=Bk.frame(1.0,b,base=one,ref=ref)

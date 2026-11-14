@@ -202,14 +202,14 @@ fun DrawScope.drawEye(eye: EyeAssets, scale: Float, lid: Float) {
     }
     // 2. The window reflected in the cornea does not move with the pupil.
     img(eye.reflection)
-    // 3. The lid, between its two nearest frames.
+    // 3. The lid, between its two nearest frames. The lower frame goes first, fully, so the strip between
+    //    the two lid edges is always covered (a plain cross-fade would let the eye show through the lid).
     val stops = g.lids
     val j = stops.indexOfLast { it <= lid }.coerceIn(0, stops.size - 1)
+    val t = if (j < stops.size - 1) ((lid - stops[j]) / (stops[j + 1] - stops[j])).coerceIn(0f, 1f) else 0f
+    if (t > 0.01f) img(eye.lids[j + 1])
     img(eye.lids[j])
-    if (j < stops.size - 1) {
-        val t = ((lid - stops[j]) / (stops[j + 1] - stops[j])).coerceIn(0f, 1f)
-        if (t > 0.01f) img(eye.lids[j + 1], t)
-    }
+    if (t > 0.01f) img(eye.lids[j + 1], t)
     // 4. The photo's edges fade into Rick's background (only inside the photo: nothing else is covered).
     val bg = JarvisColors.Background
     val v = g.vignette

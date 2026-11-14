@@ -591,10 +591,16 @@ Kullanıcı kamera onu gösterirken elleriyle havada tıklamak, kaydırmak, dön
 - Kapak: tek açık fotoğraftan sentezlenen kapak (deri gerdirme, yapay deri) kullanıcıya gösterildi ve "çok kötü"
   bulundu. Yerine gerçek kapalı göz fotoğrafı ("Closed human eye, superior view.jpg", Rapidreflex, CC BY-SA 4.0)
   açık gözün kapak çizgisine oturtuldu: renk eşleme, kirpik çizgisi kapak kenarına, kapalı fotoğrafın kirpikleri
-  ayrıştırılıp kapak kenarından sarkıtıldı, kapağın üstü üstteki deriyle renk olarak birleştirildi. 12 kare
+  ayrıştırılıp kapak kenarından sarkıtıldı, kapağın üstü üstteki deriyle renk olarak birleştirildi. 20 kare
   (b = 0 … 1) RGBA olarak dışa aktarıldı; kareler göz bebeğinden bağımsızdır (kapak katmanı = önceden çarpılmış
   alfa), uygulama iki komşu kare arasında geçiş yapar.
-- Toplam boyut 1,2 MB (`assets/rick-eye`), Android'de assets, PC'de sınıf yolu olarak paketlenir.
+- Kapak düzeltmesi (kullanıcı: "kapağın içinden kirpikler çıkmış, köşede kapak yamuk"): kapak kenarı açık ve kapalı
+  hâlde dış köşeye sabitlenmiş iki düzgün eğri (PCHIP) arasında ilerler, yolda köşeye yumuşakça kıvrılır; fotoğrafın
+  kirpikleri artık kapakla aşağı kaydırılmıyor (gözün beyazında çizik gibi görünüyordu), yerine kapalı kapağın kendi
+  kirpikleri kenardan sarkar; dış köşenin üstündeki kirpikler kapanırken kıl temizleme (gri kapanış) ile silinir.
+  İki kare arası geçişte önce alttaki kare tam çizilir: düz karışımda kapak yarı saydam görünüp göz bebeği içinden
+  seçiliyordu.
+- Toplam boyut 2 MB (`assets/rick-eye`), Android'de assets, PC'de sınıf yolu olarak paketlenir.
 - Lisans: kapak kareleri CC BY-SA 4.0'dan türediği için o lisanslı; kaynaklar `assets/rick-eye/CREDITS.txt` ve
   Ayarlar → Görünüm'de yazılı. Üretim betikleri `tools/rick-eye/`.
 - Bilinen sınır: göz bakış yönü değiştirmez (tek fotoğraf); iki farklı kişinin fotoğrafı birleştiği için kapalıyken

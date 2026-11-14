@@ -27,24 +27,43 @@ ROOT=7.0                                   # the lid edge sits a little into the
 ux_s=gaussian_filter(ux,22)                # top of the lash band (where the lid skin meets the lashes)
 _UP=[(0,240),(150,192),(300,168),(450,165),(600,165),(750,176),(850,205),(930,258),(990,318),(1035,395)]
 U=gaussian_filter(np.interp(x,[p[0] for p in _UP],[p[1] for p in _UP]),12)   # top of the visible eyeball
-E0=ux_s*(1-smooth(780,960,x))+(U-8)*smooth(780,960,x)   # where the moving lid edge starts: calm, into the corner
+from scipy.interpolate import PchipInterpolator
+# Clean arcs for the lid, anchored at the outer corner: where the moving edge starts (open) and ends (closed).
+_OPEN=[(-80,262),(0,215),(150,160),(300,120),(450,100),(600,95),(750,108),(860,150),(950,230),(1005,320),(1035,395)]
+_SHUT=[(-80,548),(0,566),(120,585),(250,622),(400,664),(580,690),(780,672),(900,618),(980,540),(1035,395)]
+def _arc(pts): return PchipInterpolator([p[0] for p in pts],[p[1] for p in pts],extrapolate=False)(np.clip(x,-80,1035))
+E0=_arc(_OPEN); L1=_arc(_SHUT)
+E0=np.where(x>1035,395.0,E0); L1=np.where(x>1035,395.0,L1)
+# Lashes of the photo around the outer corner (over the skin, outside the lash band): they belong to the lid,
+# so they go away as it closes, and the closed lid's own lashes take their place.
+_g=gaussian_filter(a.mean(2),1.0); _gb=gaussian_filter(_g,6)
+corner_lash=np.clip((_gb-_g)*8,0,1)*smooth(40,80,yy)*smooth(L1[None,:]+90,L1[None,:]+20,yy)
+corner_lash=gaussian_filter(corner_lash,1.0)*smooth(820,900,xx)
+from scipy.ndimage import grey_closing
+_clos=np.stack([grey_closing(a[...,c],size=(11,11)) for c in range(3)],-1)
+_soft=gaussian_filter(_clos,(2.5,2.5,0))
+_hair=np.clip((_soft.mean(2)-_g)*9,0,1)
+corner_lash=np.maximum(corner_lash,gaussian_filter(_hair,1.2)*smooth(40,80,yy)*smooth(L1[None,:]+90,L1[None,:]+20,yy)*smooth(900,1000,xx))
 def frame(scale,b,e_low=0.0,skew=0.0,extra_dim=0.0,base=None,ref=None):
     base=E.pupil_frame(scale) if base is None else base
     ref=base if ref is None else ref
     if e_low>0:
         rgb,al=E.lower_overlay(e_low); base=base*(1-al[...,None])+rgb*al[...,None]
-    travel=np.maximum(l-E0,0)*smooth(OUTER+20,OUTER-40,x)
-    d=np.clip(b*travel*(1+skew*(x/W-0.45)*2),0,travel); d=gaussian_filter(d,6)
+    travel=np.maximum(L1-E0,0)
+    d=np.clip(b*travel*(1+skew*(x/W-0.45)*2),0,travel)
     edge=E0+d
-    wc=float(smooth(0.30,0.80,b))
+    _sm=gaussian_filter(np.pad(edge,60,mode='edge'),18)[60:-60]
+    edge=np.clip(edge+(_sm-edge)*float(4*b*(1-b)),E0,L1)
+    d=edge-E0
+    wc=float(smooth(0.15,0.65,b))
     # the skin above the lid comes down a little with it (the crease deepens)
-    top0=ux-40; top=top0+np.minimum(0.30*d,0.45*np.maximum(top0,0))
+    top0=ux-40; top=top0+gaussian_filter(np.minimum(0.30*d,0.45*np.maximum(top0,0)),30)   # smooth along x: no seams
     ys_above=np.where(yy<top[None,:],yy*(top0/np.maximum(top,1))[None,:],yy)
     moved=np.stack([map_coordinates(ref[...,c],[ys_above,xx],order=1,mode='nearest') for c in range(3)],-1)
     out=np.where((yy<top[None,:])[...,None],moved,base)
+    cw=float(smooth(0.20,0.80,b))*corner_lash
+    out=out*(1-cw[...,None])+_soft*cw[...,None]
     # original lashes ride down with the lid, fading as the closed lid's own lashes take over
-    ol=map_coordinates(lashm,[yy-d[None,:],xx],order=1,mode='constant',cval=0)*(1-wc)
-    out=out*(1-ol[...,None]*0.95)+LASH_RGB*ol[...,None]*0.95
     # the lid: skin of the closed lid, its margin on our edge line
     msrc=mc+ROOT
     k=np.minimum(1.0,(msrc-25)/np.maximum(edge-top,1))[None,:]
@@ -60,12 +79,19 @@ def frame(scale,b,e_low=0.0,skew=0.0,extra_dim=0.0,base=None,ref=None):
     lid_a=(yy<edge[None,:]).astype(np.float32)*smooth(-45,25,yy-top[None,:])
     lid_a=lid_a*np.clip(d/6,0,1)[None,:]*smooth(OUTER+60,OUTER+20,x)[None,:]
     lid_a=np.minimum(lid_a,np.clip((edge[None,:]-yy)/1.5,0,1)+(yy<edge[None,:]-1.5))
-    shadow=np.clip(1-(yy-edge[None,:])/30,0,1)*(yy>=edge[None,:])*0.5*smooth(0.0,0.25,b)
+    # above the eye's opening the lid ends softly at the corner (inside the opening it must cover all)
+    lid_a=np.where(yy>=E0[None,:],lid_a,lid_a*smooth(1048,985,x)[None,:])
+    shadow=np.clip(1-(yy-edge[None,:])/30,0,1)*(yy>=edge[None,:])*0.5*smooth(0.0,0.25,b)*np.clip(travel/25,0,1)[None,:]
     out=out*(1-shadow[...,None])
     out=out*(1-lid_a[...,None])+lid*lid_a[...,None]
+    # the photo's own lashes stay rooted on the margin and point up over the lid, shortening as they turn down
+    fs=1.0-0.45*b
+    ol=map_coordinates(lashm,[E0[None,:]-(edge[None,:]-yy)/fs,xx],order=1,mode='constant',cval=0)
+    ol=ol*smooth(edge[None,:]+3,edge[None,:]-2,yy)*(1-wc)
+    out=out*(1-ol[...,None]*0.95)+LASH_RGB*ol[...,None]*0.95
     # the closed lid's own lashes hang from the edge
     ly=msrc[None,:]+(yy-edge[None,:])*1.35
-    la=map_coordinates(lash_c,[ly,sx],order=1,mode='constant',cval=0)*(yy>=edge[None,:]-3)*wc*smooth(OUTER-10,OUTER-170,x)[None,:]
+    la=map_coordinates(lash_c,[ly,sx],order=1,mode='constant',cval=0)*(yy>=edge[None,:]-3)*wc*smooth(OUTER-15,OUTER-120,x)[None,:]
     out=out*(1-la[...,None]*0.95)+LASH_RGB*la[...,None]*0.95
     out=out*(1-extra_dim)
     return np.clip(out,0,1)

@@ -1,5 +1,6 @@
 package io.github.ahmetdurmus1218.jarvis.desktop
 
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import io.github.ahmetdurmus1218.jarvis.core.models.LockedItem
 import io.github.ahmetdurmus1218.jarvis.core.models.Platform
 import io.github.ahmetdurmus1218.jarvis.core.router.QuickCommand
@@ -83,7 +84,7 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
 
     override fun bundledImage(path: String): androidx.compose.ui.graphics.ImageBitmap? = runCatching {
         DesktopBridge::class.java.classLoader.getResourceAsStream(path)?.use {
-            androidx.compose.ui.graphics.toComposeImageBitmap(org.jetbrains.skia.Image.makeFromEncoded(it.readBytes()))
+            org.jetbrains.skia.Image.makeFromEncoded(it.readBytes()).toComposeImageBitmap()
         }
     }.getOrNull()
 

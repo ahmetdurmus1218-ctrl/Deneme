@@ -1,5 +1,6 @@
 package io.github.ahmetdurmus1218.jarvis.desktop
 
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
@@ -57,7 +58,7 @@ import kotlin.test.Test
 /** The app's bundled files (assets/), from the test classpath. */
 internal fun testImage(path: String): androidx.compose.ui.graphics.ImageBitmap? =
     AppUiTest::class.java.classLoader.getResourceAsStream(path)?.use {
-        androidx.compose.ui.graphics.toComposeImageBitmap(org.jetbrains.skia.Image.makeFromEncoded(it.readBytes()))
+        org.jetbrains.skia.Image.makeFromEncoded(it.readBytes()).toComposeImageBitmap()
     }
 
 internal fun testText(path: String): String? =
