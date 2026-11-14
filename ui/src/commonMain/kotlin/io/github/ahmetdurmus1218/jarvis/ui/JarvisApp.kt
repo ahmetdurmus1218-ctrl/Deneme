@@ -332,9 +332,15 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         }
         LaunchedEffect(settings.face) { io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.face = settings.face }
         LaunchedEffect(settings.look) { JarvisUi.look = settings.look }
-        // Rick's real eye: decoded once, off the main thread.
-        LaunchedEffect(Unit) {
-            if (JarvisUi.eye == null) {
+        // Rick's real eyes: decoded once, off the main thread, and only the ones the chosen look shows
+        // (the photographed eye's layers alone take tens of megabytes).
+        LaunchedEffect(settings.look) {
+            if (settings.look == "eye" && JarvisUi.videoEyes == null) {
+                JarvisUi.videoEyes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    io.github.ahmetdurmus1218.jarvis.ui.components.VideoEyesAssets.load(graph.bridge::bundledImage, graph.bridge::bundledText)
+                }
+            }
+            if (settings.look == "eye1" && JarvisUi.eye == null) {
                 JarvisUi.eye = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                     io.github.ahmetdurmus1218.jarvis.ui.components.EyeAssets.load(graph.bridge::bundledImage, graph.bridge::bundledText)
                 }

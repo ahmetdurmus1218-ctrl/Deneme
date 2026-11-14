@@ -229,12 +229,13 @@ fun DisplaySettings(settings: SettingsStore) {
                     }
                 }
             }
-            // The eye is made of other people's photographs: say whose.
-            if (s.look == "eye" || s.look == "eye1") {
-                io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.eye?.geometry?.credits?.forEach { line ->
-                    Text(line, fontSize = 10.sp, color = JarvisColors.TextDim)
-                }
+            // The eyes are made of other people's video and photographs: say whose.
+            val credits = when (s.look) {
+                "eye" -> io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.videoEyes?.meta?.credits
+                "eye1" -> io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.eye?.geometry?.credits
+                else -> null
             }
+            credits?.forEach { line -> Text(line, fontSize = 10.sp, color = JarvisColors.TextDim) }
         }
         Text("Ekran", fontSize = 13.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

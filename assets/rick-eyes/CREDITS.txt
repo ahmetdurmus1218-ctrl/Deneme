@@ -1,0 +1,6 @@
+Rick'in gözleri (assets/rick-eyes)
+
+Kaynak: Mixkit ücretsiz video, klip 17467 ("surgeon looking at the camera"), Mixkit Free License
+(https://mixkit.co/license/#videoFree) — ticari ve ticari olmayan projelerde ücretsiz kullanım; videonun kendisi
+ayrıca dağıtılmaz. Uygulamada yalnızca kareleri, kaşlar ile gözler arasındaki şerit olarak kırpılmış, renk
+düzeltilmiş ve maske/bone silinmiş biçimde kullanılır. Üretim: tools/rick-eye/video_eyes.py

@@ -114,6 +114,9 @@ object JarvisUi {
     /** Which look the living Rick has (Settings → Görünüm): eye, glass, hud, wave, robot, spark, … */
     var look by mutableStateOf("eye")
 
+    /** Rick's real eyes (video frames of a man's eyes bundled with the app), once loaded; null until then. */
+    var videoEyes by mutableStateOf<io.github.ahmetdurmus1218.jarvis.ui.components.VideoEyesAssets?>(null)
+
     /** Rick's real eye (photos bundled with the app), once loaded; null until then or if missing. */
     var eye by mutableStateOf<io.github.ahmetdurmus1218.jarvis.ui.components.EyeAssets?>(null)
 

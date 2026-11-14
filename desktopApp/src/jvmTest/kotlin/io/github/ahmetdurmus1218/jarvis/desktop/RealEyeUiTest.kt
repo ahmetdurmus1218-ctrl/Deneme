@@ -17,7 +17,10 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import io.github.ahmetdurmus1218.jarvis.core.assistant.Emotion
 import io.github.ahmetdurmus1218.jarvis.ui.CoreMode
+import io.github.ahmetdurmus1218.jarvis.ui.components.EyePlayer
 import io.github.ahmetdurmus1218.jarvis.ui.components.RealEye
+import io.github.ahmetdurmus1218.jarvis.ui.components.VideoEyes
+import io.github.ahmetdurmus1218.jarvis.ui.components.VideoEyesAssets
 import io.github.ahmetdurmus1218.jarvis.ui.components.EyeAssets
 import io.github.ahmetdurmus1218.jarvis.ui.components.blinkAt
 import io.github.ahmetdurmus1218.jarvis.ui.components.drawEye
@@ -116,5 +119,45 @@ class RealEyeUiTest {
         val rgb = BufferedImage(img.width, img.height, BufferedImage.TYPE_INT_RGB)
         rgb.createGraphics().apply { drawImage(img, 0, 0, null); dispose() }
         ImageIO.write(rgb, "jpg", File(File("build/ui-screens").apply { mkdirs() }, "34-duygular.jpg"))
+    }
+
+    @Test
+    fun theVideoEyesLiveBlinkAndSleep() {
+        val eyes = VideoEyesAssets.load(::testImage, ::testText)
+        assertNotNull(eyes, "the video eyes' frames are bundled")
+        val m = eyes.meta
+        assertTrue(m.closed in m.blink, "the closed frame is part of the blink")
+        // The player: awake it loops and blinks within seven seconds; asleep it ends on the closed frame.
+        val p = EyePlayer(m, kotlin.random.Random(3))
+        var t = 0L
+        val seen = HashSet<Int>()
+        while (t < 7_000) { t += maxOf(1L, p.step(t, sleeping = false)); seen += p.shown }
+        assertTrue(m.closed in seen, "it blinked")
+        assertTrue(m.idle.count { it in seen } > m.idle.size / 2, "it lived through the loop")
+        p.fallAsleep()
+        repeat(20) { t += maxOf(1L, p.step(t, sleeping = true)) }
+        assertEquals(m.closed, p.shown)
+        p.wakeUp()
+        repeat(m.blink.size + 2) { t += maxOf(1L, p.step(t, sleeping = false)) }
+        assertTrue(p.shown != m.closed, "it woke up")
+
+        val states = listOf("Uyanık" to false, "Uyuyor" to true)
+        rule.setContent {
+            JarvisTheme {
+                Column(Modifier.background(JarvisColors.Background).testTag("video-eyes")) {
+                    states.forEach { (name, asleep) ->
+                        Column(Modifier.size(480.dp, 200.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            VideoEyes(eyes, CoreMode.IDLE, size = 330.dp, sleeping = asleep)
+                            Text(name, color = JarvisColors.Text)
+                        }
+                    }
+                }
+            }
+        }
+        rule.waitForIdle()
+        val img = rule.onNodeWithTag("video-eyes").captureToImage().toAwtImage()
+        val rgb = BufferedImage(img.width, img.height, BufferedImage.TYPE_INT_RGB)
+        rgb.createGraphics().apply { drawImage(img, 0, 0, null); dispose() }
+        ImageIO.write(rgb, "jpg", File(File("build/ui-screens").apply { mkdirs() }, "35-video-gozler.jpg"))
     }
 }
