@@ -154,6 +154,7 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [x] v1.5.0: CI baştan sona yeşil (Android, Windows, emülatör; koşu 43336992717). Ekran görüntüleri kullanıcıya gösterildi.
 - [x] v1.5.0: yayımlandı (6d98c3e).
 - [x] v1.5.1: gerçek göz; kullanıcı APK istedi ("APK ver hadi") → `.github/release-request` → `v1.5.1`.
+- [x] v1.5.2: göz hızı (göz bebeği önbelleği, görünüş değişmeyince çizim yok); emülatör yeşil (koşu 43574796122).
 - [x] Yeni ana ekran (kod): kullanıcı A'yı seçti ve hepsinin eklenmesini istedi → cam küre varsayılan, HUD çekirdek / dalga halkası / robot yüz seçenek; çizgi simgeler, dinleme anahtarı, ses çubukları (D49).
 - [ ] Yeni ana ekranın CI ekran görüntüleri kullanıcıya gösterilecek.
 - [x] Gerçek göz (kod): kullanıcının seçtiği kamu malı göz fotoğrafı, ışığa duyarlı göz bebeği, gerçek kapalı göz fotoğrafından göz kırpma; varsayılan görünüm (D50).
