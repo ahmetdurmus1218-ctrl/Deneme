@@ -230,7 +230,7 @@ fun DisplaySettings(settings: SettingsStore) {
                 }
             }
             // The eye is made of other people's photographs: say whose.
-            if (s.look == "eye") {
+            if (s.look == "eye" || s.look == "eye1") {
                 io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.eye?.geometry?.credits?.forEach { line ->
                     Text(line, fontSize = 10.sp, color = JarvisColors.TextDim)
                 }

@@ -36,5 +36,11 @@
  "credits": [
   "Açık göz: Ylem, Wikimedia Commons, kamu malı (030608 Pupil.jpg)",
   "Kapalı göz kapağı: Rapidreflex, Wikimedia Commons, CC BY-SA 4.0 (Closed human eye, superior view.jpg); Rick için renk ve şekil uyarlandı"
+ ],
+ "lows": [
+  0.0,
+  0.35,
+  0.7,
+  1.0
  ]
 }

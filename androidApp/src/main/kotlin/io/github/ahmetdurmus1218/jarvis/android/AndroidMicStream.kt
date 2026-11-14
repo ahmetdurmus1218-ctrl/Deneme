@@ -11,6 +11,8 @@ import kotlin.concurrent.thread
 class AndroidMicStream(private val granted: () -> Boolean, private val ensurePermission: suspend () -> Boolean) : MicStream {
     override val permitted: Boolean get() = granted()
 
+    override suspend fun requestPermission(): Boolean = ensurePermission()
+
     @Volatile private var running = false
     private var worker: Thread? = null
 

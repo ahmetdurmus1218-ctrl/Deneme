@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.platform.testTag
@@ -13,7 +15,9 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
+import io.github.ahmetdurmus1218.jarvis.core.assistant.Emotion
 import io.github.ahmetdurmus1218.jarvis.ui.CoreMode
+import io.github.ahmetdurmus1218.jarvis.ui.components.RealEye
 import io.github.ahmetdurmus1218.jarvis.ui.components.EyeAssets
 import io.github.ahmetdurmus1218.jarvis.ui.components.blinkAt
 import io.github.ahmetdurmus1218.jarvis.ui.components.drawEye
@@ -80,5 +84,37 @@ class RealEyeUiTest {
             for (i in 0..2) assertTrue(kotlin.math.abs(got[i] - want[i]) <= 3, "edge pixel ($px,$py) ${got.toList()} vs background ${want.toList()}")
         }
         ImageIO.write(rgb, "jpg", File(File("build/ui-screens").apply { mkdirs() }, "33-gercek-goz.jpg"))
+    }
+
+    @Test
+    fun twoEyesShowEveryFeeling() {
+        val eye = EyeAssets.load(::testImage, ::testText)
+        assertNotNull(eye, "the eye's files are bundled")
+        assertTrue(eye.lows.isNotEmpty(), "the raised lower lid (smile) is bundled")
+        val feelings = listOf(
+            "Sakin" to Emotion.NONE, "Gülümseme" to Emotion.HAPPY, "Sevinç" to Emotion.JOY,
+            "Hüzün" to Emotion.SAD, "Şaşkınlık" to Emotion.SURPRISED,
+        )
+        rule.setContent {
+            JarvisTheme {
+                Column(Modifier.background(JarvisColors.Background).testTag("feelings")) {
+                    feelings.chunked(2).forEach { row ->
+                        Row {
+                            row.forEach { (name, e) ->
+                                Column(Modifier.size(480.dp, 230.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    RealEye(eye, CoreMode.IDLE, 0f, size = 330.dp, emotion = e)
+                                    Text(name, color = JarvisColors.Text)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        rule.waitForIdle()
+        val img = rule.onNodeWithTag("feelings").captureToImage().toAwtImage()
+        val rgb = BufferedImage(img.width, img.height, BufferedImage.TYPE_INT_RGB)
+        rgb.createGraphics().apply { drawImage(img, 0, 0, null); dispose() }
+        ImageIO.write(rgb, "jpg", File(File("build/ui-screens").apply { mkdirs() }, "34-duygular.jpg"))
     }
 }

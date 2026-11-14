@@ -4,6 +4,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.withInfiniteAnimationFrameMillis
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +36,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import io.github.ahmetdurmus1218.jarvis.core.assistant.Emotion
 import io.github.ahmetdurmus1218.jarvis.ui.CoreMode
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi
 import kotlinx.coroutines.isActive
@@ -58,6 +61,8 @@ data class EyeGeometry(
     val lids: List<Float>,
     val vignette: Vignette,
     val credits: List<String> = emptyList(),
+    /** Positions of the raised lower lid frames (a smile reaching the eyes); the first is "not raised". */
+    val lows: List<Float> = emptyList(),
 ) {
     @Serializable
     data class Vignette(val cx: Float, val cy: Float, val rx: Float, val ry: Float)
@@ -72,6 +77,8 @@ class EyeAssets(
     val base: ImageBitmap,
     val reflection: ImageBitmap,
     val lids: List<ImageBitmap>,
+    /** The lower lid raised by geometry.lows[1…] (empty if the app has none). */
+    val lows: List<ImageBitmap> = emptyList(),
 ) {
     companion object {
         const val DIR = "rick-eye"
@@ -83,7 +90,8 @@ class EyeAssets(
             val base = image("$DIR/eye_base.jpg") ?: return null
             val reflection = image("$DIR/eye_reflect.webp") ?: return null
             val lids = geo.lids.indices.map { i -> image("$DIR/eye_lid_${i.toString().padStart(2, '0')}.webp") ?: return null }
-            EyeAssets(geo, base, reflection, lids)
+            val lows = (1 until geo.lows.size).map { i -> image("$DIR/eye_low_$i.webp") ?: return null }
+            EyeAssets(geo, base, reflection, lids, lows)
         }.getOrNull()
     }
 }
@@ -116,6 +124,33 @@ fun blinkAt(t: Long): Float = when {
     else -> 0f
 }
 
+/** How the eyes show a feeling: lids, tilt, pupil, size, height. */
+private class EyeFeel(
+    /** Upper lid at least this far down (0 open … 1 closed); null: as the mood has it. */
+    val upper: Float?,
+    /** Lower lid raised (0 … 1): the smile that reaches the eyes. */
+    val lower: Float,
+    /** Degrees the outer corners go down (sad) or up (negative). */
+    val tilt: Float,
+    val pupil: Float,
+    val grow: Float,
+    /** Up (negative) or down, as a part of the eye's height. */
+    val drop: Float,
+)
+
+private fun feelOf(e: Emotion): EyeFeel = when (e) {
+    Emotion.HAPPY -> EyeFeel(0.10f, 0.6f, 0f, 1.08f, 1f, 0f)
+    Emotion.JOY -> EyeFeel(0.12f, 1f, -2f, 1.15f, 1.02f, -0.03f)
+    Emotion.SAD -> EyeFeel(0.36f, 0f, 7f, 1.12f, 1f, 0.04f)
+    Emotion.SURPRISED -> EyeFeel(0f, 0f, 0f, 0.82f, 1.07f, -0.03f)
+    Emotion.NONE -> EyeFeel(null, 0f, 0f, 1f, 1f, 0f)
+}
+
+/**
+ * Rick's real eyes: two by default (the photo and its mirror image, as a face has them), or one ([pair] false).
+ * They live (pupil with the light, blinks, a living unrest) and show a feeling for a moment after a turn:
+ * a smile lifts the lower lids, sadness droops the upper lids and lowers the outer corners, surprise opens wide.
+ */
 @Composable
 fun RealEye(
     eye: EyeAssets,
@@ -124,14 +159,26 @@ fun RealEye(
     modifier: Modifier = Modifier,
     size: Dp = 240.dp,
     sleeping: Boolean = false,
+    emotion: Emotion = JarvisUi.emotion,
+    pair: Boolean = true,
 ) {
     val calm = JarvisUi.reduceMotion
-    // Pupil: the room's light, wider while listening (interest), a slow living unrest (hippus).
+    val feel = feelOf(if (sleeping) Emotion.NONE else emotion)
+    // Pupil: the room's light, wider while listening (interest) and with some feelings, a slow living unrest.
     val lux = JarvisUi.ambientLux
-    val pupilTarget = pupilForLight(lux) * (if (mode == CoreMode.LISTENING) 1.12f else 1f)
+    val pupilTarget = pupilForLight(lux) * (if (mode == CoreMode.LISTENING) 1.12f else 1f) * feel.pupil
     val pupil by animateFloatAsState(pupilTarget.coerceIn(0.6f, 1.85f), tween(if (pupilTarget < 1f) 450 else 1100))
-    // Lid: where the mood keeps it, slowly; asleep it closes over two seconds.
-    val rest by animateFloatAsState(lidForMood(mode, sleeping), tween(if (sleeping) 2200 else 500))
+    // Lid: where the mood (or the feeling) keeps it, slowly; asleep it closes over two seconds.
+    val restTarget = when {
+        sleeping -> 1f
+        feel.upper == 0f -> 0f
+        else -> max(lidForMood(mode, false), feel.upper ?: 0f)
+    }
+    val rest by animateFloatAsState(restTarget, tween(if (sleeping) 2200 else 500))
+    val low by animateFloatAsState(feel.lower, tween(450))
+    val tilt by animateFloatAsState(if (calm) 0f else feel.tilt, tween(600))
+    val grow by animateFloatAsState(if (calm) 1f else feel.grow, tween(350))
+    val drop by animateFloatAsState(if (calm) 0f else feel.drop, tween(600))
     // The eye is costly to draw (a photo, its pupil re-sampled in rings, lid layers), so it is redrawn only as
     // often as something visibly moves: every frame during a blink, ~15 times a second while speaking, 8 while
     // the pupil merely lives, and not at all while asleep or with reduced motion between blinks.
@@ -173,14 +220,37 @@ fun RealEye(
             if (due) drawn = t
         }
     }
-    // Wider than tall, so it reads as an eye, not a photo in a box; drawn in its own layer so its edges can fade
-    // to transparent (whatever is behind Rick shows through, with no visible frame).
     val cache = remember(eye) { PupilCache() }
-    Canvas(modifier.size(size * 1.3f, size).eyeLayer()) {
-        val tick = shown
-        val scale = (pupil * (1f + wave(tick.now))).coerceIn(0.58f, 1.9f)
-        val lid = max(rest, if (sleeping) 0f else blinkAt(tick.now - tick.blinkStart)).coerceIn(0f, 1f)
-        drawEye(eye, scale, lid, cache)
+    // One eye as drawn on its own layer (its edges fade to transparent, so whatever is behind Rick shows through):
+    // tilted with the feeling, the left one the mirror image of the photo.
+    @Composable
+    fun one(m: Modifier, mirror: Boolean) {
+        Canvas(
+            m.graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+                rotationZ = if (mirror) -tilt else tilt
+                scaleX = grow
+                scaleY = grow
+                translationY = drop * this.size.height
+            },
+        ) {
+            val tick = shown
+            val scale = (pupil * (1f + wave(tick.now))).coerceIn(0.58f, 1.9f)
+            val lid = max(rest, if (sleeping) 0f else blinkAt(tick.now - tick.blinkStart)).coerceIn(0f, 1f)
+            drawEye(eye, scale, lid, cache, low = low, mirror = mirror)
+        }
+    }
+    if (!pair) {
+        one(modifier.size(size * 1.3f, size), mirror = false)
+        return
+    }
+    // Two eyes side by side; their faded edges overlap a little where the bridge of the nose would be.
+    val total = size * 1.28f
+    val eyeW = total * 0.56f
+    val eyeH = eyeW * 0.74f
+    Box(modifier.size(total, eyeH)) {
+        one(Modifier.size(eyeW, eyeH), mirror = true)
+        one(Modifier.size(eyeW, eyeH).offset(x = total - eyeW), mirror = false)
     }
 }
 
@@ -194,7 +264,7 @@ private fun pupilWave(t: Long, calm: Boolean, sleeping: Boolean, speaking: Boole
 }
 
 /**
- * The eye with its pupil at a given size (photo, re-sampled iris, reflection), kept as a picture: the costly
+ * The eye with its pupil at a given size (photo, re-sampled iris), kept as a picture: the costly
  * ring-by-ring pupil is drawn once per size, not on every frame. A few recent sizes are kept.
  */
 class PupilCache {
@@ -224,7 +294,16 @@ fun Modifier.eyeLayer(): Modifier = graphicsLayer(compositingStrategy = Composit
  * The eye at pupil [scale] with the lid at [lid] (0 open … 1 closed), fitted to the width of the draw area.
  * Draw it in a [eyeLayer]: the photo's edges are erased, not painted over.
  */
-fun DrawScope.drawEye(eye: EyeAssets, scale: Float, lid: Float, cache: PupilCache? = null) {
+fun DrawScope.drawEye(
+    eye: EyeAssets,
+    scale: Float,
+    lid: Float,
+    cache: PupilCache? = null,
+    /** The lower lid raised (0 … 1), a smile. */
+    low: Float = 0f,
+    /** Drawn as the mirror image (the other eye of the pair); the window's reflection stays where the light is. */
+    mirror: Boolean = false,
+) {
     val g = eye.geometry
     val w = size.width
     val k = w / g.width
@@ -237,7 +316,24 @@ fun DrawScope.drawEye(eye: EyeAssets, scale: Float, lid: Float, cache: PupilCach
     fun img(bitmap: ImageBitmap, alpha: Float = 1f) =
         drawImage(bitmap, IntOffset.Zero, src, dstOff, dstSize, alpha = alpha, filterQuality = FilterQuality.High)
 
-    // 1–2. The eye with its pupil at the wanted size and the window reflected in the cornea.
+    val center = Offset(size.width / 2f, size.height / 2f)
+    fun mirrored(block: DrawScope.() -> Unit) =
+        if (mirror) withTransform({ scale(-1f, 1f, center) }) { block() } else block()
+
+    // 1. The eye with its pupil at the wanted size.
+    mirrored { drawPupilPicture(eye, scale, cache, left, top, w, dstOff, dstSize) }
+    // 2. The window reflected in the cornea: not mirrored (the light is on the same side for both eyes), only
+    //    moved to the mirrored cornea.
+    val dx = if (mirror) (g.width - 2f * g.pupilX) * k else 0f
+    drawImage(eye.reflection, IntOffset.Zero, src, IntOffset(dstOff.x + dx.roundToInt(), dstOff.y), dstSize, filterQuality = FilterQuality.High)
+    mirrored { drawLids(eye, lid, low, ::img) }
+    mirrored { drawFade(eye, left, top, k, dstOff, dstSize) }
+}
+
+/** The photo with its pupil re-sampled, from the [cache] when there is one. */
+private fun DrawScope.drawPupilPicture(
+    eye: EyeAssets, scale: Float, cache: PupilCache?, left: Float, top: Float, w: Float, dstOff: IntOffset, dstSize: IntSize,
+) {
     if (cache == null || dstSize.width <= 0 || dstSize.height <= 0) {
         drawPupil(eye, scale, Offset(left, top), w)
     } else {
@@ -251,15 +347,37 @@ fun DrawScope.drawEye(eye: EyeAssets, scale: Float, lid: Float, cache: PupilCach
         }
         drawImage(picture, dstOffset = dstOff)
     }
-    // 3. The lid, between its two nearest frames. The lower frame goes first, fully, so the strip between
+}
+
+/** The raised lower lid, then the upper lid, each between its two nearest frames. */
+private fun DrawScope.drawLids(eye: EyeAssets, lid: Float, low: Float, img: (ImageBitmap, Float) -> Unit) {
+    val g = eye.geometry
+    // The lower lid (a smile): frame 0 is "not raised", so the first step fades in.
+    if (low > 0.005f && eye.lows.isNotEmpty()) {
+        val ls = g.lows
+        val lj = ls.indexOfLast { it <= low }.coerceIn(0, ls.size - 1)
+        val lt = if (lj < ls.size - 1) ((low - ls[lj]) / (ls[lj + 1] - ls[lj])).coerceIn(0f, 1f) else 0f
+        if (lj == 0) {
+            img(eye.lows[0], lt)
+        } else {
+            if (lt > 0.01f) img(eye.lows[lj], 1f)
+            img(eye.lows[lj - 1], 1f)
+            if (lt > 0.01f) img(eye.lows[lj], lt)
+        }
+    }
+    // 3. The upper lid, between its two nearest frames. The lower frame goes first, fully, so the strip between
     //    the two lid edges is always covered (a plain cross-fade would let the eye show through the lid).
     val stops = g.lids
     val j = stops.indexOfLast { it <= lid }.coerceIn(0, stops.size - 1)
     val t = if (j < stops.size - 1) ((lid - stops[j]) / (stops[j + 1] - stops[j])).coerceIn(0f, 1f) else 0f
-    if (t > 0.01f) img(eye.lids[j + 1])
-    img(eye.lids[j])
+    if (t > 0.01f) img(eye.lids[j + 1], 1f)
+    img(eye.lids[j], 1f)
     if (t > 0.01f) img(eye.lids[j + 1], t)
-    // 4. The photo's edges fade out: erased (not painted in a colour), so no frame shows on any background.
+}
+
+/** 4. The photo's edges fade out: erased (not painted in a colour), so no frame shows on any background. */
+private fun DrawScope.drawFade(eye: EyeAssets, left: Float, top: Float, k: Float, dstOff: IntOffset, dstSize: IntSize) {
+    val g = eye.geometry
     val gone = Color.Black
     val v = g.vignette
     val vc = Offset(left + v.cx * k, top + v.cy * k)
@@ -294,7 +412,7 @@ fun DrawScope.drawEye(eye: EyeAssets, scale: Float, lid: Float, cache: PupilCach
 /** Steps in which the pupil's size is drawn (finer than the eye can tell). */
 private const val PUPIL_STEP = 0.012f
 
-/** The photo of width [w] at [origin], its iris re-sampled ring by ring for a pupil at [scale], and the reflection. */
+/** The photo of width [w] at [origin], its iris re-sampled ring by ring for a pupil at [scale]. */
 private fun DrawScope.drawPupil(eye: EyeAssets, scale: Float, origin: Offset, w: Float) {
     val g = eye.geometry
     val k = w / g.width
@@ -336,6 +454,4 @@ private fun DrawScope.drawPupil(eye: EyeAssets, scale: Float, origin: Offset, w:
             withTransform({ scale(1f / f, 1f / f, c) }) { img(eye.base) }
         }
     }
-    // The window reflected in the cornea does not move with the pupil.
-    img(eye.reflection)
 }

@@ -154,11 +154,11 @@ object MicUse {
 }
 
 interface MicStream {
-    /**
-     * Whether the microphone may be used without asking the user first. Hands-free standby never
-     * brings up a permission question by itself: it waits until the user has used the microphone once.
-     */
+    /** Whether the microphone may be used without asking the user first. */
     val permitted: Boolean get() = true
+
+    /** Asks the user for the microphone (once when the app opens with continuous listening on); true if allowed. */
+    suspend fun requestPermission(): Boolean = permitted
 
     /** Starts delivering samples on a background thread; false if the microphone cannot be opened. */
     suspend fun start(onSamples: (FloatArray, Int) -> Unit): Boolean

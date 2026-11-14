@@ -117,6 +117,9 @@ object JarvisUi {
     /** Rick's real eye (photos bundled with the app), once loaded; null until then or if missing. */
     var eye by mutableStateOf<io.github.ahmetdurmus1218.jarvis.ui.components.EyeAssets?>(null)
 
+    /** The feeling Rick's eyes show right now (a few seconds after a turn). */
+    var emotion by mutableStateOf(io.github.ahmetdurmus1218.jarvis.core.assistant.Emotion.NONE)
+
     /** The light around the device in lux (the phone's light sensor); null where there is none. */
     var ambientLux by mutableStateOf<Float?>(null)
 

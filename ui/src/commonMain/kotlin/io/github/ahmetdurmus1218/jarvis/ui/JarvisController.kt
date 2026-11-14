@@ -118,6 +118,14 @@ class JarvisController(
     private var micRefused = false
     private var listenAfterSpeech = false
     private val ear = io.github.ahmetdurmus1218.jarvis.core.stt.StandbyEar()
+    /** Whether the microphone question was already put this time the app runs. */
+    private var micAsked = false
+
+    // What Rick's eyes show for a moment after a turn (declared before init, like the state above).
+    private val _emotion = MutableStateFlow(io.github.ahmetdurmus1218.jarvis.core.assistant.Emotion.NONE)
+    /** A smile, joy, sadness or surprise for a few seconds after a turn; NONE the rest of the time. */
+    val emotion: StateFlow<io.github.ahmetdurmus1218.jarvis.core.assistant.Emotion> = _emotion.asStateFlow()
+    private var emotionJob: Job? = null
 
     /** Last time the user did something; idle reading starts only after a quiet while. */
     private var lastActivity = 0L
@@ -163,6 +171,19 @@ class JarvisController(
         }
         // Hands-free: the moment Rick stops being idle the standby microphone closes; it comes back by itself.
         scope.launch { _mode.collect { refreshStandby() } }
+        // Each finished turn may show on Rick's face (turns restored from before do not).
+        scope.launch {
+            var seen = _turns.value.lastOrNull()?.id ?: -1L
+            _turns.collect { all ->
+                val t = all.lastOrNull() ?: return@collect
+                if (!t.done || t.id == seen) return@collect
+                seen = t.id
+                feel(
+                    if (t.error != null) io.github.ahmetdurmus1218.jarvis.core.assistant.Emotion.SAD
+                    else io.github.ahmetdurmus1218.jarvis.core.assistant.EmotionCue.of(t.user, answerText(t)),
+                )
+            }
+        }
         val unwatch = MicUse.watch { refreshStandby() }
         scope.coroutineContext[Job]?.invokeOnCompletion { unwatch() }
         scope.launch {
@@ -223,6 +244,7 @@ class JarvisController(
     fun setAppVisible(visible: Boolean) {
         appVisible = visible
         if (visible) micRefused = false
+        askMicrophoneOnce()
         watchStandby()
         refreshStandby()
     }
@@ -249,13 +271,34 @@ class JarvisController(
     /** The window is in normal use (false: asleep, waking up or in the setup wizard). */
     fun setAppAwake(awake: Boolean) {
         appAwake = awake
+        askMicrophoneOnce()
         refreshStandby()
+    }
+
+    /**
+     * Continuous listening is on but the microphone was never allowed: ask once, as soon as Rick is on screen
+     * (not in the setup wizard, not asleep), so listening starts by itself instead of waiting for a tap.
+     */
+    private fun askMicrophoneOnce() {
+        val mic = bridge.micStream ?: return
+        if (micAsked || !appVisible || !appAwake || !settings.state.value.handsFree || mic.permitted) return
+        micAsked = true
+        scope.launch {
+            if (mic.requestPermission()) {
+                micRefused = false
+                refreshStandby()
+            }
+        }
     }
 
     /** The on/off button of continuous listening: takes effect at once. */
     fun setHandsFree(on: Boolean) {
         settings.update { it.copy(handsFree = on) }
-        if (on) micRefused = false
+        if (on) {
+            micRefused = false
+            micAsked = false
+            askMicrophoneOnce()
+        }
         refreshStandby()
     }
 
@@ -452,10 +495,22 @@ class JarvisController(
         }
     }
 
+    /** Shows a feeling on Rick's face for a few seconds (NONE: nothing changes). */
+    fun feel(e: io.github.ahmetdurmus1218.jarvis.core.assistant.Emotion, ms: Long = EMOTION_MS) {
+        if (e == io.github.ahmetdurmus1218.jarvis.core.assistant.Emotion.NONE) return
+        _emotion.value = e
+        emotionJob?.cancel()
+        emotionJob = scope.launch {
+            delay(ms)
+            _emotion.value = io.github.ahmetdurmus1218.jarvis.core.assistant.Emotion.NONE
+        }
+    }
+
     /** The user's verdict on an answer: 👍 keeps it as a good example, 👎 asks for the right answer. */
     fun feedback(turnId: Long, good: Boolean) {
         val turn = _turns.value.firstOrNull { it.id == turnId } ?: return
         noteActivity()
+        feel(if (good) io.github.ahmetdurmus1218.jarvis.core.assistant.Emotion.JOY else io.github.ahmetdurmus1218.jarvis.core.assistant.Emotion.SAD)
         updateTurn(turnId) { it.copy(feedback = if (good) 1 else -1) }
         if (good) {
             correctionFor = null
@@ -987,6 +1042,8 @@ class JarvisController(
     }
 
     companion object {
+        /** How long a feeling stays on Rick's face. */
+        const val EMOTION_MS = 6_000L
         /** How often the idle loop looks, and how long Rick must be left alone before reading. */
         const val IDLE_CHECK_MS = 60_000L
         const val IDLE_BEFORE_RESEARCH_MS = 3 * 60_000L

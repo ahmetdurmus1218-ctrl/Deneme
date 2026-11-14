@@ -342,6 +342,8 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         }
         // The pupils follow the room's light (the phone's light sensor).
         LaunchedEffect(Unit) { graph.bridge.ambientLux.collect { JarvisUi.ambientLux = it } }
+        // A smile, joy, sadness or surprise in Rick's eyes for a moment after a turn.
+        LaunchedEffect(controller) { controller.emotion.collect { JarvisUi.emotion = it } }
         // The voice chosen in Settings (man / woman, Rick's own or the phone's).
         LaunchedEffect(settings.voiceId) { graph.bridge.speechOutput?.choose(settings.voiceId) }
         LaunchedEffect(Unit) { graph.bridge.downloader.refresh() }
