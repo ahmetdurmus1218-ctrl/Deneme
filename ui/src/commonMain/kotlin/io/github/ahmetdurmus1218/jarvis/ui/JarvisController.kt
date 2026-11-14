@@ -120,6 +120,7 @@ class JarvisController(
     private val ear = io.github.ahmetdurmus1218.jarvis.core.stt.StandbyEar()
     /** Whether the microphone question was already put this time the app runs. */
     private var micAsked = false
+    private var openListen: Job? = null
 
     // What Rick's eyes show for a moment after a turn (declared before init, like the state above).
     private val _emotion = MutableStateFlow(io.github.ahmetdurmus1218.jarvis.core.assistant.Emotion.NONE)
@@ -242,11 +243,33 @@ class JarvisController(
 
     /** The window is on the screen (false: in the background, where only the floating Rick may listen). */
     fun setAppVisible(visible: Boolean) {
+        val opened = visible && !appVisible
         appVisible = visible
         if (visible) micRefused = false
         askMicrophoneOnce()
         watchStandby()
         refreshStandby()
+        if (opened) listenOnOpen()
+    }
+
+    /**
+     * The app was just opened (or brought back) or the floating Rick just appeared: Rick listens at once, as if
+     * the microphone had been tapped (Settings → "Açılınca hemen dinle"). Only on the phone, only when the
+     * microphone is allowed and a recognizer is ready, and never in the setup wizard, asleep or mid-answer.
+     */
+    private fun listenOnOpen() {
+        if (bridge.platform != io.github.ahmetdurmus1218.jarvis.core.models.Platform.ANDROID) return
+        if (!settings.state.value.listenOnOpen) return
+        openListen?.cancel()
+        // A moment later: the screen settles first (the wizard or the sleep screen may still be coming up).
+        openListen = scope.launch {
+            delay(OPEN_LISTEN_DELAY_MS)
+            val present = if (appVisible) appAwake else floating
+            if (!present || _mode.value != CoreMode.IDLE || askJob?.isActive == true || queued > 0 || MicUse.taken) return@launch
+            if (bridge.micStream?.permitted != true) return@launch
+            if (bridge.speechInput?.isAvailable() != true) return@launch
+            startListening(quiet = true)
+        }
     }
 
     /**
@@ -270,9 +293,12 @@ class JarvisController(
 
     /** The window is in normal use (false: asleep, waking up or in the setup wizard). */
     fun setAppAwake(awake: Boolean) {
+        val woke = awake && !appAwake
         appAwake = awake
         askMicrophoneOnce()
         refreshStandby()
+        // Out of the setup wizard or up from sleep: listen at once, as when the app opens.
+        if (woke && appVisible) listenOnOpen()
     }
 
     /**
@@ -287,6 +313,8 @@ class JarvisController(
             if (mic.requestPermission()) {
                 micRefused = false
                 refreshStandby()
+                // Just allowed when the app opened: start listening now, as the opening would have.
+                listenOnOpen()
             }
         }
     }
@@ -304,10 +332,12 @@ class JarvisController(
 
     /** The floating Rick is running over other apps. */
     fun setFloating(on: Boolean) {
+        val appeared = on && !floating
         floating = on
         if (on) micRefused = false
         watchStandby()
         refreshStandby()
+        if (appeared && !appVisible) listenOnOpen()
     }
 
     private fun namesWanted(s: Settings) = s.handsFree && bridge.speechInput?.canTranscribe == true
@@ -1042,6 +1072,8 @@ class JarvisController(
     }
 
     companion object {
+        /** How long after the app opens Rick starts listening by itself. */
+        const val OPEN_LISTEN_DELAY_MS = 700L
         /** How long a feeling stays on Rick's face. */
         const val EMOTION_MS = 6_000L
         /** How often the idle loop looks, and how long Rick must be left alone before reading. */

@@ -73,6 +73,8 @@ data class Settings(
      * listens once more by itself. Nothing is recorded or kept; talk without the name is dropped.
      */
     val handsFree: Boolean = true,
+    /** Rick starts listening by itself as soon as the app opens or the floating Rick appears (phone). */
+    val listenOnOpen: Boolean = true,
     /** Learning from corrections / likes and reading while idle (all on the device). */
     val selfLearning: Boolean = true,
 )
