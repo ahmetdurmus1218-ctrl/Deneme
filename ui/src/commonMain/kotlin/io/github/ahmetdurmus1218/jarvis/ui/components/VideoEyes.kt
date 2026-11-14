@@ -154,7 +154,7 @@ fun VideoEyes(
         val bmp = eyes.frames.getOrNull(frame) ?: return@Canvas
         drawImage(
             bmp, IntOffset.Zero, IntSize(bmp.width, bmp.height),
-            IntOffset.Zero, IntSize(size.width.toInt(), size.height.toInt()),
+            IntOffset.Zero, IntSize(this.size.width.toInt(), this.size.height.toInt()),
             filterQuality = FilterQuality.Medium,
         )
     }
