@@ -232,7 +232,12 @@ fun DrawScope.drawEye(eye: EyeAssets, scale: Float, lid: Float) {
     val v = g.vignette
     val vc = Offset(left + v.cx * k, top + v.cy * k)
     val rx = v.rx * k * 1.25f
-    clipRect(left, top, left + w, top + h) {
+    // The photo lands on whole pixels (dstOff/dstSize); erase over exactly that, a pixel wider, so no edge row survives.
+    val ex0 = dstOff.x - 1f
+    val ey0 = dstOff.y - 1f
+    val ew = dstSize.width + 2f
+    val eh = dstSize.height + 2f
+    clipRect(ex0, ey0, ex0 + ew, ey0 + eh) {
         withTransform({ scale(1f, v.ry / v.rx, vc) }) {
             drawCircle(
                 Brush.radialGradient(
@@ -244,12 +249,12 @@ fun DrawScope.drawEye(eye: EyeAssets, scale: Float, lid: Float) {
             )
         }
         // All four sides of the photo vanish completely.
-        val fade = h * 0.14f
-        val side = w * 0.10f
+        val fade = eh * 0.14f
+        val side = ew * 0.10f
         val clear = gone.copy(alpha = 0f)
-        drawRect(Brush.verticalGradient(listOf(gone, clear), top, top + fade), Offset(left, top), Size(w, fade), blendMode = BlendMode.DstOut)
-        drawRect(Brush.verticalGradient(listOf(clear, gone), top + h - fade, top + h), Offset(left, top + h - fade), Size(w, fade), blendMode = BlendMode.DstOut)
-        drawRect(Brush.horizontalGradient(listOf(gone, clear), left, left + side), Offset(left, top), Size(side, h), blendMode = BlendMode.DstOut)
-        drawRect(Brush.horizontalGradient(listOf(clear, gone), left + w - side, left + w), Offset(left + w - side, top), Size(side, h), blendMode = BlendMode.DstOut)
+        drawRect(Brush.verticalGradient(listOf(gone, clear), ey0, ey0 + fade), Offset(ex0, ey0), Size(ew, fade), blendMode = BlendMode.DstOut)
+        drawRect(Brush.verticalGradient(listOf(clear, gone), ey0 + eh - fade, ey0 + eh), Offset(ex0, ey0 + eh - fade), Size(ew, fade), blendMode = BlendMode.DstOut)
+        drawRect(Brush.horizontalGradient(listOf(gone, clear), ex0, ex0 + side), Offset(ex0, ey0), Size(side, eh), blendMode = BlendMode.DstOut)
+        drawRect(Brush.horizontalGradient(listOf(clear, gone), ex0 + ew - side, ex0 + ew), Offset(ex0 + ew - side, ey0), Size(side, eh), blendMode = BlendMode.DstOut)
     }
 }
