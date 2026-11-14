@@ -185,6 +185,7 @@ fun RealEye(
     // often as something visibly moves: every frame during a blink, ~15 times a second while speaking, at most 4
     // while the pupil merely lives, and not at all while asleep or with reduced motion between blinks.
     var shown by remember { mutableStateOf(EyeTick(0L, -10_000L)) }
+    val cache = remember(eye) { PupilCache() }
     val speaking = mode == CoreMode.SPEAKING
     val wave = { t: Long -> pupilWave(t, calm, sleeping, speaking) }
     LaunchedEffect(sleeping, calm, speaking) {
@@ -216,13 +217,12 @@ fun RealEye(
             }
             val due = drawn < 0 || (every != Long.MAX_VALUE && t - drawn >= every) || (!blinking && shown.blinking(drawn))
             // Between blinks a redraw that would look the same (the pupil's unrest moved less than a step) is skipped.
-            if (due && (blinking || drawn < 0 || shown.blinking(drawn) || wave(t) != wave(shown.now))) {
+            if (due && (blinking || drawn < 0 || shown.blinking(drawn) || cache.behind || wave(t) != wave(shown.now))) {
                 shown = EyeTick(t, blinkStart)
             }
             if (due) drawn = t
         }
     }
-    val cache = remember(eye) { PupilCache() }
     // One eye as drawn on its own layer (its edges fade to transparent, so whatever is behind Rick shows through):
     // tilted with the feeling, the left one the mirror image of the photo.
     @Composable
@@ -272,14 +272,42 @@ private fun pupilWave(t: Long, calm: Boolean, sleeping: Boolean, speaking: Boole
  */
 class PupilCache {
     private val kept = ArrayList<Triple<Int, IntSize, ImageBitmap>>()
+    private var lastRender: kotlin.time.TimeSource.Monotonic.ValueTimeMark? = null
 
+    /**
+     * True when a picture was stood in for (a new one was made only moments ago): the eye should be drawn
+     * again shortly, when the right one can be made.
+     */
+    var behind = false
+        private set
+
+    /**
+     * The picture for [key]: kept, or made now. While the pupil changes size (a mood, the light) at most one
+     * new picture is made every [MIN_RENDER_MS]; in between the nearest kept one stands in. Making one costs
+     * the processor a moment, and a picture for every frame of a pupil animation would stall the app.
+     */
     fun get(key: Int, size: IntSize, render: () -> ImageBitmap): ImageBitmap {
         val i = kept.indexOfFirst { it.first == key && it.second == size }
-        if (i >= 0) return kept.removeAt(i).also { kept.add(it) }.third
+        if (i >= 0) {
+            behind = false
+            return kept.removeAt(i).also { kept.add(it) }.third
+        }
+        val recent = lastRender?.let { it.elapsedNow().inWholeMilliseconds < MIN_RENDER_MS } == true
+        val near = kept.filter { it.second == size }.minByOrNull { kotlin.math.abs(it.first - key) }
+        if (recent && near != null) {
+            behind = true
+            return near.third
+        }
         val made = render()
+        lastRender = kotlin.time.TimeSource.Monotonic.markNow()
+        behind = false
         kept.add(Triple(key, size, made))
-        if (kept.size > 8) kept.removeAt(0)
+        if (kept.size > 10) kept.removeAt(0)
         return made
+    }
+
+    private companion object {
+        const val MIN_RENDER_MS = 140L
     }
 }
 
@@ -412,8 +440,8 @@ private fun DrawScope.drawFade(eye: EyeAssets, left: Float, top: Float, k: Float
     }
 }
 
-/** Steps in which the pupil's size is drawn (finer than the eye can tell). */
-private const val PUPIL_STEP = 0.012f
+/** Steps in which the pupil's size is drawn (2.5 %: under a pixel at the size Rick is shown). */
+private const val PUPIL_STEP = 0.025f
 
 /** The photo of width [w] at [origin], its iris re-sampled ring by ring for a pupil at [scale]. */
 private fun DrawScope.drawPupil(eye: EyeAssets, scale: Float, origin: Offset, w: Float) {
@@ -438,7 +466,7 @@ private fun DrawScope.drawPupil(eye: EyeAssets, scale: Float, origin: Offset, w:
         r < rw -> pr + (r - r1) * (rw - pr) / (rw - r1)
         else -> r
     }
-    val rings = 30
+    val rings = 22
     val edges = buildList {
         add(0f); add(r1)
         for (i in 1..rings) add(r1 + (rw - r1) * i / rings)
