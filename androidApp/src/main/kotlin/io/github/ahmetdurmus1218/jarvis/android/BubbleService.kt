@@ -199,7 +199,8 @@ class BubbleService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
                                     }
                                 }
                             },
-                        size = 96.dp,
+                        // The pair of real eyes is wide and short: a little larger, so it stays easy to tap.
+                        size = if (io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.look == "eye") 124.dp else 96.dp,
                         sleeping = asleep,
                         lookAt = look,
                     )

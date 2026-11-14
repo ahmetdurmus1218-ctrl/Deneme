@@ -664,7 +664,8 @@ def main():
             raise SystemExit("floating Rick window frame not found:\n" + block[:1500])
         x1, y1, x2, y2 = map(int, m.groups())
         dens = int(re.findall(r"(\d+)", adb("shell", "wm", "density"))[-1]) / 160
-        fx, fy = (x1 + x2) // 2, y1 + int(48 * dens)
+        # The face is at the top of the window (a line of text may follow): its middle, at most 48 dp down.
+        fx, fy = (x1 + x2) // 2, y1 + min(int(48 * dens), (y2 - y1) // 2)
         print(f"floating face window {x1},{y1}-{x2},{y2}; tapping {fx},{fy}")
         adb("logcat", "-c", check=False)
         adb("shell", "input", "tap", str(fx), str(fy))
