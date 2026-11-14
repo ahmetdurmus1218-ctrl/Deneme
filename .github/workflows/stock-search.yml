@@ -1,0 +1,59 @@
+name: stock-search
+# One-off helper for Rick's eyes: looks for free-licence close-up eye videos (Mixkit free licence) and prints
+# their names, links and a contact sheet of first frames as base64 in the job log. Read-only.
+on:
+  workflow_dispatch:
+    inputs:
+      pages:
+        description: 'Mixkit listing paths, separated by ";" (e.g. free-stock-video/eye/)'
+        required: true
+        default: 'free-stock-video/eye/;free-stock-video/blink/;free-stock-video/eyes/'
+      pick:
+        description: 'Clip links to print frames of, separated by ";" (optional)'
+        required: false
+        default: ''
+permissions:
+  contents: read
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    steps:
+      - name: List the clips
+        env:
+          PAGES: ${{ github.event.inputs.pages }}
+        run: |
+          mkdir -p s && cd s
+          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+          echo "$PAGES" | tr ';' '\n' | while read -r p; do
+            [ -n "$p" ] || continue
+            curl -sSL -A "$UA" "https://mixkit.co/$p" -o page.html || continue
+            echo "== $p $(stat -c %s page.html) bytes"
+            grep -oE 'https://assets\.mixkit\.co/[^"'"'"' ]+\.mp4' page.html | sort -u >> clips.txt || true
+          done
+          sort -u clips.txt -o clips.txt; wc -l clips.txt; cat clips.txt | head -60
+      - name: Contact sheet of the clips' middle frames
+        run: |
+          cd s
+          i=0; : > list.txt
+          head -40 clips.txt | while read -r u; do
+            i=$((i+1)); curl -sSL "$u" -o c.mp4 || continue
+            d=$(ffprobe -v error -show_entries format=duration -of csv=p=0 c.mp4 | cut -d. -f1); d=${d:-2}
+            ffmpeg -v error -ss $((d/2)) -i c.mp4 -frames:v 1 -vf "scale=360:-2,drawtext=text='$i':x=6:y=6:fontsize=28:fontcolor=yellow:box=1:boxcolor=black" -y "f$(printf %03d $i).jpg" && echo "$i $u" >> list.txt
+          done
+          cat list.txt
+          ffmpeg -v error -pattern_type glob -i 'f*.jpg' -vf "scale=360:203:force_original_aspect_ratio=decrease,pad=360:203:(ow-iw)/2:(oh-ih)/2,tile=5x8" -frames:v 1 -q:v 4 sheet.jpg
+          echo "=== IMG stock-sheet"; base64 -w0 sheet.jpg; echo; echo "=== END stock-sheet"
+      - name: Frames of the picked clips
+        env:
+          PICK: ${{ github.event.inputs.pick }}
+        run: |
+          cd s
+          [ -n "$PICK" ] || exit 0
+          n=0
+          echo "$PICK" | tr ';' '\n' | while read -r u; do
+            [ -n "$u" ] || continue
+            n=$((n+1)); curl -sSL "$u" -o p.mp4
+            ffprobe -v error -show_entries stream=width,height,r_frame_rate,duration -of csv=p=0 p.mp4
+            ffmpeg -v error -i p.mp4 -vf "fps=4,scale=320:-2,drawtext=text='%{n}':x=4:y=4:fontsize=20:fontcolor=yellow,tile=6x6" -frames:v 1 -q:v 4 "pick$n.jpg"
+            echo "=== IMG pick$n"; base64 -w0 "pick$n.jpg"; echo; echo "=== END pick$n"
+          done

@@ -123,7 +123,7 @@ class ClapWakeTest {
             "two cupped claps" to join(silence(1_200), clap(cupped = true), silence(450), clap(cupped = true), silence(1_500)),
             "far away, with the room's echo" to join(silence(1_200), clap(0.16f, echo = 0.12f), silence(300), clap(0.16f, echo = 0.12f), silence(1_500)),
             "very loud (clipped)" to join(silence(1_200), clap(2.5f), silence(260), clap(2.5f), silence(1_500)),
-            "slow claps" to join(silence(1_200), clap(), silence(700), clap(), silence(1_500)),
+            "slow claps, a second apart" to join(silence(1_200), clap(), silence(700), clap(), silence(1_500)),
             "over a television" to mix(television(6_000), join(clap(0.6f), silence(380), clap(0.6f)), at = sr * 3),
         )
     }

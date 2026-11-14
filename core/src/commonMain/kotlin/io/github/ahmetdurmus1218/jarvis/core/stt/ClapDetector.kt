@@ -8,7 +8,7 @@ import kotlin.math.sqrt
  * Finds hand claps in 16 kHz microphone audio, entirely on the device: a clap is a sudden, loud,
  * short burst — the 5 ms energy jumps far above the room's noise floor within a few milliseconds
  * and is gone again within ~120 ms. Speech, music and door slams rise more slowly or last longer.
- * Two claps 0.15–0.8 s apart (or the user's own recorded rhythm) make a wake signal.
+ * Two claps 0.15–1.1 s apart (or the user's own recorded rhythm) make a wake signal.
  */
 class ClapDetector(
     private val sampleRate: Int = UtteranceCapture.SAMPLE_RATE,
@@ -103,8 +103,8 @@ class ClapDetector(
             while (claps.size > 2) claps.removeAt(0)
             if (claps.size == 2) {
                 val gap = claps[1] - claps[0]
-                if (gap in 150..800) { claps.clear(); return true }
-                if (gap > 800) claps.removeAt(0)
+                if (gap in 150..MAX_GAP_MS) { claps.clear(); return true }
+                if (gap > MAX_GAP_MS) claps.removeAt(0)
             }
             return false
         }
@@ -119,6 +119,9 @@ class ClapDetector(
 
     companion object {
         const val MAX_CLAP_MS = 120L
+
+        /** The longest pause between the two claps of a double clap: a slow, deliberate one is about a second. */
+        const val MAX_GAP_MS = 1_100L
 
         /** Records a rhythm: the gaps between the claps' times (ms). */
         fun rhythmOf(clapTimes: List<Long>): List<Long> = clapTimes.zipWithNext { a, b -> b - a }
