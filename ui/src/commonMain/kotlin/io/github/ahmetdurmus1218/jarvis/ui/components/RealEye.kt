@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.withInfiniteAnimationFrameMillis
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -34,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import io.github.ahmetdurmus1218.jarvis.ui.CoreMode
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisColors
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.math.ln
@@ -132,18 +133,24 @@ fun RealEye(
     val rest by animateFloatAsState(lidForMood(mode, sleeping), tween(if (sleeping) 2200 else 500))
     var blinkStart by remember { mutableStateOf(-10_000L) }
     var now by remember { mutableStateOf(0L) }
-    LaunchedEffect(sleeping, calm) {
-        if (sleeping) return@LaunchedEffect
-        while (true) {
-            delay(Random.nextLong(2_400, 6_200))
-            val twice = Random.nextFloat() < 0.18f
-            blinkStart = now
-            if (twice) { delay(380); blinkStart = now }
-        }
-    }
-    LaunchedEffect(Unit) {
-        while (true) {
-            androidx.compose.runtime.withFrameMillis { now = it }
+    // One frame loop drives the blinks. It is an "infinite animation", so UI tests (which stop those) can go idle.
+    LaunchedEffect(sleeping) {
+        var next = -1L
+        var second = -1L
+        while (isActive) {
+            val t = try { withInfiniteAnimationFrameMillis { it } } catch (e: kotlinx.coroutines.CancellationException) {
+                if (!isActive) throw e
+                return@LaunchedEffect
+            }
+            now = t
+            if (sleeping) continue
+            if (next < 0) next = t + Random.nextLong(2_400, 6_200)
+            if (second in 0..t) { blinkStart = t; second = -1L }
+            if (t >= next) {
+                blinkStart = t
+                second = if (Random.nextFloat() < 0.18f) t + 380 else -1L
+                next = t + Random.nextLong(2_400, 6_200)
+            }
         }
     }
     val speakFlicker = if (mode == CoreMode.SPEAKING) 0.04f * mouthWave(clock) else 0f
