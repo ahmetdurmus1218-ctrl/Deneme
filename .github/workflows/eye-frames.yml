@@ -6,6 +6,11 @@ on:
   push:
     paths: [.github/workflows/eye-frames.yml, tools/rick-eye/frames.txt]
   workflow_dispatch:
+    inputs:
+      frames:
+        description: 'Frames to print at full size: "<video> <frame at 6 fps>" pairs separated by ";"'
+        required: false
+        default: ''
 permissions:
   contents: read
 jobs:
@@ -38,11 +43,13 @@ jobs:
       - name: Chosen frames at full size
         run: |
           cd v
-          [ -f ../tools/rick-eye/frames.txt ] || exit 0
-          # Lines: <video name without .webm> <frame number at 6 fps>
+          # Lines: <video name without .webm> <frame number at 6 fps> (the dispatch input, else frames.txt)
+          if [ -n "$FRAMES" ]; then echo "$FRAMES" | tr ';' '\n' > list.txt; else cp ../tools/rick-eye/frames.txt list.txt 2>/dev/null || exit 0; fi
           while read -r n k; do
             [ -n "$n" ] || continue
             t=$(python3 -c "print($k/6)")
             ffmpeg -v error -ss "$t" -i "$n.webm" -frames:v 1 -q:v 2 "full-$n-$k.jpg"
             echo "=== IMG full-$n-$k"; base64 -w0 "full-$n-$k.jpg"; echo; echo "=== END full-$n-$k"
-          done < ../tools/rick-eye/frames.txt
+          done < list.txt
+        env:
+          FRAMES: ${{ github.event.inputs.frames }}
