@@ -1,5 +1,6 @@
 package io.github.ahmetdurmus1218.jarvis.android
 
+import androidx.compose.ui.graphics.asImageBitmap
 import android.app.ActivityManager
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -57,7 +58,7 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
 
     override fun bundledImage(path: String): androidx.compose.ui.graphics.ImageBitmap? = runCatching {
         app.assets.open(path).use { android.graphics.BitmapFactory.decodeStream(it) }?.let {
-            androidx.compose.ui.graphics.asImageBitmap(it)
+            it.asImageBitmap()
         }
     }.getOrNull()
 
