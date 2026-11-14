@@ -53,6 +53,7 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         bridge.activity = this
+        bridge.watchLight(true)
         BubbleService.appInFront.value = true
         (application as JarvisApplication).graph.sharedController?.setAppVisible(true)
         bridge.downloader.refresh()
@@ -61,6 +62,7 @@ class MainActivity : FragmentActivity() {
     }
 
     override fun onPause() {
+        bridge.watchLight(false)
         BubbleService.appInFront.value = false
         (application as JarvisApplication).graph.sharedController?.setAppVisible(false)
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

@@ -64,6 +64,8 @@ kotlin {
         compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
     }
     sourceSets {
+        // Rick's eye (photos, shared with the phone app): assets/rick-eye on the classpath.
+        jvmMain.get().resources.srcDir(rootProject.file("assets"))
         jvmMain.dependencies {
             implementation(project(":ui"))
             implementation(compose.desktop.currentOs)

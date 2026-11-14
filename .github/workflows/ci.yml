@@ -54,7 +54,7 @@ jobs:
       - name: Desktop UI screenshots as text (base64, for reviewing the design from the log)
         if: always()
         run: |
-          for f in 31-surekli-dinleme-acik 32-surekli-dinleme-kapali 26-gorunumler 02c-sohbet-karsilama 03-sohbet-hesap 27-el-kontrolu-dar 28-el-kontrolu-el 29-el-efekt-ayarlari-dar 30-el-efektler-dar 20-yuz-bekliyor 21-yuz-dinliyor 22-yuz-dusunuyor 23-yuz-konusuyor 24-yuz-uyuyor 25-yuz-kucuk 08a-ev-kahve 08b-ev-paneli 08c-kitaplik 08d-brifing 08e-tema-mark3 08f-tema-gunisigi 17-mark2 09-el-kontrolu 09-el-ates 10-el-muhur 11-el-gezegen 12-el-iki-elle 13-el-patlama 14-el-simsek 15-el-isik-izi 16-el-efekt-ayarlari; do
+          for f in 33-gercek-goz 31-surekli-dinleme-acik 32-surekli-dinleme-kapali 26-gorunumler 02c-sohbet-karsilama 03-sohbet-hesap 27-el-kontrolu-dar 28-el-kontrolu-el 29-el-efekt-ayarlari-dar 30-el-efektler-dar 20-yuz-bekliyor 21-yuz-dinliyor 22-yuz-dusunuyor 23-yuz-konusuyor 24-yuz-uyuyor 25-yuz-kucuk 08a-ev-kahve 08b-ev-paneli 08c-kitaplik 08d-brifing 08e-tema-mark3 08f-tema-gunisigi 17-mark2 09-el-kontrolu 09-el-ates 10-el-muhur 11-el-gezegen 12-el-iki-elle 13-el-patlama 14-el-simsek 15-el-isik-izi 16-el-efekt-ayarlari; do
             p="desktopApp/build/ui-screens/$f.jpg"
             [ -f "$p" ] || continue
             echo "=== IMG $f"; base64 -w0 "$p"; echo; echo "=== END $f"

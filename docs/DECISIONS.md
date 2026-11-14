@@ -580,3 +580,23 @@ Kullanıcı kamera onu gösterirken elleriyle havada tıklamak, kaydırmak, dön
   Kürenin altında ses çubukları: konuşurken heceler, dinlerken mikrofon, beklerken hafif kıpırtı; cevap varken
   yalnızca ses olduğunda görünür (cevaba yer kalsın).
 
+## D50 — Rick'in gerçek gözü (v1.5.0)
+
+- Kullanıcı çizim yüzleri ("çizgi film gibi", "zombi gibi") ve 3B insan modelini reddetti; "birebir gerçek" göz
+  istedi, örnek olarak telifli (Getty) bir fotoğraf gönderdi. Telifli fotoğraf kullanılmadı. Wikimedia Commons'ta
+  serbest lisanslı 19 gerçek göz fotoğrafı gösterildi; kullanıcı kamu malı "030608 Pupil.jpg" (Ylem) seçti.
+- Göz bebeği: fotoğrafın kendisi radyal olarak yeniden örneklenir (iris lifleri bebekle birlikte gerilir); kornea
+  yansıması yerinde kalır. Uygulamada 30 halka ile canlı çizilir, kare gerekmez. Ölçek ışık sensöründen:
+  0 lux → 1,8; 10 000 lux → 0,62 (logaritmik), dinlerken ×1,12, yavaş "hippus" titreşimi.
+- Kapak: tek açık fotoğraftan sentezlenen kapak (deri gerdirme, yapay deri) kullanıcıya gösterildi ve "çok kötü"
+  bulundu. Yerine gerçek kapalı göz fotoğrafı ("Closed human eye, superior view.jpg", Rapidreflex, CC BY-SA 4.0)
+  açık gözün kapak çizgisine oturtuldu: renk eşleme, kirpik çizgisi kapak kenarına, kapalı fotoğrafın kirpikleri
+  ayrıştırılıp kapak kenarından sarkıtıldı, kapağın üstü üstteki deriyle renk olarak birleştirildi. 12 kare
+  (b = 0 … 1) RGBA olarak dışa aktarıldı; kareler göz bebeğinden bağımsızdır (kapak katmanı = önceden çarpılmış
+  alfa), uygulama iki komşu kare arasında geçiş yapar.
+- Toplam boyut 1,2 MB (`assets/rick-eye`), Android'de assets, PC'de sınıf yolu olarak paketlenir.
+- Lisans: kapak kareleri CC BY-SA 4.0'dan türediği için o lisanslı; kaynaklar `assets/rick-eye/CREDITS.txt` ve
+  Ayarlar → Görünüm'de yazılı. Üretim betikleri `tools/rick-eye/`.
+- Bilinen sınır: göz bakış yönü değiştirmez (tek fotoğraf); iki farklı kişinin fotoğrafı birleştiği için kapalıyken
+  çok yakından bakınca ten farkı sezilebilir.
+

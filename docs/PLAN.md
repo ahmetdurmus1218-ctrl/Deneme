@@ -155,6 +155,8 @@ Kaynak görev: [`CLAUDE.md`](../CLAUDE.md). Her aşama çalışan bir GitHub Rel
 - [ ] v1.5.0: kullanıcı "yayımla" deyince `.github/release-request` → `v1.5.0`.
 - [x] Yeni ana ekran (kod): kullanıcı A'yı seçti ve hepsinin eklenmesini istedi → cam küre varsayılan, HUD çekirdek / dalga halkası / robot yüz seçenek; çizgi simgeler, dinleme anahtarı, ses çubukları (D49).
 - [ ] Yeni ana ekranın CI ekran görüntüleri kullanıcıya gösterilecek.
+- [x] Gerçek göz (kod): kullanıcının seçtiği kamu malı göz fotoğrafı, ışığa duyarlı göz bebeği, gerçek kapalı göz fotoğrafından göz kırpma; varsayılan görünüm (D50).
+- [ ] Gerçek gözün CI ekran görüntüsü (33-gercek-goz) kullanıcıya gösterilecek; onaydan sonra v1.5.0 yayımı.
 - [ ] Sıradaki: sesle söz kesme (yankı engelleme, gerçek cihazda denenerek); el takibinin hızı (yüz aramasını gereksiz yerde kapatma, GPU); ana ekran tasarımı (önce resim); PC'de "İndirilenler klasörünü düzenle"; PC'de web kamerasıyla el hareketleri.
 
 ## Kaldığım yer

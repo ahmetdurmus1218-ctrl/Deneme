@@ -111,8 +111,14 @@ object JarvisUi {
     /** Rick as a living face instead of the HUD core (Settings → Görünüm). */
     var face by mutableStateOf(true)
 
-    /** Which look the living Rick has (Settings → Görünüm): spark, eyes, orb, ring, particles. */
-    var look by mutableStateOf("glass")
+    /** Which look the living Rick has (Settings → Görünüm): eye, glass, hud, wave, robot, spark, … */
+    var look by mutableStateOf("eye")
+
+    /** Rick's real eye (photos bundled with the app), once loaded; null until then or if missing. */
+    var eye by mutableStateOf<io.github.ahmetdurmus1218.jarvis.ui.components.EyeAssets?>(null)
+
+    /** The light around the device in lux (the phone's light sensor); null where there is none. */
+    var ambientLux by mutableStateOf<Float?>(null)
 
     /** The camera fills the screen behind Rick ("El ile yönet", full screen): pages turn see-through. */
     var seeThrough by mutableStateOf(false)

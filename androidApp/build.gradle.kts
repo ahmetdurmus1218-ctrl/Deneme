@@ -65,6 +65,9 @@ android {
     // The probe APK targets the release app that the emulator test installs.
     testBuildType = "release"
 
+    // Rick's eye (photos, shared with the PC app): assets/rick-eye.
+    sourceSets.getByName("main").assets.srcDir(rootProject.file("assets"))
+
     // One APK per CPU type: rick.apk is the arm64 build (every Android 12+ phone is 64-bit ARM);
     // the x86_64 build exists only for the CI emulator. Shipping both in one APK doubled its size.
     splits {

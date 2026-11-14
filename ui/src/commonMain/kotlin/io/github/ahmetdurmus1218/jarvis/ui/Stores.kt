@@ -57,8 +57,8 @@ data class Settings(
     val handNavFull: Boolean = true,
     /** Apps the hands may drive while Rick is in the background (never banks, payment, messengers: see HandApps). */
     val handApps: Set<String> = io.github.ahmetdurmus1218.jarvis.core.device.HandApps.DEFAULT,
-    /** Rick's look (Settings → Görünüm): glass, hud, wave, robot, spark, eyes, orb, ring, particles. */
-    val look: String = "glass",
+    /** Rick's look (Settings → Görünüm): eye, glass, hud, wave, robot, spark, eyes, orb, ring, particles. */
+    val look: String = "eye",
     /** Which design generation these settings have seen; older ones are moved to the new default look once. */
     val design: Int = 0,
     /** The floating Rick also watches the hands: swipe for the next song, ✋ to pause, 🤏 turn for volume. */
@@ -85,8 +85,8 @@ class SettingsStore(private val files: AppFiles) {
 
     private fun load(): Settings {
         val saved = files.read(FILE)?.let { runCatching { json.decodeFromString(Settings.serializer(), it) }.getOrNull() } ?: Settings()
-        // 1.5: the glass sphere is the new look. Everybody starts on it once; the older looks stay selectable.
-        return if (saved.design < DESIGN) saved.copy(look = "glass", design = DESIGN) else saved
+        // 1.5: the real eye is the new look. Everybody starts on it once; the other looks stay selectable.
+        return if (saved.design < DESIGN) saved.copy(look = "eye", design = DESIGN) else saved
     }
 
     fun update(transform: (Settings) -> Settings) {
@@ -97,7 +97,7 @@ class SettingsStore(private val files: AppFiles) {
 
     private companion object {
         const val FILE = "settings.json"
-        const val DESIGN = 2
+        const val DESIGN = 3
     }
 }
 

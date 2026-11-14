@@ -96,6 +96,7 @@ class FaceAndAirUiTest {
 
     @Test
     fun everyLookInEveryMood() {
+        io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.eye = io.github.ahmetdurmus1218.jarvis.ui.components.EyeAssets.load(::testImage, ::testText)
         rule.mainClock.autoAdvance = false
         val moods = listOf(CoreMode.IDLE to false, CoreMode.LISTENING to false, CoreMode.SPEAKING to false, CoreMode.IDLE to true)
         rule.setContent {

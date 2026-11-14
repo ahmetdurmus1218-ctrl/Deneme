@@ -80,6 +80,15 @@ class DesktopBridge(override val appVersion: String) : PlatformBridge {
     private val root = dataDir()
     private val partial = File(root, "models/.partial")
     override val platform = Platform.DESKTOP
+
+    override fun bundledImage(path: String): androidx.compose.ui.graphics.ImageBitmap? = runCatching {
+        DesktopBridge::class.java.classLoader.getResourceAsStream(path)?.use {
+            androidx.compose.ui.graphics.toComposeImageBitmap(org.jetbrains.skia.Image.makeFromEncoded(it.readBytes()))
+        }
+    }.getOrNull()
+
+    override fun bundledText(path: String): String? =
+        runCatching { DesktopBridge::class.java.classLoader.getResourceAsStream(path)?.use { it.readBytes().decodeToString() } }.getOrNull()
     override val files: AppFiles = DesktopFiles(File(root, "app"))
     override val models: ModelStorage = DesktopModelStorage(File(root, "models"), partial)
     /** The installed launcher (jpackage sets this); null when run from Gradle or in tests. */

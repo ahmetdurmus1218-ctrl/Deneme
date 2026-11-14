@@ -212,7 +212,7 @@ fun DisplaySettings(settings: SettingsStore) {
             }
         }
         if (s.face) {
-            // The five looks, each shown alive; a tap picks it.
+            // Every look, each shown alive; a tap picks it.
             io.github.ahmetdurmus1218.jarvis.ui.components.LOOKS.chunked(3).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     row.forEach { (id, label) ->
@@ -227,6 +227,12 @@ fun DisplaySettings(settings: SettingsStore) {
                             Text(label, fontSize = 11.sp, color = if (s.look == id) JarvisColors.Cyan else JarvisColors.TextDim)
                         }
                     }
+                }
+            }
+            // The eye is made of other people's photographs: say whose.
+            if (s.look == "eye") {
+                io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.eye?.geometry?.credits?.forEach { line ->
+                    Text(line, fontSize = 10.sp, color = JarvisColors.TextDim)
                 }
             }
         }

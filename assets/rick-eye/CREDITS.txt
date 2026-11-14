@@ -1,0 +1,13 @@
+Rick'in gözü / Rick's eye
+
+Açık göz (eye_base.jpg, eye_reflect.webp ve göz kapağı karelerindeki açık göz):
+  "030608 Pupil.jpg", Ylem, Wikimedia Commons — kamu malı (public domain).
+  https://commons.wikimedia.org/wiki/File:030608_Pupil.jpg
+  Değişiklik: göz bebeği uygulamada canlı olarak büyütülüp küçültülür; kirpikler kapak için ayrıştırıldı.
+
+Kapalı göz kapağı (eye_lid_*.webp):
+  "Closed human eye, superior view.jpg", Rapidreflex, Wikimedia Commons — CC BY-SA 4.0.
+  https://commons.wikimedia.org/wiki/File:Closed_human_eye,_superior_view.jpg
+  https://creativecommons.org/licenses/by-sa/4.0/
+  Değişiklik: renk açık göze uyduruldu, kapak çizgisi gözün şekline oturtuldu, kirpikler ayrıştırıldı.
+  Bu yüzden eye_lid_*.webp dosyaları da CC BY-SA 4.0 lisanslıdır.

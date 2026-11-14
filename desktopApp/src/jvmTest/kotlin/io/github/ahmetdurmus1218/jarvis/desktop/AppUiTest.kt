@@ -54,6 +54,15 @@ import kotlin.test.Test
  * wizard → chat (quick command, tool call, knowledge question) → models → approval → network log.
  * Screenshots go to build/ui-screens (CI prints them and uploads them as an artifact).
  */
+/** The app's bundled files (assets/), from the test classpath. */
+internal fun testImage(path: String): androidx.compose.ui.graphics.ImageBitmap? =
+    AppUiTest::class.java.classLoader.getResourceAsStream(path)?.use {
+        androidx.compose.ui.graphics.toComposeImageBitmap(org.jetbrains.skia.Image.makeFromEncoded(it.readBytes()))
+    }
+
+internal fun testText(path: String): String? =
+    AppUiTest::class.java.classLoader.getResourceAsStream(path)?.use { it.readBytes().decodeToString() }
+
 class AppUiTest {
     @get:Rule
     val rule = createComposeRule()
@@ -68,6 +77,8 @@ class AppUiTest {
     internal class UiTestBridge(private val mic: SpeechInput? = null) : PlatformBridge {
         override val platform = Platform.DESKTOP
         override val appVersion = "ui-test"
+        override fun bundledImage(path: String) = testImage(path)
+        override fun bundledText(path: String) = testText(path)
         override fun deviceInfo() = DeviceInfo("Test PC · Windows 11", 16.0, 500_000_000_000L, listOf("Önerilen model: Qwen 3.5 9B"))
         override val files: AppFiles = MemFiles()
         override val speechInput: SpeechInput? get() = mic

@@ -54,6 +54,29 @@ class AndroidBridge(private val app: Context) : PlatformBridge {
     @Volatile var activity: MainActivity? = null
 
     override val platform = Platform.ANDROID
+
+    override fun bundledImage(path: String): androidx.compose.ui.graphics.ImageBitmap? = runCatching {
+        app.assets.open(path).use { android.graphics.BitmapFactory.decodeStream(it) }?.let {
+            androidx.compose.ui.graphics.asImageBitmap(it)
+        }
+    }.getOrNull()
+
+    override fun bundledText(path: String): String? =
+        runCatching { app.assets.open(path).use { it.readBytes().decodeToString() } }.getOrNull()
+
+    // The light sensor (Rick's pupils follow the room's light). Listened to only while Rick is on screen.
+    private val lux = kotlinx.coroutines.flow.MutableStateFlow<Float?>(null)
+    override val ambientLux: kotlinx.coroutines.flow.StateFlow<Float?> get() = lux
+    private val luxListener = object : android.hardware.SensorEventListener {
+        override fun onSensorChanged(e: android.hardware.SensorEvent) { lux.value = e.values.firstOrNull() }
+        override fun onAccuracyChanged(s: android.hardware.Sensor?, a: Int) {}
+    }
+    fun watchLight(on: Boolean) {
+        val sm = app.getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager ?: return
+        val sensor = sm.getDefaultSensor(android.hardware.Sensor.TYPE_LIGHT) ?: return
+        if (on) sm.registerListener(luxListener, sensor, android.hardware.SensorManager.SENSOR_DELAY_NORMAL)
+        else sm.unregisterListener(luxListener)
+    }
     override val appVersion: String = runCatching { app.packageManager.getPackageInfo(app.packageName, 0).versionName }.getOrNull() ?: "?"
     override val files: AppFiles = AndroidFiles(app)
     override val models = AndroidModelStorage(app, folderPicker = { activity?.pickFolder() }) { activity?.pickDocument() }

@@ -332,6 +332,16 @@ fun JarvisApp(graph: AppGraph, formatTime: (Long) -> String) {
         }
         LaunchedEffect(settings.face) { io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi.face = settings.face }
         LaunchedEffect(settings.look) { JarvisUi.look = settings.look }
+        // Rick's real eye: decoded once, off the main thread.
+        LaunchedEffect(Unit) {
+            if (JarvisUi.eye == null) {
+                JarvisUi.eye = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    io.github.ahmetdurmus1218.jarvis.ui.components.EyeAssets.load(graph.bridge::bundledImage, graph.bridge::bundledText)
+                }
+            }
+        }
+        // The pupils follow the room's light (the phone's light sensor).
+        LaunchedEffect(Unit) { graph.bridge.ambientLux.collect { JarvisUi.ambientLux = it } }
         // The voice chosen in Settings (man / woman, Rick's own or the phone's).
         LaunchedEffect(settings.voiceId) { graph.bridge.speechOutput?.choose(settings.voiceId) }
         LaunchedEffect(Unit) { graph.bridge.downloader.refresh() }

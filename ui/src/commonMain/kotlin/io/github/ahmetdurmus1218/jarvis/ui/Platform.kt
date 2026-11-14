@@ -7,6 +7,15 @@ import kotlinx.coroutines.flow.StateFlow
 
 /** Everything the shared UI needs from the host platform (Android "Kale" or Windows desktop). */
 interface PlatformBridge {
+    /** Decodes a bundled image (assets/<path>, e.g. "rick-eye/eye_base.jpg"); null if missing. */
+    fun bundledImage(path: String): androidx.compose.ui.graphics.ImageBitmap? = null
+
+    /** Reads a bundled text file (assets/<path>); null if missing. */
+    fun bundledText(path: String): String? = null
+
+    /** The light around the device in lux, from its light sensor; null where there is none (the PC). */
+    val ambientLux: kotlinx.coroutines.flow.StateFlow<Float?> get() = kotlinx.coroutines.flow.MutableStateFlow(null)
+
     /** Offline Wikipedia (ZIM) access; null where the platform has none. */
     val zim: io.github.ahmetdurmus1218.jarvis.core.knowledge.ZimBackend? get() = null
 

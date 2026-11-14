@@ -70,6 +70,14 @@ fun RickFace(
     /** One of [LOOKS] (glass, hud, wave, robot, spark, …); by default the one chosen in Settings. */
     look: String = JarvisUi.look,
 ) {
+    // The real eye (photographs): drawn by its own component once its images are loaded.
+    if (look == "eye") {
+        val eye = JarvisUi.eye
+        if (eye != null) {
+            RealEye(eye, mode, level, modifier, size, sleeping)
+            return
+        }
+    }
     val mood = faceMood(mode, sleeping)
     val transition = rememberInfiniteTransition()
     // Seconds, wrapping every 10 minutes; all continuous motion is derived from it.
@@ -133,7 +141,7 @@ fun RickFace(
         val breath = sin(t * tau / (if (sleeping) 5.5f else 3.6f))
         val st = LookState(t, listen, speak, think, asleep, blink, gaze, mic, accent)
         when (look) {
-            "glass" -> { drawGlass(st); return@Canvas }
+            "glass", "eye" -> { drawGlass(st); return@Canvas }
             "hud" -> { drawHudCore(st); return@Canvas }
             "wave" -> { drawWave(st); return@Canvas }
             "robot" -> { drawRobot(st); return@Canvas }
@@ -218,6 +226,7 @@ private val EYE_DARK = Color(0xFF1A0E0A)
 
 /** The looks to choose from (Settings → Görünüm): id to name. */
 val LOOKS = listOf(
+    "eye" to "Gerçek göz",
     "glass" to "Cam küre",
     "hud" to "HUD çekirdek",
     "wave" to "Dalga halkası",
