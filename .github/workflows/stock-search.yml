@@ -2,6 +2,8 @@ name: stock-search
 # One-off helper for Rick's eyes: looks for free-licence close-up eye videos (Mixkit free licence) and prints
 # their names, links and a contact sheet of first frames as base64 in the job log. Read-only.
 on:
+  push:
+    paths: [.github/workflows/stock-search.yml]
   workflow_dispatch:
     inputs:
       pages:
@@ -23,6 +25,7 @@ jobs:
           PAGES: ${{ github.event.inputs.pages }}
         run: |
           mkdir -p s && cd s
+          PAGES=${PAGES:-free-stock-video/eye/;free-stock-video/blink/;free-stock-video/eyes/;free-stock-video/close-up-face/}
           UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
           echo "$PAGES" | tr ';' '\n' | while read -r p; do
             [ -n "$p" ] || continue
