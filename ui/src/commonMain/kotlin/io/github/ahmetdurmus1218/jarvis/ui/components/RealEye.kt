@@ -18,7 +18,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
@@ -28,12 +31,12 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import io.github.ahmetdurmus1218.jarvis.ui.CoreMode
-import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisColors
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisUi
 import kotlinx.coroutines.isActive
 import kotlinx.serialization.Serializable
@@ -154,7 +157,9 @@ fun RealEye(
         }
     }
     val speakFlicker = if (mode == CoreMode.SPEAKING) 0.04f * mouthWave(clock) else 0f
-    Canvas(modifier.size(size)) {
+    // Wider than tall, so it reads as an eye, not a photo in a box; drawn in its own layer so its edges can fade
+    // to transparent (whatever is behind Rick shows through, with no visible frame).
+    Canvas(modifier.size(size * 1.3f, size).eyeLayer()) {
         val hippus = if (calm) 0f else 0.025f * sin(clock * 0.9f) + 0.015f * sin(clock * 2.3f + 1f)
         val scale = (pupil * (1f + hippus + speakFlicker)).coerceIn(0.58f, 1.9f)
         val lid = max(rest, if (sleeping) 0f else blinkAt(now - blinkStart)).coerceIn(0f, 1f)
@@ -162,11 +167,16 @@ fun RealEye(
     }
 }
 
-/** The eye at pupil [scale] with the lid at [lid] (0 open … 1 closed), fitted to the width of the draw area. */
+/** The layer the eye must be drawn in: its edges are faded by erasing, which needs a layer of its own. */
+fun Modifier.eyeLayer(): Modifier = graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+
+/**
+ * The eye at pupil [scale] with the lid at [lid] (0 open … 1 closed), fitted to the width of the draw area.
+ * Draw it in a [eyeLayer]: the photo's edges are erased, not painted over.
+ */
 fun DrawScope.drawEye(eye: EyeAssets, scale: Float, lid: Float) {
     val g = eye.geometry
-    // A little wider than the square it is given, so it reads as an eye, not a photo in a box.
-    val w = size.width * 1.3f
+    val w = size.width
     val k = w / g.width
     val h = g.height * k
     val left = (size.width - w) / 2f
@@ -217,8 +227,8 @@ fun DrawScope.drawEye(eye: EyeAssets, scale: Float, lid: Float) {
     if (t > 0.01f) img(eye.lids[j + 1])
     img(eye.lids[j])
     if (t > 0.01f) img(eye.lids[j + 1], t)
-    // 4. The photo's edges fade into Rick's background (only inside the photo: nothing else is covered).
-    val bg = JarvisColors.Background
+    // 4. The photo's edges fade out: erased (not painted in a colour), so no frame shows on any background.
+    val gone = Color.Black
     val v = g.vignette
     val vc = Offset(left + v.cx * k, top + v.cy * k)
     val rx = v.rx * k * 1.25f
@@ -226,16 +236,20 @@ fun DrawScope.drawEye(eye: EyeAssets, scale: Float, lid: Float) {
         withTransform({ scale(1f, v.ry / v.rx, vc) }) {
             drawCircle(
                 Brush.radialGradient(
-                    0f to bg.copy(alpha = 0f), 0.20f to bg.copy(alpha = 0f), 0.40f to bg.copy(alpha = 0.37f),
-                    0.60f to bg.copy(alpha = 0.67f), 0.80f to bg.copy(alpha = 0.89f), 1f to bg,
+                    0f to gone.copy(alpha = 0f), 0.20f to gone.copy(alpha = 0f), 0.40f to gone.copy(alpha = 0.37f),
+                    0.60f to gone.copy(alpha = 0.67f), 0.80f to gone.copy(alpha = 0.89f), 1f to gone,
                     center = vc, radius = rx,
                 ),
-                radius = rx * 3f, center = vc,
+                radius = rx * 3f, center = vc, blendMode = BlendMode.DstOut,
             )
         }
-        // The top and bottom of the photo vanish completely.
+        // All four sides of the photo vanish completely.
         val fade = h * 0.14f
-        drawRect(Brush.verticalGradient(listOf(bg, bg.copy(alpha = 0f)), top, top + fade), Offset(left, top), androidx.compose.ui.geometry.Size(w, fade))
-        drawRect(Brush.verticalGradient(listOf(bg.copy(alpha = 0f), bg), top + h - fade, top + h), Offset(left, top + h - fade), androidx.compose.ui.geometry.Size(w, fade))
+        val side = w * 0.10f
+        val clear = gone.copy(alpha = 0f)
+        drawRect(Brush.verticalGradient(listOf(gone, clear), top, top + fade), Offset(left, top), Size(w, fade), blendMode = BlendMode.DstOut)
+        drawRect(Brush.verticalGradient(listOf(clear, gone), top + h - fade, top + h), Offset(left, top + h - fade), Size(w, fade), blendMode = BlendMode.DstOut)
+        drawRect(Brush.horizontalGradient(listOf(gone, clear), left, left + side), Offset(left, top), Size(side, h), blendMode = BlendMode.DstOut)
+        drawRect(Brush.horizontalGradient(listOf(clear, gone), left + w - side, left + w), Offset(left + w - side, top), Size(side, h), blendMode = BlendMode.DstOut)
     }
 }

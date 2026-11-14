@@ -17,6 +17,7 @@ import io.github.ahmetdurmus1218.jarvis.ui.CoreMode
 import io.github.ahmetdurmus1218.jarvis.ui.components.EyeAssets
 import io.github.ahmetdurmus1218.jarvis.ui.components.blinkAt
 import io.github.ahmetdurmus1218.jarvis.ui.components.drawEye
+import io.github.ahmetdurmus1218.jarvis.ui.components.eyeLayer
 import io.github.ahmetdurmus1218.jarvis.ui.components.lidForMood
 import io.github.ahmetdurmus1218.jarvis.ui.components.pupilForLight
 import io.github.ahmetdurmus1218.jarvis.ui.theme.JarvisColors
@@ -57,7 +58,7 @@ class RealEyeUiTest {
                     states.chunked(3).forEach { row ->
                         Row {
                             row.forEach { (pupil, lid) ->
-                                Box(Modifier.size(300.dp)) { Canvas(Modifier.size(300.dp)) { drawEye(eye, pupil, lid) } }
+                                Box(Modifier.size(390.dp, 300.dp)) { Canvas(Modifier.size(390.dp, 300.dp).eyeLayer()) { drawEye(eye, pupil, lid) } }
                             }
                         }
                     }
@@ -68,6 +69,15 @@ class RealEyeUiTest {
         val img = rule.onNodeWithTag("eyes").captureToImage().toAwtImage()
         val rgb = BufferedImage(img.width, img.height, BufferedImage.TYPE_INT_RGB)
         rgb.createGraphics().apply { drawImage(img, 0, 0, null); dispose() }
+        // No frame around the photo: its left edge and its top are exactly the background behind it.
+        val bg = JarvisColors.Background
+        val want = intArrayOf((bg.red * 255).toInt(), (bg.green * 255).toInt(), (bg.blue * 255).toInt())
+        val cell = img.width / 3
+        for ((px, py) in listOf(1 to img.height / 4, cell / 2 to 1, cell - 2 to img.height / 4)) {
+            val c = rgb.getRGB(px, py)
+            val got = intArrayOf((c shr 16) and 255, (c shr 8) and 255, c and 255)
+            for (i in 0..2) assertTrue(kotlin.math.abs(got[i] - want[i]) <= 3, "edge pixel ($px,$py) ${got.toList()} vs background ${want.toList()}")
+        }
         ImageIO.write(rgb, "jpg", File(File("build/ui-screens").apply { mkdirs() }, "33-gercek-goz.jpg"))
     }
 }
