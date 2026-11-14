@@ -143,12 +143,27 @@ def type_into(field_pred, text):
     raise SystemExit(f"could not type {text!r}")
 
 
+def answer_mic_prompt(root):
+    """Hands-free listening is on by default: once Rick is idle it asks for the microphone by itself, whatever
+    step the test is in. Answer it as a user would (the mic step still checks the feedback afterwards)."""
+    texts = screen_texts(root)
+    if not any("record audio" in t or "ses kaydetme" in t for t in texts):
+        return False
+    allow = find(lambda n: label(n) in ("While using the app", "Uygulamayı kullanırken"), root)
+    if allow is None:
+        return False
+    print("microphone permission asked by hands-free listening: allowing")
+    tap(allow)
+    time.sleep(1)
+    return True
+
+
 def wait_for(pred, what, timeout=40):
     end = time.time() + timeout
     root = None
     while time.time() < end:
         root = dump()
-        if dismiss_system_anr(root) or dismiss_youtube_update(root):
+        if dismiss_system_anr(root) or dismiss_youtube_update(root) or answer_mic_prompt(root):
             continue
         n = find(pred, root)
         if n is not None:
