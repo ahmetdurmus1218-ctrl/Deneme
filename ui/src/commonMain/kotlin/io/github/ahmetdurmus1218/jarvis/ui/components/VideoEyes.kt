@@ -127,7 +127,8 @@ fun VideoEyes(
     sleeping: Boolean = false,
 ) {
     val player = remember(eyes) { EyePlayer(eyes.meta) }
-    var frame by remember { mutableStateOf(player.shown) }
+    // Shown asleep from the first frame on (the lids then stay shut until Rick wakes).
+    var frame by remember { mutableStateOf(if (sleeping) eyes.meta.closed else player.shown) }
     LaunchedEffect(eyes, sleeping) {
         if (sleeping) player.fallAsleep() else player.wakeUp()
         var until = -1L
