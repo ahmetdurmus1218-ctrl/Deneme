@@ -7,7 +7,7 @@ a,H,W,xx,yy,x,l=E.a,E.H,E.W,E.xx,E.yy,E.x,E.l
 X0,X1=-40.0,1035.0
 _t=np.clip((x-X0)/(X1-X0),0,1)
 TAPER=np.clip(np.sin(np.pi*_t),0,1)**0.8                      # nothing at the corners, most under the iris
-RMAX=95.0
+RMAX=160.0
 def lower(e):
     """RGB and alpha of the lower lid raised by e (0 … 1)."""
     rise=e*RMAX*TAPER

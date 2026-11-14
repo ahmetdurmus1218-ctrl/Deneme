@@ -244,9 +244,9 @@ fun RealEye(
         one(modifier.size(size * 1.3f, size), mirror = false)
         return
     }
-    // Two eyes side by side; their faded edges overlap a little where the bridge of the nose would be.
+    // Two eyes about one eye apart, as on a face (the photo is mostly the eye itself, its skin fades out).
     val total = size * 1.28f
-    val eyeW = total * 0.56f
+    val eyeW = total * 0.42f
     val eyeH = eyeW * 0.74f
     Box(modifier.size(total, eyeH)) {
         one(Modifier.size(eyeW, eyeH), mirror = true)
@@ -301,7 +301,7 @@ fun DrawScope.drawEye(
     cache: PupilCache? = null,
     /** The lower lid raised (0 … 1), a smile. */
     low: Float = 0f,
-    /** Drawn as the mirror image (the other eye of the pair); the window's reflection stays where the light is. */
+    /** Drawn as the mirror image (the other eye of the pair). */
     mirror: Boolean = false,
 ) {
     val g = eye.geometry
@@ -320,14 +320,15 @@ fun DrawScope.drawEye(
     fun mirrored(block: DrawScope.() -> Unit) =
         if (mirror) withTransform({ scale(-1f, 1f, center) }) { block() } else block()
 
-    // 1. The eye with its pupil at the wanted size.
-    mirrored { drawPupilPicture(eye, scale, cache, left, top, w, dstOff, dstSize) }
-    // 2. The window reflected in the cornea: not mirrored (the light is on the same side for both eyes), only
-    //    moved to the mirrored cornea.
-    val dx = if (mirror) (g.width - 2f * g.pupilX) * k else 0f
-    drawImage(eye.reflection, IntOffset.Zero, src, IntOffset(dstOff.x + dx.roundToInt(), dstOff.y), dstSize, filterQuality = FilterQuality.High)
-    mirrored { drawLids(eye, lid, low, ::img) }
-    mirrored { drawFade(eye, left, top, k, dstOff, dstSize) }
+    mirrored {
+        // 1. The eye with its pupil at the wanted size.
+        drawPupilPicture(eye, scale, cache, left, top, w, dstOff, dstSize)
+        // 2. The window reflected in the cornea stays where it is while the pupil changes (it is part of the
+        //    photo, so the mirrored eye has it mirrored too).
+        img(eye.reflection)
+        drawLids(eye, lid, low, ::img)
+        drawFade(eye, left, top, k, dstOff, dstSize)
+    }
 }
 
 /** The photo with its pupil re-sampled, from the [cache] when there is one. */
