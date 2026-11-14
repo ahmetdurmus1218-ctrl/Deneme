@@ -154,12 +154,20 @@ class JarvisControllerTest {
      */
     private fun TestScope.controllerScope(): CoroutineScope = CoroutineScope(coroutineContext + Job())
 
-    private fun setup(engine: LlmEngine = MockLlmEngine(tokenDelayMs = 0), scope: CoroutineScope, stt: SpeechInput? = null, mic: MicStream? = null): Triple<JarvisController, Bridge, Tts> {
+    private fun setup(
+        engine: LlmEngine = MockLlmEngine(tokenDelayMs = 0),
+        scope: CoroutineScope,
+        stt: SpeechInput? = null,
+        mic: MicStream? = null,
+        listenOnOpen: Boolean = false,
+    ): Triple<JarvisController, Bridge, Tts> {
         val tts = Tts()
         val bridge = Bridge(tts, stt, mic)
         val memory = InMemoryMemoryStore()
         val assistant = Assistant(engine, DefaultTools.create(memory, now), memory, now)
-        return Triple(JarvisController(scope, bridge, assistant, memory, SettingsStore(bridge.files)), bridge, tts)
+        // Listening at once when the app opens is tested on its own; the other tests start from a quiet app.
+        val settings = SettingsStore(bridge.files).also { st -> st.update { it.copy(listenOnOpen = listenOnOpen) } }
+        return Triple(JarvisController(scope, bridge, assistant, memory, settings), bridge, tts)
     }
 
     private class MemText : io.github.ahmetdurmus1218.jarvis.core.knowledge.TextStore {
@@ -621,6 +629,30 @@ class JarvisControllerTest {
 
     /** Long enough for standby to open the microphone after Rick fell idle. */
     private val OPENS = JarvisController.STANDBY_DELAY_MS + 700
+
+    @Test
+    fun openingTheAppStartsListeningAtOnce() = runTest {
+        val scope = controllerScope()
+        val stt = OwnStt(ArrayDeque(), "saat kaç")
+        val (c, _, tts) = setup(scope = scope, stt = stt, mic = FakeMic(), listenOnOpen = true)
+        try {
+            c.setAppVisible(true)
+            advanceTimeBy(JarvisController.OPEN_LISTEN_DELAY_MS + 100)
+            assertEquals(1, stt.starts, "the microphone opened by itself")
+            advanceTimeBy(2_000)
+            assertEquals(listOf("saat kaç"), c.turns.value.map { it.user })
+            assertEquals(1, tts.spoken.size)
+            // Only opening the app listens: telling it again that it is visible does not.
+            advanceTimeBy(5_000)
+            val before = stt.starts
+            c.setAppVisible(true)
+            advanceTimeBy(JarvisController.OPEN_LISTEN_DELAY_MS + 100)
+            assertEquals(before, stt.starts, "still visible: no new start")
+        } finally {
+            c.setAppVisible(false)
+            scope.cancel()
+        }
+    }
 
     @Test
     fun aControllerStartsOnADispatcherThatRunsCoroutinesAtOnce() = runTest {
