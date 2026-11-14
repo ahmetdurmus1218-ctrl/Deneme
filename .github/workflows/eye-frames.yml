@@ -1,0 +1,48 @@
+name: eye-frames
+# One-off helper for Rick's eyes: fetches the CC BY-SA 3.0 expression videos (Clément Bucco-Lechat, Wikimedia
+# Commons) and prints contact sheets and chosen frames as base64 in the job log, to pick the frames from.
+# Read-only; nothing is uploaded or committed.
+on:
+  push:
+    paths: [.github/workflows/eye-frames.yml, tools/rick-eye/frames.txt]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  frames:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Fetch the videos
+        run: |
+          mkdir -p v && cd v
+          for u in 2/21/20140529_-_Badly_surprised.webm 9/9c/20140529_-_Blinking.webm 1/11/20140529_-_Frowning.webm \
+                   f/f4/20140529_-_Rolling_eyes.webm b/b9/20140529_-_Smiling.webm 5/57/20140529_-_Surprised.webm; do
+            f=$(basename $u)
+            for t in 1 2 3 4 5; do
+              curl -sSfL -A "asset-fetch/1.0 (one-off, low volume)" -o "$f" "https://upload.wikimedia.org/wikipedia/commons/$u" && break
+              sleep $((t * 20))
+            done
+            echo "$f $(stat -c %s "$f") $(sha1sum "$f" | cut -c1-40)"
+          done
+      - name: Contact sheets (6 frames a second)
+        run: |
+          sudo apt-get install -y ffmpeg >/dev/null 2>&1 || true
+          cd v
+          for f in *.webm; do
+            n=${f%.webm}
+            ffprobe -v error -show_entries stream=width,height,r_frame_rate,duration -of csv=p=0 "$f"
+            ffmpeg -v error -i "$f" -vf "fps=6,scale=320:-1,drawtext=text='%{n}':x=4:y=4:fontsize=20:fontcolor=yellow,tile=6x8" -frames:v 1 -q:v 4 "sheet-$n.jpg"
+            echo "=== IMG sheet-$n"; base64 -w0 "sheet-$n.jpg"; echo; echo "=== END sheet-$n"
+          done
+      - name: Chosen frames at full size
+        run: |
+          cd v
+          [ -f ../tools/rick-eye/frames.txt ] || exit 0
+          # Lines: <video name without .webm> <frame number at 6 fps>
+          while read -r n k; do
+            [ -n "$n" ] || continue
+            t=$(python3 -c "print($k/6)")
+            ffmpeg -v error -ss "$t" -i "$n.webm" -frames:v 1 -q:v 2 "full-$n-$k.jpg"
+            echo "=== IMG full-$n-$k"; base64 -w0 "full-$n-$k.jpg"; echo; echo "=== END full-$n-$k"
+          done < ../tools/rick-eye/frames.txt
