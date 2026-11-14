@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Video tools
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core >/dev/null
       - name: List the clips
         env:
           PAGES: ${{ github.event.inputs.pages }}
@@ -43,7 +43,7 @@ jobs:
           grep -- '-360.mp4' clips.txt | head -60 | while read -r u; do
             i=$((i+1)); curl -sSL "$u" -o c.mp4 || continue
             d=$(ffprobe -v error -show_entries format=duration -of csv=p=0 c.mp4 | cut -d. -f1); d=${d:-2}
-            ffmpeg -v error -ss $((d/2)) -i c.mp4 -frames:v 1 -vf "scale=360:203:force_original_aspect_ratio=decrease,pad=360:203:(ow-iw)/2:(oh-ih)/2,drawtext=text='$i':x=6:y=6:fontsize=28:fontcolor=yellow:box=1:boxcolor=black" -y "f$(printf %03d $i).jpg" && echo "$i $u" >> list.txt
+            ffmpeg -v error -ss $((d/2)) -i c.mp4 -frames:v 1 -vf "scale=360:203:force_original_aspect_ratio=decrease,pad=360:203:(ow-iw)/2:(oh-ih)/2" -y "f$(printf %03d $i).jpg" && echo "$i $u" >> list.txt
           done
           cat list.txt
           ffmpeg -v error -pattern_type glob -i 'f*.jpg' -vf "tile=6x10" -frames:v 1 -q:v 4 sheet.jpg
