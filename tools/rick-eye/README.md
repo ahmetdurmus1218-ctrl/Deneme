@@ -10,3 +10,7 @@ Betikler numpy, scipy ve Pillow ister; uygulamanın derlenmesi için gerekmez, y
 5. `export.py` — uygulamanın çizdiği katmanları yazar: `eye_base.jpg`, `eye_reflect.webp`, 12 kapak karesi, `eye.json`.
 
 Uygulama göz bebeğini canlı çizer (halkalar hâlinde, `ui/.../components/RealEye.kt`); kapak kareleri arasında geçiş yapar.
+
+Two-eye version (v1.5.3): `export_lower.py` writes the raised lower lid (`eye_low_N.webp`, a smile; uses
+`lower.py`), then `bake_fade.py assets/rick-eye` multiplies every lid layer's alpha by the edge fade once, so the
+app draws the eyes without erasing the edges on every frame. Run it once after each export.

@@ -63,6 +63,8 @@ data class EyeGeometry(
     val credits: List<String> = emptyList(),
     /** Positions of the raised lower lid frames (a smile reaching the eyes); the first is "not raised". */
     val lows: List<Float> = emptyList(),
+    /** The lid layers already carry the fade of the photo's edges (bake_fade.py): no erasing per frame. */
+    val faded: Boolean = false,
 ) {
     @Serializable
     data class Vignette(val cx: Float, val cy: Float, val rx: Float, val ry: Float)
@@ -180,8 +182,8 @@ fun RealEye(
     val grow by animateFloatAsState(if (calm) 1f else feel.grow, tween(350))
     val drop by animateFloatAsState(if (calm) 0f else feel.drop, tween(600))
     // The eye is costly to draw (a photo, its pupil re-sampled in rings, lid layers), so it is redrawn only as
-    // often as something visibly moves: every frame during a blink, ~15 times a second while speaking, 8 while
-    // the pupil merely lives, and not at all while asleep or with reduced motion between blinks.
+    // often as something visibly moves: every frame during a blink, ~15 times a second while speaking, at most 4
+    // while the pupil merely lives, and not at all while asleep or with reduced motion between blinks.
     var shown by remember { mutableStateOf(EyeTick(0L, -10_000L)) }
     val speaking = mode == CoreMode.SPEAKING
     val wave = { t: Long -> pupilWave(t, calm, sleeping, speaking) }
@@ -210,7 +212,7 @@ fun RealEye(
                 blinking -> 0L
                 sleeping || calm -> Long.MAX_VALUE
                 speaking -> 66L
-                else -> 125L
+                else -> 250L
             }
             val due = drawn < 0 || (every != Long.MAX_VALUE && t - drawn >= every) || (!blinking && shown.blinking(drawn))
             // Between blinks a redraw that would look the same (the pupil's unrest moved less than a step) is skipped.
@@ -227,7 +229,8 @@ fun RealEye(
     fun one(m: Modifier, mirror: Boolean) {
         Canvas(
             m.graphicsLayer {
-                compositingStrategy = CompositingStrategy.Offscreen
+                // Lid layers with the edge fade baked in need no layer of their own (much cheaper to draw).
+                if (!eye.geometry.faded) compositingStrategy = CompositingStrategy.Offscreen
                 rotationZ = if (mirror) -tilt else tilt
                 scaleX = grow
                 scaleY = grow
@@ -254,13 +257,13 @@ fun RealEye(
     }
 }
 
-/** The pupil's own movement at [t] ms: slow unrest (hippus), a flicker with the voice; in steps of 1 %. */
+/** The pupil's own movement at [t] ms: slow unrest (hippus), a flicker with the voice; in steps of 2 %. */
 private fun pupilWave(t: Long, calm: Boolean, sleeping: Boolean, speaking: Boolean): Float {
     if (calm || sleeping) return 0f
     val clock = t / 1000f
     val hippus = 0.025f * sin(clock * 0.9f) + 0.015f * sin(clock * 2.3f + 1f)
     val flicker = if (speaking) 0.04f * mouthWave(clock) else 0f
-    return ((hippus + flicker) * 100f).roundToInt() / 100f
+    return ((hippus + flicker) * 50f).roundToInt() / 50f
 }
 
 /**
@@ -321,33 +324,32 @@ fun DrawScope.drawEye(
         if (mirror) withTransform({ scale(-1f, 1f, center) }) { block() } else block()
 
     mirrored {
-        // 1. The eye with its pupil at the wanted size.
-        drawPupilPicture(eye, scale, cache, left, top, w, dstOff, dstSize)
-        // 2. The window reflected in the cornea stays where it is while the pupil changes (it is part of the
-        //    photo, so the mirrored eye has it mirrored too).
-        img(eye.reflection)
+        // 1–2. The eye with its pupil at the wanted size and the window reflected in the cornea (it stays where it
+        //      is while the pupil changes; the mirrored eye has it mirrored too), its edges already faded out.
+        drawPupilPicture(eye, scale, cache ?: PupilCache(), dstOff, dstSize)
         drawLids(eye, lid, low, ::img)
-        drawFade(eye, left, top, k, dstOff, dstSize)
+        // Older lid layers without the fade: erase the edges here (needs the eye's own layer, see eyeLayer).
+        if (!g.faded) drawFade(eye, left, top, k, dstOff, dstSize)
     }
 }
 
-/** The photo with its pupil re-sampled, from the [cache] when there is one. */
-private fun DrawScope.drawPupilPicture(
-    eye: EyeAssets, scale: Float, cache: PupilCache?, left: Float, top: Float, w: Float, dstOff: IntOffset, dstSize: IntSize,
-) {
-    if (cache == null || dstSize.width <= 0 || dstSize.height <= 0) {
-        drawPupil(eye, scale, Offset(left, top), w)
-    } else {
-        val key = (scale / PUPIL_STEP).roundToInt()
-        val picture = cache.get(key, dstSize) {
-            ImageBitmap(dstSize.width, dstSize.height).also { bmp ->
-                CanvasDrawScope().draw(this, layoutDirection, Canvas(bmp), Size(dstSize.width.toFloat(), dstSize.height.toFloat())) {
-                    drawPupil(eye, key * PUPIL_STEP, Offset.Zero, dstSize.width.toFloat())
-                }
+/** The photo with its pupil re-sampled, the reflection and the faded edges, as a picture kept in [cache]. */
+private fun DrawScope.drawPupilPicture(eye: EyeAssets, scale: Float, cache: PupilCache, dstOff: IntOffset, dstSize: IntSize) {
+    if (dstSize.width <= 0 || dstSize.height <= 0) return
+    val g = eye.geometry
+    val key = (scale / PUPIL_STEP).roundToInt()
+    val picture = cache.get(key, dstSize) {
+        ImageBitmap(dstSize.width, dstSize.height).also { bmp ->
+            val w = dstSize.width.toFloat()
+            CanvasDrawScope().draw(this, layoutDirection, Canvas(bmp), Size(w, dstSize.height.toFloat())) {
+                drawPupil(eye, key * PUPIL_STEP, Offset.Zero, w)
+                drawImage(eye.reflection, IntOffset.Zero, IntSize(g.width, g.height), IntOffset.Zero, dstSize, filterQuality = FilterQuality.High)
+                // A picture of its own, so its edges can be erased here once instead of on every frame.
+                drawFade(eye, 0f, 0f, w / g.width, IntOffset.Zero, dstSize)
             }
         }
-        drawImage(picture, dstOffset = dstOff)
     }
+    drawImage(picture, dstOffset = dstOff)
 }
 
 /** The raised lower lid, then the upper lid, each between its two nearest frames. */
